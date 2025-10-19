@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.orderly/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+coverage/
+.nyc_output/
+
+# Build artifacts
+*.tsbuildinfo
