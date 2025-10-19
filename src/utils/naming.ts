@@ -20,16 +20,15 @@ export class NamingUtils {
 
   static toCamelCase(str: string): string {
     return str
-      .replace(/(?:^\w|[A-Z]|\b\w)/g, (letter, index) => {
-        return index === 0 ? letter.toLowerCase() : letter.toUpperCase();
-      })
-      .replace(/[\s-_]+/g, '');
+      .toLowerCase()
+      .replace(/[-_\s]+(.)?/g, (_, char) => char ? char.toUpperCase() : '');
   }
 
   static toPascalCase(str: string): string {
     return str
-      .replace(/(?:^\w|[A-Z]|\b\w)/g, (letter) => letter.toUpperCase())
-      .replace(/[\s-_]+/g, '');
+      .toLowerCase()
+      .replace(/[-_\s]+(.)?/g, (_, char) => char ? char.toUpperCase() : '')
+      .replace(/^./, (char) => char.toUpperCase());
   }
 
   static applyNamingConvention(filename: string, convention: NamingConvention): string {

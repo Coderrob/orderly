@@ -1,0 +1,117 @@
+# Orderly Configuration Example
+# Copy this file to .orderly.yml and customize for your needs
+
+# File categories define how files are organized
+categories:
+  - name: images
+    extensions:
+      - .jpg
+      - .jpeg
+      - .png
+      - .gif
+      - .svg
+      - .webp
+      - .ico
+    targetFolder: images
+
+  - name: documents
+    extensions:
+      - .pdf
+      - .doc
+      - .docx
+      - .txt
+      - .md
+      - .odt
+      - .rtf
+    targetFolder: documents
+
+  - name: videos
+    extensions:
+      - .mp4
+      - .avi
+      - .mkv
+      - .mov
+      - .wmv
+      - .flv
+      - .webm
+    targetFolder: videos
+
+  - name: audio
+    extensions:
+      - .mp3
+      - .wav
+      - .flac
+      - .aac
+      - .ogg
+      - .wma
+      - .m4a
+    targetFolder: audio
+
+  - name: archives
+    extensions:
+      - .zip
+      - .tar
+      - .gz
+      - .rar
+      - .7z
+      - .bz2
+      - .xz
+    targetFolder: archives
+
+  - name: code
+    extensions:
+      - .js
+      - .ts
+      - .py
+      - .java
+      - .cpp
+      - .c
+      - .h
+      - .cs
+      - .go
+      - .rs
+      - .php
+      - .rb
+    targetFolder: code
+
+  - name: spreadsheets
+    extensions:
+      - .xlsx
+      - .xls
+      - .csv
+      - .ods
+    targetFolder: spreadsheets
+
+  - name: presentations
+    extensions:
+      - .ppt
+      - .pptx
+      - .odp
+      - .key
+    targetFolder: presentations
+
+# Naming convention for file renaming
+# Options: kebab-case, snake_case, camelCase, PascalCase
+namingConvention:
+  type: kebab-case
+  lowercase: true
+
+# Patterns to exclude from scanning
+excludePatterns:
+  - node_modules/**
+  - .git/**
+  - dist/**
+  - build/**
+  - .DS_Store
+
+# Include hidden files (files starting with .)
+includeHidden: false
+
+# Dry run mode - preview changes without applying
+dryRun: false
+
+# Generate manifest files after organization
+generateManifest: true
+
+# Logging level: debug, info, warn, error
+logLevel: info

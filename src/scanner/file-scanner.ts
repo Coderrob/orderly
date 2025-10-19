@@ -56,8 +56,9 @@ export class FileScanner {
         extension: ext,
         size: stats.size,
         category: category?.name,
-        targetFolder: category?.targetFolder
-      } as ScannedFile);
+        targetFolder: category?.targetFolder,
+        needsRename: false
+      });
     }
 
     this.logger.info(`Scanned ${scannedFiles.length} files`);
