@@ -1,7 +1,7 @@
-import * as fs from 'fs';
 import * as path from 'path';
-import * as yaml from 'js-yaml';
 import { OrderlyConfig, DEFAULT_CONFIG } from './types';
+import { FileSystemUtils } from '../utils/file-system-utils';
+import { ConfigParser } from '../utils/config-parser';
 
 export class ConfigLoader {
   private static CONFIG_FILES = ['.orderly.yml', '.orderly.yaml', 'orderly.config.json'];
@@ -10,42 +10,40 @@ export class ConfigLoader {
     let config = { ...DEFAULT_CONFIG };
 
     if (configPath) {
-      if (!fs.existsSync(configPath)) {
-        throw new Error(`Config file not found: ${configPath}`);
-      }
-      config = this.mergeConfig(config, this.loadConfigFile(configPath));
+      config = this.loadFromPath(configPath, config);
     } else {
-      const foundConfig = this.findConfig();
-      if (foundConfig) {
-        config = this.mergeConfig(config, this.loadConfigFile(foundConfig));
-      }
+      config = this.loadFromDefault(config);
     }
 
     return config;
+  }
+
+  private static loadFromPath(configPath: string, baseConfig: OrderlyConfig): OrderlyConfig {
+    if (!FileSystemUtils.exists(configPath)) {
+      throw new Error(`Config file not found: ${configPath}`);
+    }
+    const override = ConfigParser.parse(configPath);
+    return this.mergeConfig(baseConfig, override);
+  }
+
+  private static loadFromDefault(baseConfig: OrderlyConfig): OrderlyConfig {
+    const foundConfig = this.findConfig();
+    if (foundConfig) {
+      const override = ConfigParser.parse(foundConfig);
+      return this.mergeConfig(baseConfig, override);
+    }
+    return baseConfig;
   }
 
   private static findConfig(): string | null {
     const cwd = process.cwd();
     for (const configFile of this.CONFIG_FILES) {
       const fullPath = path.join(cwd, configFile);
-      if (fs.existsSync(fullPath)) {
+      if (FileSystemUtils.exists(fullPath)) {
         return fullPath;
       }
     }
     return null;
-  }
-
-  private static loadConfigFile(filePath: string): Partial<OrderlyConfig> {
-    const ext = path.extname(filePath).toLowerCase();
-    const content = fs.readFileSync(filePath, 'utf8');
-
-    if (ext === '.json') {
-      return JSON.parse(content);
-    } else if (ext === '.yml' || ext === '.yaml') {
-      return yaml.load(content) as Partial<OrderlyConfig>;
-    }
-
-    throw new Error(`Unsupported config file format: ${ext}`);
   }
 
   private static mergeConfig(base: OrderlyConfig, override: Partial<OrderlyConfig>): OrderlyConfig {
@@ -53,7 +51,7 @@ export class ConfigLoader {
       ...base,
       ...override,
       categories: override.categories || base.categories,
-      namingConvention: override.namingConvention 
+      namingConvention: override.namingConvention
         ? { ...base.namingConvention, ...override.namingConvention }
         : base.namingConvention,
       excludePatterns: override.excludePatterns || base.excludePatterns
@@ -62,16 +60,8 @@ export class ConfigLoader {
 
   static save(config: OrderlyConfig, filePath: string): void {
     const ext = path.extname(filePath).toLowerCase();
-    let content: string;
-
-    if (ext === '.json') {
-      content = JSON.stringify(config, null, 2);
-    } else if (ext === '.yml' || ext === '.yaml') {
-      content = yaml.dump(config);
-    } else {
-      throw new Error(`Unsupported config file format: ${ext}`);
-    }
-
-    fs.writeFileSync(filePath, content, 'utf8');
+    const format = ext === '.json' ? 'json' : 'yaml';
+    const content = ConfigParser.stringify(config, format as 'json' | 'yaml');
+    FileSystemUtils.writeFile(filePath, content);
   }
 }

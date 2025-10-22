@@ -1,7 +1,8 @@
-import * as fs from 'fs';
-import * as path from 'path';
 import { FileOperation, OrganizationResult } from './file-organizer';
 import { Logger } from '../logger/logger';
+import { FileSystemUtils } from '../utils/file-system-utils';
+import { ManifestBuilder } from './manifest-builder';
+import { ManifestFormatter } from './manifest-formatter';
 
 export interface ManifestEntry {
   timestamp: string;
@@ -19,74 +20,24 @@ export interface Manifest {
 }
 
 export class ManifestGenerator {
-  private logger: Logger;
+  private builder = new ManifestBuilder();
+  private formatter = new ManifestFormatter();
 
-  constructor(logger: Logger) {
-    this.logger = logger;
-  }
+  constructor(private logger: Logger) {}
 
   generate(result: OrganizationResult, errors: Array<{ file: string; error: string }>): Manifest {
-    const timestamp = new Date().toISOString();
-    const entries: ManifestEntry[] = [];
-
-    for (const operation of result.operations) {
-      const error = errors.find(e => e.file === operation.originalPath);
-      entries.push({
-        timestamp,
-        operation,
-        status: error ? 'failed' : 'success',
-        error: error?.error
-      });
-    }
-
-    return {
-      generatedAt: timestamp,
-      totalOperations: result.operations.length,
-      successful: result.successful,
-      failed: result.failed,
-      entries
-    };
+    return this.builder.build(result, errors);
   }
 
   save(manifest: Manifest, outputPath: string): void {
-    const dir = path.dirname(outputPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    fs.writeFileSync(outputPath, JSON.stringify(manifest, null, 2), 'utf8');
+    const content = JSON.stringify(manifest, null, 2);
+    FileSystemUtils.writeFile(outputPath, content);
     this.logger.info(`Manifest saved to: ${outputPath}`);
   }
 
   saveMarkdown(manifest: Manifest, outputPath: string): void {
-    const lines: string[] = [];
-    lines.push('# Orderly File Organization Manifest\n');
-    lines.push(`**Generated:** ${manifest.generatedAt}\n`);
-    lines.push(`**Total Operations:** ${manifest.totalOperations}`);
-    lines.push(`**Successful:** ${manifest.successful}`);
-    lines.push(`**Failed:** ${manifest.failed}\n`);
-
-    if (manifest.entries.length > 0) {
-      lines.push('## Operations\n');
-      for (const entry of manifest.entries) {
-        const status = entry.status === 'success' ? '✓' : '✗';
-        lines.push(`### ${status} ${entry.operation.type.toUpperCase()}`);
-        lines.push(`- **From:** \`${entry.operation.originalPath}\``);
-        lines.push(`- **To:** \`${entry.operation.newPath}\``);
-        lines.push(`- **Reason:** ${entry.operation.reason}`);
-        if (entry.error) {
-          lines.push(`- **Error:** ${entry.error}`);
-        }
-        lines.push('');
-      }
-    }
-
-    const dir = path.dirname(outputPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    fs.writeFileSync(outputPath, lines.join('\n'), 'utf8');
+    const content = this.formatter.format(manifest);
+    FileSystemUtils.writeFile(outputPath, content);
     this.logger.info(`Markdown manifest saved to: ${outputPath}`);
   }
 }

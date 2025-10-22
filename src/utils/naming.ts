@@ -19,16 +19,14 @@ export class NamingUtils {
   }
 
   static toCamelCase(str: string): string {
-    return str
-      .toLowerCase()
-      .replace(/[-_\s]+(.)?/g, (_, char) => char ? char.toUpperCase() : '');
+    return str.toLowerCase().replace(/[-_\s]+(.)?/g, (_, char) => (char ? char.toUpperCase() : ''));
   }
 
   static toPascalCase(str: string): string {
     return str
       .toLowerCase()
-      .replace(/[-_\s]+(.)?/g, (_, char) => char ? char.toUpperCase() : '')
-      .replace(/^./, (char) => char.toUpperCase());
+      .replace(/[-_\s]+(.)?/g, (_, char) => (char ? char.toUpperCase() : ''))
+      .replace(/^./, char => char.toUpperCase());
   }
 
   static applyNamingConvention(filename: string, convention: NamingConvention): string {
@@ -53,7 +51,11 @@ export class NamingUtils {
         convertedName = nameWithoutExt;
     }
 
-    if (convention.lowercase && convention.type !== 'camelCase' && convention.type !== 'PascalCase') {
+    if (
+      convention.lowercase &&
+      convention.type !== 'camelCase' &&
+      convention.type !== 'PascalCase'
+    ) {
       convertedName = convertedName.toLowerCase();
     }
 

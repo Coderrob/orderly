@@ -51,7 +51,20 @@ export const DEFAULT_CONFIG: OrderlyConfig = {
     },
     {
       name: 'code',
-      extensions: ['.js', '.ts', '.py', '.java', '.cpp', '.c', '.h', '.cs', '.go', '.rs', '.php', '.rb'],
+      extensions: [
+        '.js',
+        '.ts',
+        '.py',
+        '.java',
+        '.cpp',
+        '.c',
+        '.h',
+        '.cs',
+        '.go',
+        '.rs',
+        '.php',
+        '.rb'
+      ],
       targetFolder: 'code'
     },
     {

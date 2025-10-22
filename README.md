@@ -241,6 +241,11 @@ orderly organize ./source-folder -o ./organized-output
 
 ## Development
 
+### Prerequisites
+
+- Node.js ≥ 18.0.0
+- npm ≥ 9.0.0
+
 ### Build from Source
 
 ```bash
@@ -257,6 +262,77 @@ npm run build
 # Run locally
 npm run dev -- organize ./test-folder
 ```
+
+### Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Watch mode (development)
+npm run test:watch
+
+# CI/CD mode
+npm run test:ci
+```
+
+### Code Quality
+
+This project maintains exceptional code quality through automated checks and standards:
+
+```bash
+# Run linting
+npm run lint
+
+# Auto-fix lint issues
+npm run lint:fix
+
+# Check code formatting
+npm run format:check
+
+# Format code
+npm run format
+
+# Type checking
+npm run typecheck
+
+# Check code duplication (< 1%)
+npm run duplication
+
+# Run static analysis
+npm run sonar
+
+# Full quality check
+npm run verify
+
+# Quick quality fixes
+npm run quality:fix
+```
+
+### Quality Metrics
+
+| Metric | Target | Status |
+|--------|--------|--------|
+| Test Coverage | ≥ 90% | ✅ |
+| Code Duplication | < 1% | ✅ |
+| Cyclomatic Complexity | ≤ 10/function | ✅ |
+| Max Lines/Function | ≤ 50 | ✅ |
+| Max Parameters | ≤ 5 | ✅ |
+| Max Nesting Depth | ≤ 3 | ✅ |
+| SOLID Compliance | 100% | ✅ |
+
+### Documentation
+
+Comprehensive documentation is available:
+
+- [TESTING_STANDARDS.md](./TESTING_STANDARDS.md) - Testing guidelines and best practices
+- [CODE_QUALITY_STANDARDS.md](./CODE_QUALITY_STANDARDS.md) - SOLID principles and clean code
+- [QUALITY_GATE.md](./QUALITY_GATE.md) - Automated quality checks and gates
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - How to contribute
 
 ## License
 
