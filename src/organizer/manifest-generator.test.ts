@@ -11,11 +11,6 @@ jest.mock('./manifest-builder');
 jest.mock('./manifest-formatter');
 
 describe('ManifestGenerator', () => {
-  const mockLogger = Logger as jest.Mocked<typeof Logger>;
-  const mockFileSystemUtils = FileSystemUtils as jest.Mocked<typeof FileSystemUtils>;
-  const mockManifestBuilder = ManifestBuilder as jest.Mocked<typeof ManifestBuilder>;
-  const mockManifestFormatter = ManifestFormatter as jest.Mocked<typeof ManifestFormatter>;
-
   let generator: ManifestGenerator;
   let loggerInstance: jest.Mocked<Logger>;
   let builderInstance: jest.Mocked<ManifestBuilder>;
@@ -27,15 +22,16 @@ describe('ManifestGenerator', () => {
   beforeEach(() => {
     loggerInstance = {
       info: jest.fn()
-    } as any;
+    } as unknown as jest.Mocked<Logger>;
     builderInstance = {
       build: jest.fn()
     } as any;
     formatterInstance = {
       format: jest.fn()
     } as any;
-    mockManifestBuilder.mockImplementation(() => builderInstance);
-    mockManifestFormatter.mockImplementation(() => formatterInstance);
+
+    jest.mocked(ManifestBuilder).mockImplementation(() => builderInstance);
+    jest.mocked(ManifestFormatter).mockImplementation(() => formatterInstance);
 
     testResult = {
       operations: [],
@@ -77,7 +73,10 @@ describe('ManifestGenerator', () => {
 
       generator.save(testManifest, outputPath);
 
-      expect(mockFileSystemUtils.writeFile).toHaveBeenCalledWith(outputPath, expectedContent);
+      expect(jest.mocked(FileSystemUtils).writeFile).toHaveBeenCalledWith(
+        outputPath,
+        expectedContent
+      );
     });
 
     it('should log success message after saving', () => {
@@ -100,7 +99,10 @@ describe('ManifestGenerator', () => {
       generator.saveMarkdown(testManifest, outputPath);
 
       expect(formatterInstance.format).toHaveBeenCalledWith(testManifest);
-      expect(mockFileSystemUtils.writeFile).toHaveBeenCalledWith(outputPath, formattedContent);
+      expect(jest.mocked(FileSystemUtils).writeFile).toHaveBeenCalledWith(
+        outputPath,
+        formattedContent
+      );
     });
 
     it('should log success message after saving markdown', () => {

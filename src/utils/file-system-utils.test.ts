@@ -1,12 +1,10 @@
 import { FileSystemUtils } from './file-system-utils';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
-jest.mock('fs');
+jest.mock('node:fs');
 
 describe('FileSystemUtils', () => {
-  const mockFs = fs as jest.Mocked<typeof fs>;
-
   let testPath: string;
   let testContent: string;
   let testDir: string;
@@ -15,6 +13,15 @@ describe('FileSystemUtils', () => {
     testPath = '/test/path/file.txt';
     testContent = 'test content';
     testDir = '/test/dir';
+
+    // Configure mocks
+    jest.mocked(fs.existsSync).mockReturnValue(false);
+    jest.mocked(fs.readFileSync).mockReturnValue('');
+    jest.mocked(fs.writeFileSync).mockImplementation();
+    jest.mocked(fs.appendFileSync).mockImplementation();
+    jest.mocked(fs.mkdirSync).mockImplementation();
+    jest.mocked(fs.renameSync).mockImplementation();
+    jest.mocked(fs.statSync).mockReturnValue({} as fs.Stats);
   });
 
   afterEach(() => {
@@ -26,44 +33,44 @@ describe('FileSystemUtils', () => {
       [true, 'file exists'],
       [false, 'file does not exist']
     ])('should return %s when %s', expected => {
-      mockFs.existsSync.mockReturnValue(expected);
+      jest.mocked(fs.existsSync).mockReturnValue(expected);
 
       const result = FileSystemUtils.exists(testPath);
 
       expect(result).toBe(expected);
-      expect(mockFs.existsSync).toHaveBeenCalledWith(testPath);
+      expect(fs.existsSync).toHaveBeenCalledWith(testPath);
     });
   });
 
   describe('readFile', () => {
     it('should read and return file content', () => {
-      mockFs.readFileSync.mockReturnValue(testContent);
+      jest.mocked(fs.readFileSync).mockReturnValue(testContent);
 
       const result = FileSystemUtils.readFile(testPath);
 
       expect(result).toBe(testContent);
-      expect(mockFs.readFileSync).toHaveBeenCalledWith(testPath, 'utf8');
+      expect(fs.readFileSync).toHaveBeenCalledWith(testPath, 'utf8');
     });
   });
 
   describe('writeFile', () => {
     it('should write content to file when directory exists', () => {
-      mockFs.existsSync.mockReturnValue(true);
+      jest.mocked(fs.existsSync).mockReturnValue(true);
 
       FileSystemUtils.writeFile(testPath, testContent);
 
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith(testPath, testContent, 'utf8');
+      expect(fs.writeFileSync).toHaveBeenCalledWith(testPath, testContent, 'utf8');
     });
 
     it('should create directory and write file when directory does not exist', () => {
-      mockFs.existsSync.mockReturnValueOnce(false);
+      jest.mocked(fs.existsSync).mockReturnValueOnce(false);
       const dirPath = '/test/path';
       jest.spyOn(path, 'dirname').mockReturnValue(dirPath);
 
       FileSystemUtils.writeFile(testPath, testContent);
 
-      expect(mockFs.mkdirSync).toHaveBeenCalledWith(dirPath, { recursive: true });
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith(testPath, testContent, 'utf8');
+      expect(fs.mkdirSync).toHaveBeenCalledWith(dirPath, { recursive: true });
+      expect(fs.writeFileSync).toHaveBeenCalledWith(testPath, testContent, 'utf8');
     });
   });
 
@@ -71,25 +78,25 @@ describe('FileSystemUtils', () => {
     it('should append content to file', () => {
       FileSystemUtils.appendFile(testPath, testContent);
 
-      expect(mockFs.appendFileSync).toHaveBeenCalledWith(testPath, testContent, 'utf8');
+      expect(fs.appendFileSync).toHaveBeenCalledWith(testPath, testContent, 'utf8');
     });
   });
 
   describe('mkdir', () => {
     it('should create directory when it does not exist', () => {
-      mockFs.existsSync.mockReturnValue(false);
+      jest.mocked(fs.existsSync).mockReturnValue(false);
 
       FileSystemUtils.mkdir(testDir);
 
-      expect(mockFs.mkdirSync).toHaveBeenCalledWith(testDir, { recursive: true });
+      expect(fs.mkdirSync).toHaveBeenCalledWith(testDir, { recursive: true });
     });
 
     it('should not create directory when it already exists', () => {
-      mockFs.existsSync.mockReturnValue(true);
+      jest.mocked(fs.existsSync).mockReturnValue(true);
 
       FileSystemUtils.mkdir(testDir);
 
-      expect(mockFs.mkdirSync).not.toHaveBeenCalled();
+      expect(fs.mkdirSync).not.toHaveBeenCalled();
     });
   });
 
@@ -100,19 +107,19 @@ describe('FileSystemUtils', () => {
 
       FileSystemUtils.rename(oldPath, newPath);
 
-      expect(mockFs.renameSync).toHaveBeenCalledWith(oldPath, newPath);
+      expect(fs.renameSync).toHaveBeenCalledWith(oldPath, newPath);
     });
   });
 
   describe('stat', () => {
     it('should return file stats', () => {
       const mockStats = { size: 1024, isFile: () => true } as fs.Stats;
-      mockFs.statSync.mockReturnValue(mockStats);
+      jest.mocked(fs.statSync).mockReturnValue(mockStats);
 
       const result = FileSystemUtils.stat(testPath);
 
       expect(result).toBe(mockStats);
-      expect(mockFs.statSync).toHaveBeenCalledWith(testPath);
+      expect(fs.statSync).toHaveBeenCalledWith(testPath);
     });
   });
 });

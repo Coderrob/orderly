@@ -1,10 +1,15 @@
-import * as path from 'path';
+import * as path from 'node:path';
 import { OrderlyConfig, DEFAULT_CONFIG } from './types';
 import { FileSystemUtils } from '../utils/file-system-utils';
 import { ConfigParser } from '../utils/config-parser';
 
+enum ConfigFormat {
+  JSON = 'json',
+  YAML = 'yaml'
+}
+
 export class ConfigLoader {
-  private static CONFIG_FILES = ['.orderly.yml', '.orderly.yaml', 'orderly.config.json'];
+  private static readonly CONFIG_FILES = ['.orderly.yml', '.orderly.yaml', 'orderly.config.json'];
 
   static load(configPath?: string): OrderlyConfig {
     let config = { ...DEFAULT_CONFIG };
@@ -60,8 +65,8 @@ export class ConfigLoader {
 
   static save(config: OrderlyConfig, filePath: string): void {
     const ext = path.extname(filePath).toLowerCase();
-    const format = ext === '.json' ? 'json' : 'yaml';
-    const content = ConfigParser.stringify(config, format as 'json' | 'yaml');
+    const format = ext === '.json' ? ConfigFormat.JSON : ConfigFormat.YAML;
+    const content = ConfigParser.stringify(config, format);
     FileSystemUtils.writeFile(filePath, content);
   }
 }

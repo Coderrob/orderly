@@ -4,6 +4,13 @@ import * as path from 'path';
 
 jest.mock('../utils/file-system-utils');
 jest.mock('path');
+jest.mock('chalk', () => ({
+  gray: jest.fn((text: string) => text),
+  blue: jest.fn((text: string) => text),
+  green: jest.fn((text: string) => text),
+  yellow: jest.fn((text: string) => text),
+  red: jest.fn((text: string) => text)
+}));
 
 describe('Logger', () => {
   const mockFileSystemUtils = FileSystemUtils as jest.Mocked<typeof FileSystemUtils>;

@@ -1,4 +1,4 @@
-import * as path from 'path';
+import * as path from 'node:path';
 import chalk from 'chalk';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
@@ -8,11 +8,11 @@ export interface LogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 class LogLevelChecker {
-  private levelPriority: Record<LogLevel, number> = {
+  private readonly levelPriority: Record<LogLevel, number> = {
     debug: 0,
     info: 1,
     warn: 2,
@@ -45,19 +45,19 @@ class LogFormatter {
 
 export class Logger {
   private logs: LogEntry[] = [];
-  private levelChecker = new LogLevelChecker();
-  private formatter = new LogFormatter();
+  private readonly levelChecker = new LogLevelChecker();
+  private readonly formatter = new LogFormatter();
 
   constructor(
-    private logLevel: LogLevel = 'info',
-    private logFile?: string
+    private readonly logLevel: LogLevel = 'info',
+    private readonly logFile?: string
   ) {
     if (this.logFile) {
       FileSystemUtils.mkdir(path.dirname(this.logFile));
     }
   }
 
-  private log(level: LogLevel, message: string, details?: any): void {
+  private log(level: LogLevel, message: string, details?: unknown): void {
     if (!this.levelChecker.shouldLog(level, this.logLevel)) {
       return;
     }
@@ -69,7 +69,7 @@ export class Logger {
     this.writeToFile(entry);
   }
 
-  private createLogEntry(level: LogLevel, message: string, details?: any): LogEntry {
+  private createLogEntry(level: LogLevel, message: string, details?: unknown): LogEntry {
     return {
       timestamp: new Date().toISOString(),
       level,
@@ -78,7 +78,7 @@ export class Logger {
     };
   }
 
-  private writeToConsole(level: LogLevel, message: string, details?: any): void {
+  private writeToConsole(level: LogLevel, message: string, details?: unknown): void {
     const formattedMessage = this.formatter.format(level, message);
     console.log(formattedMessage);
 
@@ -90,24 +90,24 @@ export class Logger {
   private writeToFile(entry: LogEntry): void {
     if (!this.logFile) return;
 
-    const detailsStr = entry.details ? ' ' + JSON.stringify(entry.details) : '';
+    const detailsStr = entry.details ? ` ${JSON.stringify(entry.details)}` : '';
     const logLine = `${entry.timestamp} [${entry.level.toUpperCase()}] ${entry.message}${detailsStr}\n`;
     FileSystemUtils.appendFile(this.logFile, logLine);
   }
 
-  debug(message: string, details?: any): void {
+  debug(message: string, details?: unknown): void {
     this.log('debug', message, details);
   }
 
-  info(message: string, details?: any): void {
+  info(message: string, details?: unknown): void {
     this.log('info', message, details);
   }
 
-  warn(message: string, details?: any): void {
+  warn(message: string, details?: unknown): void {
     this.log('warn', message, details);
   }
 
-  error(message: string, details?: any): void {
+  error(message: string, details?: unknown): void {
     this.log('error', message, details);
   }
 

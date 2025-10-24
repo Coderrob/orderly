@@ -103,7 +103,9 @@ describe('OperationPlanner', () => {
 
       const result = plannerWithTarget.plan([testFile]);
 
-      expect(result[0].newPath).toContain('/output/documents');
+      // Path separators vary by OS, so normalize for comparison
+      const normalizedPath = result[0].newPath.replaceAll('\\', '/');
+      expect(normalizedPath).toContain('/output/documents');
     });
 
     it('should not create operation when new path equals original path', () => {

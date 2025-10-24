@@ -4,10 +4,15 @@ import { FileSystemUtils } from '../utils/file-system-utils';
 import { ManifestBuilder } from './manifest-builder';
 import { ManifestFormatter } from './manifest-formatter';
 
+export enum OperationStatus {
+  SUCCESS = 'success',
+  FAILED = 'failed'
+}
+
 export interface ManifestEntry {
   timestamp: string;
   operation: FileOperation;
-  status: 'success' | 'failed';
+  status: OperationStatus;
   error?: string;
 }
 
@@ -20,10 +25,10 @@ export interface Manifest {
 }
 
 export class ManifestGenerator {
-  private builder = new ManifestBuilder();
-  private formatter = new ManifestFormatter();
+  private readonly builder = new ManifestBuilder();
+  private readonly formatter = new ManifestFormatter();
 
-  constructor(private logger: Logger) {}
+  constructor(private readonly logger: Logger) {}
 
   generate(result: OrganizationResult, errors: Array<{ file: string; error: string }>): Manifest {
     return this.builder.build(result, errors);

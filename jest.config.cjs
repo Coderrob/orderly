@@ -2,7 +2,16 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
-  testMatch: ['**/*.spec.ts'],
+  testMatch: ['**/*.test.ts'],
+  transform: {
+    '^.+\\.ts$': [
+      'ts-jest',
+      {
+        tsconfig: 'tsconfig.test.json'
+      }
+    ]
+  },
+  transformIgnorePatterns: ['node_modules/(?!(chalk)/)'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.spec.ts',

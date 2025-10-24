@@ -1,5 +1,5 @@
 import { ManifestFormatter } from './manifest-formatter';
-import { Manifest, ManifestEntry } from './manifest-generator';
+import { Manifest, ManifestEntry, OperationStatus } from './manifest-generator';
 import { FileOperation } from './file-organizer';
 
 describe('ManifestFormatter', () => {
@@ -19,12 +19,12 @@ describe('ManifestFormatter', () => {
       {
         timestamp: '2024-01-01T00:00:00.000Z',
         operation: testOperation,
-        status: 'success'
+        status: OperationStatus.SUCCESS
       },
       {
         timestamp: '2024-01-01T00:00:00.000Z',
         operation: { ...testOperation, type: 'rename' },
-        status: 'failed',
+        status: OperationStatus.FAILED,
         error: 'File locked'
       }
     ];
@@ -107,7 +107,7 @@ describe('ManifestFormatter', () => {
               newPath: '/target/file.txt',
               reason: 'Test'
             },
-            status: 'success'
+            status: OperationStatus.SUCCESS
           }
         ]
       };

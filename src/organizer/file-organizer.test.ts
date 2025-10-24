@@ -10,14 +10,12 @@ jest.mock('./operation-planner');
 jest.mock('./operation-executor');
 
 describe('FileOrganizer', () => {
-  const mockLogger = Logger as jest.Mocked<typeof Logger>;
-  const mockOperationPlanner = OperationPlanner as jest.Mocked<typeof OperationPlanner>;
-  const mockOperationExecutor = OperationExecutor as jest.Mocked<typeof OperationExecutor>;
-
   let organizer: FileOrganizer;
   let loggerInstance: jest.Mocked<Logger>;
   let plannerInstance: jest.Mocked<OperationPlanner>;
-  let executorInstance: jest.Mocked<OperationExecutor>;
+  let executorInstance: {
+    execute: jest.MockedFunction<(operations: FileOperation[]) => Promise<OrganizationResult>>;
+  };
   let testConfig: OrderlyConfig;
   let testBaseDirectory: string;
   let testFiles: ScannedFile[];
@@ -30,11 +28,14 @@ describe('FileOrganizer', () => {
     plannerInstance = {
       plan: jest.fn()
     } as any;
+
+    const executeMock = jest.fn<Promise<OrganizationResult>, [FileOperation[]]>();
     executorInstance = {
-      execute: jest.fn()
-    } as any;
-    mockOperationPlanner.mockImplementation(() => plannerInstance);
-    mockOperationExecutor.mockImplementation(() => executorInstance);
+      execute: executeMock
+    };
+
+    jest.mocked(OperationPlanner).mockImplementation(() => plannerInstance);
+    jest.mocked(OperationExecutor).mockImplementation(() => executorInstance as any);
 
     testConfig = {
       categories: [],

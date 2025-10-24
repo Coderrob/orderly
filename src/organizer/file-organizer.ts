@@ -19,12 +19,12 @@ export interface OrganizationResult {
 }
 
 export class FileOrganizer {
-  private planner: OperationPlanner;
-  private executor: OperationExecutor;
+  private readonly planner: OperationPlanner;
+  private readonly executor: OperationExecutor;
 
   constructor(
-    private config: OrderlyConfig,
-    private logger: Logger,
+    private readonly config: OrderlyConfig,
+    private readonly logger: Logger,
     baseDirectory: string
   ) {
     this.planner = new OperationPlanner(config, baseDirectory);
@@ -37,7 +37,7 @@ export class FileOrganizer {
     return operations;
   }
 
-  async executeOperations(operations: FileOperation[]): Promise<OrganizationResult> {
+  executeOperations(operations: FileOperation[]): OrganizationResult {
     return this.executor.execute(operations);
   }
 }

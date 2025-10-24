@@ -4,8 +4,7 @@ import { Logger } from '../logger/logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
 import { FileCategorizer } from '../utils/file-categorizer';
 import { glob } from 'glob';
-import * as path from 'path';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 
 jest.mock('../logger/logger');
 jest.mock('../utils/file-system-utils');
@@ -13,7 +12,6 @@ jest.mock('../utils/file-categorizer');
 jest.mock('glob');
 
 describe('FileScanner', () => {
-  const mockLogger = Logger as jest.Mocked<typeof Logger>;
   const mockFileSystemUtils = FileSystemUtils as jest.Mocked<typeof FileSystemUtils>;
   const mockFileCategorizer = FileCategorizer as jest.Mocked<typeof FileCategorizer>;
   const mockGlob = glob as jest.MockedFunction<typeof glob>;
@@ -27,7 +25,7 @@ describe('FileScanner', () => {
     loggerInstance = {
       info: jest.fn(),
       debug: jest.fn()
-    } as any;
+    } as unknown as jest.Mocked<Logger>;
     testConfig = {
       categories: [{ name: 'images', extensions: ['.jpg'], targetFolder: 'images' }],
       namingConvention: { type: 'kebab-case', lowercase: true },

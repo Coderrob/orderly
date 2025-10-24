@@ -1,15 +1,32 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import * as path from 'path';
+import * as path from 'node:path';
 import chalk from 'chalk';
 import { ConfigLoader } from './config/config-loader';
-import { Logger } from './logger/logger';
-import { FileScanner } from './scanner/file-scanner';
-import { FileOrganizer } from './organizer/file-organizer';
+import { Logger, LogLevel } from './logger/logger';
+import { FileScanner, ScannedFile } from './scanner/file-scanner';
+import { FileOrganizer, OrganizationResult } from './organizer/file-organizer';
 import { ManifestGenerator } from './organizer/manifest-generator';
-import { DEFAULT_CONFIG } from './config/types';
+import { DEFAULT_CONFIG, OrderlyConfig } from './config/types';
 import { FileSystemUtils } from './utils/file-system-utils';
+
+interface OrganizeOptions {
+  config?: string;
+  dryRun?: boolean;
+  manifest?: boolean;
+  logLevel?: string;
+  output?: string;
+}
+
+interface InitOptions {
+  format?: string;
+}
+
+interface ScanOptions {
+  config?: string;
+  logLevel?: string;
+}
 
 const program = new Command();
 
@@ -29,7 +46,7 @@ program
   .option('--no-manifest', 'Skip manifest generation')
   .option('-l, --log-level <level>', 'Log level (debug, info, warn, error)', 'info')
   .option('-o, --output <path>', 'Output directory for organized files')
-  .action(async (directory: string, options: any) => {
+  .action(async (directory: string, options: OrganizeOptions) => {
     try {
       const config = loadConfig(options);
       const logger = createLogger(config.logLevel);
@@ -58,7 +75,7 @@ program
       }
 
       logger.info(`\nPlanned operations: ${operations.length}`);
-      const result = await organizer.executeOperations(operations);
+      const result = organizer.executeOperations(operations);
 
       logResults(result, logger);
 
@@ -80,9 +97,9 @@ program
   .command('init')
   .description('Initialize a new configuration file')
   .option('-f, --format <format>', 'Config file format (json, yaml)', 'yaml')
-  .action((options: any) => {
+  .action((options: InitOptions) => {
     try {
-      const format = validateFormat(options.format);
+      const format = validateFormat(options.format ?? 'yaml');
       const filename = getFilename(format);
       const configPath = path.join(process.cwd(), filename);
 
@@ -104,11 +121,11 @@ program
   .argument('[directory]', 'Directory to scan', '.')
   .option('-c, --config <path>', 'Path to config file')
   .option('-l, --log-level <level>', 'Log level (debug, info, warn, error)', 'info')
-  .action(async (directory: string, options: any) => {
+  .action(async (directory: string, options: ScanOptions) => {
     try {
       const config = ConfigLoader.load(options.config);
       config.dryRun = true;
-      if (options.logLevel) config.logLevel = options.logLevel;
+      if (options.logLevel) config.logLevel = options.logLevel as LogLevel;
 
       const logger = new Logger(config.logLevel);
       console.log(chalk.blue.bold('\n🔍 Scanning directory...\n'));
@@ -131,18 +148,18 @@ program
 
 program.parse();
 
-function loadConfig(options: any) {
+function loadConfig(options: OrganizeOptions): OrderlyConfig {
   const config = ConfigLoader.load(options.config);
   if (options.dryRun) config.dryRun = true;
   if (options.manifest === false) config.generateManifest = false;
-  if (options.logLevel) config.logLevel = options.logLevel;
+  if (options.logLevel) config.logLevel = options.logLevel as LogLevel;
   if (options.output) config.targetDirectory = path.resolve(options.output);
   return config;
 }
 
-function createLogger(logLevel: string) {
+function createLogger(logLevel: string): Logger {
   const logFile = path.join(process.cwd(), '.orderly', 'orderly.log');
-  return new Logger(logLevel as any, logFile);
+  return new Logger(logLevel as LogLevel, logFile);
 }
 
 function validateDirectory(directory: string, logger: Logger) {
@@ -161,15 +178,15 @@ function logConfiguration(targetDir: string, dryRun: boolean, logger: Logger) {
   }
 }
 
-function logFileSummary(scanner: FileScanner, files: any[], logger: Logger) {
+function logFileSummary(scanner: FileScanner, files: ScannedFile[], logger: Logger): void {
   const summary = scanner.getCategorySummary(files);
   logger.info('\nFile categories found:');
-  summary.forEach((count, category) => {
+  for (const [category, count] of summary) {
     logger.info(`  ${category}: ${count} files`);
-  });
+  }
 }
 
-function logResults(result: any, logger: Logger) {
+function logResults(result: OrganizationResult, logger: Logger): void {
   logger.info(`\n${'='.repeat(50)}`);
   logger.info(chalk.green.bold(`✓ Completed: ${result.successful} operations`));
   if (result.failed > 0) {
@@ -177,7 +194,7 @@ function logResults(result: any, logger: Logger) {
   }
 }
 
-function saveManifests(result: any, logger: Logger) {
+function saveManifests(result: OrganizationResult, logger: Logger): void {
   const manifestGenerator = new ManifestGenerator(logger);
   const manifest = manifestGenerator.generate(result, result.errors);
 
@@ -203,16 +220,16 @@ function getFilename(format: string): string {
 
 function displayScanResults(
   scanner: FileScanner,
-  files: any[],
-  config: any,
+  files: ScannedFile[],
+  config: OrderlyConfig,
   logger: Logger,
   targetDir: string
-) {
+): void {
   const summary = scanner.getCategorySummary(files);
   console.log(chalk.bold('\nFile categories:'));
-  summary.forEach((count, category) => {
+  for (const [category, count] of summary) {
     console.log(`  ${chalk.cyan(category)}: ${count} files`);
-  });
+  }
 
   const organizer = new FileOrganizer(config, logger, targetDir);
   const operations = organizer.planOperations(files);

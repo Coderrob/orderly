@@ -10,12 +10,10 @@ describe('ConfigParser', () => {
   const mockFileSystemUtils = FileSystemUtils as jest.Mocked<typeof FileSystemUtils>;
   const mockYaml = yaml as jest.Mocked<typeof yaml>;
 
-  let testFilePath: string;
   let testContent: string;
   let testConfig: Partial<OrderlyConfig>;
 
   beforeEach(() => {
-    testFilePath = '/config/test.yml';
     testContent = 'test: config';
     testConfig = { logLevel: 'info', dryRun: false };
   });

@@ -1,4 +1,4 @@
-import * as path from 'path';
+import * as path from 'node:path';
 import { FileSystemUtils } from '../utils/file-system-utils';
 import { FileOperation, OrganizationResult } from './file-organizer';
 import { Logger } from '../logger/logger';
@@ -9,7 +9,7 @@ export class OperationExecutor {
     private dryRun: boolean
   ) {}
 
-  async execute(operations: FileOperation[]): Promise<OrganizationResult> {
+  execute(operations: FileOperation[]): OrganizationResult {
     const result = this.createEmptyResult(operations);
 
     if (this.dryRun) {
@@ -42,20 +42,14 @@ export class OperationExecutor {
     return result;
   }
 
-  private async executeReal(
-    operations: FileOperation[],
-    result: OrganizationResult
-  ): Promise<OrganizationResult> {
+  private executeReal(operations: FileOperation[], result: OrganizationResult): OrganizationResult {
     for (const operation of operations) {
-      await this.executeOperation(operation, result);
+      this.executeOperation(operation, result);
     }
     return result;
   }
 
-  private async executeOperation(
-    operation: FileOperation,
-    result: OrganizationResult
-  ): Promise<void> {
+  private executeOperation(operation: FileOperation, result: OrganizationResult): void {
     try {
       this.performOperation(operation);
       result.successful++;

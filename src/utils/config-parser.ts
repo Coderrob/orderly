@@ -1,4 +1,4 @@
-import * as path from 'path';
+import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import { OrderlyConfig } from '../config/types';
 import { FileSystemUtils } from './file-system-utils';
@@ -9,7 +9,7 @@ export class ConfigParser {
     const content = FileSystemUtils.readFile(filePath);
 
     if (ext === '.json') {
-      return JSON.parse(content);
+      return JSON.parse(content) as Partial<OrderlyConfig>;
     }
 
     if (ext === '.yml' || ext === '.yaml') {
@@ -28,6 +28,6 @@ export class ConfigParser {
       return yaml.dump(config);
     }
 
-    throw new Error(`Unsupported format: ${format}`);
+    throw new Error(`Unsupported format: ${String(format)}`);
   }
 }

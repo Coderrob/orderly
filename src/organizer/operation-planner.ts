@@ -27,7 +27,8 @@ export class OperationPlanner {
     const { targetDir, targetFilename } = this.calculateTargets(file);
     const newPath = path.join(targetDir, targetFilename);
 
-    if (newPath === file.originalPath) {
+    // Normalize paths for comparison (handles Windows/Unix path separator differences)
+    if (path.normalize(newPath) === path.normalize(file.originalPath)) {
       return null;
     }
 

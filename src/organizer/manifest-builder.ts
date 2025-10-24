@@ -1,5 +1,5 @@
 import { FileOperation, OrganizationResult } from './file-organizer';
-import { Manifest, ManifestEntry } from './manifest-generator';
+import { Manifest, ManifestEntry, OperationStatus } from './manifest-generator';
 
 export class ManifestBuilder {
   build(result: OrganizationResult, errors: Array<{ file: string; error: string }>): Manifest {
@@ -25,7 +25,7 @@ export class ManifestBuilder {
       return {
         timestamp,
         operation,
-        status: error ? ('failed' as const) : ('success' as const),
+        status: error ? OperationStatus.FAILED : OperationStatus.SUCCESS,
         error: error?.error
       };
     });

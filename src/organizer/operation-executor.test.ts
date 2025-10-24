@@ -1,5 +1,5 @@
 import { OperationExecutor } from './operation-executor';
-import { FileOperation, OrganizationResult } from './file-organizer';
+import { FileOperation } from './file-organizer';
 import { Logger } from '../logger/logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
@@ -7,7 +7,6 @@ jest.mock('../logger/logger');
 jest.mock('../utils/file-system-utils');
 
 describe('OperationExecutor', () => {
-  const mockLogger = Logger as jest.Mocked<typeof Logger>;
   const mockFileSystemUtils = FileSystemUtils as jest.Mocked<typeof FileSystemUtils>;
 
   let executor: OperationExecutor;
@@ -19,7 +18,7 @@ describe('OperationExecutor', () => {
     loggerInstance = {
       info: jest.fn(),
       error: jest.fn()
-    } as any;
+    } as unknown as jest.Mocked<Logger>;
     testOperation = {
       type: 'move',
       originalPath: '/source/file.txt',
@@ -160,6 +159,8 @@ describe('OperationExecutor', () => {
         newPath: '/same/file.txt'
       };
       mockFileSystemUtils.exists.mockReturnValue(true);
+      mockFileSystemUtils.mkdir.mockReturnValue(undefined);
+      mockFileSystemUtils.rename.mockReturnValue(undefined);
 
       const result = await executor.execute([samePathOperation]);
 

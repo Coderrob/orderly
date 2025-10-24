@@ -3,8 +3,6 @@ import { CategoryRule } from '../config/types';
 
 describe('FileCategorizer', () => {
   let testCategories: CategoryRule[];
-  let testExtension: string;
-  let testFilename: string;
 
   beforeEach(() => {
     testCategories = [
@@ -25,8 +23,6 @@ describe('FileCategorizer', () => {
         targetFolder: 'code'
       }
     ];
-    testExtension = '.jpg';
-    testFilename = 'photo.jpg';
   });
 
   afterEach(() => {

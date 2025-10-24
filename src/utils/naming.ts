@@ -1,32 +1,35 @@
-import * as path from 'path';
+import * as path from 'node:path';
 import { NamingConvention } from '../config/types';
 
 export class NamingUtils {
   static toKebabCase(str: string): string {
     return str
-      .replace(/([a-z])([A-Z])/g, '$1-$2')
-      .replace(/[\s_]+/g, '-')
-      .replace(/[^a-zA-Z0-9-]/g, '')
+      .replaceAll(/([a-z])([A-Z])/g, '$1-$2')
+      .replaceAll(/[\s_]+/g, '-')
+      .replaceAll(/[^a-zA-Z0-9-]/g, '')
       .toLowerCase();
   }
 
   static toSnakeCase(str: string): string {
     return str
-      .replace(/([a-z])([A-Z])/g, '$1_$2')
-      .replace(/[\s-]+/g, '_')
-      .replace(/[^a-zA-Z0-9_]/g, '')
+      .replaceAll(/([a-z])([A-Z])/g, '$1_$2')
+      .replaceAll(/[\s-]+/g, '_')
+      .replaceAll(/\W/g, '')
       .toLowerCase();
   }
 
   static toCamelCase(str: string): string {
-    return str.toLowerCase().replace(/[-_\s]+(.)?/g, (_, char) => (char ? char.toUpperCase() : ''));
+    return str
+      .toLowerCase()
+      .replaceAll(/[-_\s]+(.)?/g, (_: string, char: string) => (char ? char.toUpperCase() : ''));
   }
 
   static toPascalCase(str: string): string {
+    // Note: replaceAll() doesn't support callback functions with regex, so we use replace() with 'g' flag
     return str
       .toLowerCase()
-      .replace(/[-_\s]+(.)?/g, (_, char) => (char ? char.toUpperCase() : ''))
-      .replace(/^./, char => char.toUpperCase());
+      .replace(/[-_\s]+(.)?/g, (_: string, char: string) => (char ? char.toUpperCase() : ''))
+      .replace(/^./, (char: string) => char.toUpperCase());
   }
 
   static applyNamingConvention(filename: string, convention: NamingConvention): string {
