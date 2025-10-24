@@ -1,5 +1,5 @@
 import { OperationExecutor } from './operation-executor';
-import { FileOperation } from './file-organizer';
+import { FileOperation, FileOperationType } from './file-organizer';
 import { Logger } from '../logger/logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
@@ -20,7 +20,7 @@ describe('OperationExecutor', () => {
       error: jest.fn()
     } as unknown as jest.Mocked<Logger>;
     testOperation = {
-      type: 'move',
+      type: FileOperationType.MOVE,
       originalPath: '/source/file.txt',
       newPath: '/target/file.txt',
       reason: 'Moving to target'

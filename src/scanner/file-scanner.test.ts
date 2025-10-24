@@ -1,5 +1,5 @@
 import { FileScanner, ScannedFile } from './file-scanner';
-import { OrderlyConfig } from '../config/types';
+import { OrderlyConfig, NamingConventionType } from '../config/types';
 import { Logger } from '../logger/logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
 import { FileCategorizer } from '../utils/file-categorizer';
@@ -28,7 +28,7 @@ describe('FileScanner', () => {
     } as unknown as jest.Mocked<Logger>;
     testConfig = {
       categories: [{ name: 'images', extensions: ['.jpg'], targetFolder: 'images' }],
-      namingConvention: { type: 'kebab-case', lowercase: true },
+      namingConvention: { type: NamingConventionType.KEBAB_CASE, lowercase: true },
       excludePatterns: ['node_modules/**'],
       includeHidden: false,
       dryRun: false,

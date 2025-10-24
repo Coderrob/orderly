@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { NamingConvention } from '../config/types';
+import { NamingConvention, NamingConventionType } from '../config/types';
 
 export class NamingUtils {
   static toKebabCase(str: string): string {
@@ -38,16 +38,16 @@ export class NamingUtils {
 
     let convertedName: string;
     switch (convention.type) {
-      case 'kebab-case':
+      case NamingConventionType.KEBAB_CASE:
         convertedName = this.toKebabCase(nameWithoutExt);
         break;
-      case 'snake_case':
+      case NamingConventionType.SNAKE_CASE:
         convertedName = this.toSnakeCase(nameWithoutExt);
         break;
-      case 'camelCase':
+      case NamingConventionType.CAMEL_CASE:
         convertedName = this.toCamelCase(nameWithoutExt);
         break;
-      case 'PascalCase':
+      case NamingConventionType.PASCAL_CASE:
         convertedName = this.toPascalCase(nameWithoutExt);
         break;
       default:
@@ -56,8 +56,8 @@ export class NamingUtils {
 
     if (
       convention.lowercase &&
-      convention.type !== 'camelCase' &&
-      convention.type !== 'PascalCase'
+      convention.type !== NamingConventionType.CAMEL_CASE &&
+      convention.type !== NamingConventionType.PASCAL_CASE
     ) {
       convertedName = convertedName.toLowerCase();
     }

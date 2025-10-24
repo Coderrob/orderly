@@ -1,6 +1,6 @@
 import { ManifestFormatter } from './manifest-formatter';
 import { Manifest, ManifestEntry, OperationStatus } from './manifest-generator';
-import { FileOperation } from './file-organizer';
+import { FileOperation, FileOperationType } from './file-organizer';
 
 describe('ManifestFormatter', () => {
   let formatter: ManifestFormatter;
@@ -10,7 +10,7 @@ describe('ManifestFormatter', () => {
   beforeEach(() => {
     formatter = new ManifestFormatter();
     const testOperation: FileOperation = {
-      type: 'move',
+      type: FileOperationType.MOVE,
       originalPath: '/source/file.txt',
       newPath: '/target/file.txt',
       reason: 'Moving to target'
@@ -23,7 +23,7 @@ describe('ManifestFormatter', () => {
       },
       {
         timestamp: '2024-01-01T00:00:00.000Z',
-        operation: { ...testOperation, type: 'rename' },
+        operation: { ...testOperation, type: FileOperationType.RENAME },
         status: OperationStatus.FAILED,
         error: 'File locked'
       }
@@ -92,9 +92,9 @@ describe('ManifestFormatter', () => {
     });
 
     it.each([
-      ['move', 'MOVE'],
-      ['rename', 'RENAME'],
-      ['move-rename', 'MOVE-RENAME']
+      [FileOperationType.MOVE, 'MOVE'],
+      [FileOperationType.RENAME, 'RENAME'],
+      [FileOperationType.MOVE_RENAME, 'MOVE-RENAME']
     ])('should uppercase operation type %s to %s', (type, expected) => {
       const manifest: Manifest = {
         ...testManifest,
@@ -102,7 +102,7 @@ describe('ManifestFormatter', () => {
           {
             timestamp: '2024-01-01T00:00:00.000Z',
             operation: {
-              type: type as any,
+              type,
               originalPath: '/source/file.txt',
               newPath: '/target/file.txt',
               reason: 'Test'

@@ -1,7 +1,7 @@
 import { ConfigLoader } from './config-loader';
 import { FileSystemUtils } from '../utils/file-system-utils';
 import { ConfigParser } from '../utils/config-parser';
-import { DEFAULT_CONFIG, OrderlyConfig } from './types';
+import { DEFAULT_CONFIG, OrderlyConfig, NamingConventionType } from './types';
 
 jest.mock('../utils/file-system-utils');
 jest.mock('../utils/config-parser');
@@ -83,7 +83,7 @@ describe('ConfigLoader', () => {
     it('should merge naming convention partially', () => {
       mockFileSystemUtils.exists.mockReturnValue(true);
       mockConfigParser.parse.mockReturnValue({
-        namingConvention: { type: 'snake_case' }
+        namingConvention: { type: NamingConventionType.SNAKE_CASE }
       });
 
       const result = ConfigLoader.load(testConfigPath);

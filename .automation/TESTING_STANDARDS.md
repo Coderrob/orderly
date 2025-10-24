@@ -260,7 +260,7 @@ it.each([
 // file-system-utils.spec.ts
 import { FileSystemUtils } from './file-system-utils';
 import * as fs from 'fs';
-import * as path from 'path';
+import * as path from 'node:path';
 
 jest.mock('fs');
 jest.mock('path');

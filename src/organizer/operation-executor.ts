@@ -5,8 +5,8 @@ import { Logger } from '../logger/logger';
 
 export class OperationExecutor {
   constructor(
-    private logger: Logger,
-    private dryRun: boolean
+    private readonly logger: Logger,
+    private readonly dryRun: boolean
   ) {}
 
   execute(operations: FileOperation[]): OrganizationResult {

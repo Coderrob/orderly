@@ -6,7 +6,7 @@ import chalk from 'chalk';
 import { ConfigLoader } from './config/config-loader';
 import { Logger, LogLevel } from './logger/logger';
 import { FileScanner, ScannedFile } from './scanner/file-scanner';
-import { FileOrganizer, OrganizationResult } from './organizer/file-organizer';
+import { FileOrganizer, OrganizationResult, FileOperationType } from './organizer/file-organizer';
 import { ManifestGenerator } from './organizer/manifest-generator';
 import { DEFAULT_CONFIG, OrderlyConfig } from './config/types';
 import { FileSystemUtils } from './utils/file-system-utils';
@@ -235,14 +235,18 @@ function displayScanResults(
   const operations = organizer.planOperations(files);
   console.log(chalk.bold(`\nOperations needed: ${operations.length}`));
 
-  const operationTypes = { move: 0, rename: 0, 'move-rename': 0 };
+  const operationTypes = {
+    [FileOperationType.MOVE]: 0,
+    [FileOperationType.RENAME]: 0,
+    [FileOperationType.MOVE_RENAME]: 0
+  };
   for (const op of operations) {
     operationTypes[op.type]++;
   }
 
-  console.log(`  Move: ${operationTypes.move}`);
-  console.log(`  Rename: ${operationTypes.rename}`);
-  console.log(`  Move + Rename: ${operationTypes['move-rename']}`);
+  console.log(`  Move: ${operationTypes[FileOperationType.MOVE]}`);
+  console.log(`  Rename: ${operationTypes[FileOperationType.RENAME]}`);
+  console.log(`  Move + Rename: ${operationTypes[FileOperationType.MOVE_RENAME]}`);
 }
 
 function handleError(error: unknown) {

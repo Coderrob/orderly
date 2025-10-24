@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import * as yaml from 'js-yaml';
-import { OrderlyConfig } from '../config/types';
+import { OrderlyConfig, ConfigFormat } from '../config/types';
 import { FileSystemUtils } from './file-system-utils';
 
 export class ConfigParser {
@@ -19,12 +19,12 @@ export class ConfigParser {
     throw new Error(`Unsupported config file format: ${ext}`);
   }
 
-  static stringify(config: OrderlyConfig, format: 'json' | 'yaml'): string {
-    if (format === 'json') {
+  static stringify(config: OrderlyConfig, format: ConfigFormat): string {
+    if (format === ConfigFormat.JSON) {
       return JSON.stringify(config, null, 2);
     }
 
-    if (format === 'yaml') {
+    if (format === ConfigFormat.YAML) {
       return yaml.dump(config);
     }
 

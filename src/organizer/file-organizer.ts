@@ -4,8 +4,14 @@ import { ScannedFile } from '../scanner/file-scanner';
 import { OperationPlanner } from './operation-planner';
 import { OperationExecutor } from './operation-executor';
 
+export enum FileOperationType {
+  MOVE = 'move',
+  RENAME = 'rename',
+  MOVE_RENAME = 'move-rename'
+}
+
 export interface FileOperation {
-  type: 'move' | 'rename' | 'move-rename';
+  type: FileOperationType;
   originalPath: string;
   newPath: string;
   reason: string;

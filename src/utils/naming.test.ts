@@ -1,11 +1,11 @@
 import { NamingUtils } from './naming';
-import { NamingConvention } from '../config/types';
+import { NamingConvention, NamingConventionType } from '../config/types';
 
 describe('NamingUtils', () => {
   let testConvention: NamingConvention;
 
   beforeEach(() => {
-    testConvention = { type: 'kebab-case', lowercase: true };
+    testConvention = { type: NamingConventionType.KEBAB_CASE, lowercase: true };
   });
 
   afterEach(() => {
@@ -79,12 +79,12 @@ describe('NamingUtils', () => {
 
   describe('applyNamingConvention', () => {
     it.each([
-      ['kebab-case', 'Test File.txt', 'test-file.txt'],
-      ['snake_case', 'Test File.txt', 'test_file.txt'],
-      ['camelCase', 'Test File.txt', 'testFile.txt'],
-      ['PascalCase', 'Test File.txt', 'TestFile.txt']
+      [NamingConventionType.KEBAB_CASE, 'Test File.txt', 'test-file.txt'],
+      [NamingConventionType.SNAKE_CASE, 'Test File.txt', 'test_file.txt'],
+      [NamingConventionType.CAMEL_CASE, 'Test File.txt', 'testFile.txt'],
+      [NamingConventionType.PASCAL_CASE, 'Test File.txt', 'TestFile.txt']
     ])('should apply %s convention to filename', (type, filename, expected) => {
-      const convention: NamingConvention = { type: type as any, lowercase: true };
+      const convention: NamingConvention = { type, lowercase: true };
 
       const result = NamingUtils.applyNamingConvention(filename, convention);
 
@@ -98,21 +98,30 @@ describe('NamingUtils', () => {
     });
 
     it('should handle files without extension', () => {
-      const convention: NamingConvention = { type: 'camelCase', lowercase: true };
+      const convention: NamingConvention = {
+        type: NamingConventionType.CAMEL_CASE,
+        lowercase: true
+      };
       const result = NamingUtils.applyNamingConvention('TestFile', convention);
 
       expect(result).toBe('testfile');
     });
 
     it('should not lowercase camelCase convention', () => {
-      const convention: NamingConvention = { type: 'camelCase', lowercase: true };
+      const convention: NamingConvention = {
+        type: NamingConventionType.CAMEL_CASE,
+        lowercase: true
+      };
       const result = NamingUtils.applyNamingConvention('Test File.txt', convention);
 
       expect(result).toBe('testFile.txt');
     });
 
     it('should not lowercase PascalCase convention', () => {
-      const convention: NamingConvention = { type: 'PascalCase', lowercase: true };
+      const convention: NamingConvention = {
+        type: NamingConventionType.PASCAL_CASE,
+        lowercase: true
+      };
       const result = NamingUtils.applyNamingConvention('test file.txt', convention);
 
       expect(result).toBe('TestFile.txt');
@@ -121,14 +130,14 @@ describe('NamingUtils', () => {
 
   describe('needsRename', () => {
     it.each([
-      ['test-file.txt', 'kebab-case', false],
-      ['Test File.txt', 'kebab-case', true],
-      ['test_file.txt', 'snake_case', false],
-      ['Test File.txt', 'snake_case', true],
-      ['testFile.txt', 'camelCase', true], // Will be converted to testfile.txt due to lowercase
-      ['Test File.txt', 'camelCase', true]
+      ['test-file.txt', NamingConventionType.KEBAB_CASE, false],
+      ['Test File.txt', NamingConventionType.KEBAB_CASE, true],
+      ['test_file.txt', NamingConventionType.SNAKE_CASE, false],
+      ['Test File.txt', NamingConventionType.SNAKE_CASE, true],
+      ['testFile.txt', NamingConventionType.CAMEL_CASE, true], // Will be converted to testfile.txt due to lowercase
+      ['Test File.txt', NamingConventionType.CAMEL_CASE, true]
     ])('should return correct result for "%s" with %s convention', (filename, type, expected) => {
-      const convention: NamingConvention = { type: type as any, lowercase: true };
+      const convention: NamingConvention = { type, lowercase: true };
 
       const result = NamingUtils.needsRename(filename, convention);
 

@@ -1,5 +1,10 @@
-import { FileOrganizer, FileOperation, OrganizationResult } from './file-organizer';
-import { OrderlyConfig } from '../config/types';
+import {
+  FileOrganizer,
+  FileOperation,
+  OrganizationResult,
+  FileOperationType
+} from './file-organizer';
+import { OrderlyConfig, NamingConventionType } from '../config/types';
 import { Logger } from '../logger/logger';
 import { ScannedFile } from '../scanner/file-scanner';
 import { OperationPlanner } from './operation-planner';
@@ -39,7 +44,7 @@ describe('FileOrganizer', () => {
 
     testConfig = {
       categories: [],
-      namingConvention: { type: 'kebab-case', lowercase: true },
+      namingConvention: { type: NamingConventionType.KEBAB_CASE, lowercase: true },
       excludePatterns: [],
       includeHidden: false,
       dryRun: false,
@@ -60,7 +65,7 @@ describe('FileOrganizer', () => {
     ];
     testOperations = [
       {
-        type: 'move',
+        type: FileOperationType.MOVE,
         originalPath: '/base/dir/File.txt',
         newPath: '/base/dir/documents/File.txt',
         reason: 'Moving to documents'

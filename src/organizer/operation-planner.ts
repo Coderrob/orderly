@@ -1,13 +1,13 @@
-import * as path from 'path';
+import * as path from 'node:path';
 import { OrderlyConfig } from '../config/types';
 import { ScannedFile } from '../scanner/file-scanner';
-import { FileOperation } from './file-organizer';
+import { FileOperation, FileOperationType } from './file-organizer';
 import { NamingUtils } from '../utils/naming';
 
 export class OperationPlanner {
   constructor(
-    private config: OrderlyConfig,
-    private baseDirectory: string
+    private readonly config: OrderlyConfig,
+    private readonly baseDirectory: string
   ) {}
 
   plan(files: ScannedFile[]): FileOperation[] {
@@ -64,17 +64,17 @@ export class OperationPlanner {
     const needsMove = file.targetFolder !== undefined;
     const needsRename = file.filename !== targetFilename;
 
-    let type: 'move' | 'rename' | 'move-rename';
+    let type: FileOperationType;
     let reason: string;
 
     if (needsMove && needsRename) {
-      type = 'move-rename';
+      type = FileOperationType.MOVE_RENAME;
       reason = `Moving to ${file.targetFolder} and renaming to ${targetFilename}`;
     } else if (needsMove) {
-      type = 'move';
+      type = FileOperationType.MOVE;
       reason = `Moving to ${file.targetFolder}`;
     } else {
-      type = 'rename';
+      type = FileOperationType.RENAME;
       reason = `Renaming to ${targetFilename}`;
     }
 

@@ -1,7 +1,7 @@
 import { ConfigParser } from './config-parser';
 import { FileSystemUtils } from './file-system-utils';
 import * as yaml from 'js-yaml';
-import { OrderlyConfig } from '../config/types';
+import { OrderlyConfig, ConfigFormat } from '../config/types';
 
 jest.mock('./file-system-utils');
 jest.mock('js-yaml');
@@ -69,7 +69,7 @@ describe('ConfigParser', () => {
       const config = testConfig as OrderlyConfig;
       const expected = JSON.stringify(config, null, 2);
 
-      const result = ConfigParser.stringify(config, 'json');
+      const result = ConfigParser.stringify(config, ConfigFormat.JSON);
 
       expect(result).toBe(expected);
     });
@@ -79,7 +79,7 @@ describe('ConfigParser', () => {
       const yamlOutput = 'test: config\n';
       mockYaml.dump.mockReturnValue(yamlOutput);
 
-      const result = ConfigParser.stringify(config, 'yaml');
+      const result = ConfigParser.stringify(config, ConfigFormat.YAML);
 
       expect(result).toBe(yamlOutput);
       expect(mockYaml.dump).toHaveBeenCalledWith(config);

@@ -1,5 +1,5 @@
 import { ManifestBuilder } from './manifest-builder';
-import { FileOperation, OrganizationResult } from './file-organizer';
+import { FileOperation, OrganizationResult, FileOperationType } from './file-organizer';
 
 describe('ManifestBuilder', () => {
   let builder: ManifestBuilder;
@@ -11,13 +11,13 @@ describe('ManifestBuilder', () => {
     builder = new ManifestBuilder();
     testOperations = [
       {
-        type: 'move',
+        type: FileOperationType.MOVE,
         originalPath: '/source/file1.txt',
         newPath: '/target/file1.txt',
         reason: 'Moving to target'
       },
       {
-        type: 'rename',
+        type: FileOperationType.RENAME,
         originalPath: '/source/File2.txt',
         newPath: '/source/file-2.txt',
         reason: 'Renaming to kebab-case'

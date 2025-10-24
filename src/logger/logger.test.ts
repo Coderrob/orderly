@@ -1,6 +1,6 @@
 import { Logger, LogLevel } from './logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
-import * as path from 'path';
+import * as path from 'node:path';
 
 jest.mock('../utils/file-system-utils');
 jest.mock('path');

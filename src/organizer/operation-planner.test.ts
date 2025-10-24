@@ -1,7 +1,8 @@
 import { OperationPlanner } from './operation-planner';
-import { OrderlyConfig } from '../config/types';
+import { OrderlyConfig, NamingConventionType } from '../config/types';
 import { ScannedFile } from '../scanner/file-scanner';
 import { NamingUtils } from '../utils/naming';
+import { FileOperationType } from './file-organizer';
 
 jest.mock('../utils/naming');
 
@@ -17,7 +18,7 @@ describe('OperationPlanner', () => {
     testBaseDirectory = '/base/dir';
     testConfig = {
       categories: [],
-      namingConvention: { type: 'kebab-case', lowercase: true },
+      namingConvention: { type: NamingConventionType.KEBAB_CASE, lowercase: true },
       excludePatterns: [],
       includeHidden: false,
       dryRun: false,
@@ -56,7 +57,7 @@ describe('OperationPlanner', () => {
       const result = planner.plan([testFile]);
 
       expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('move');
+      expect(result[0].type).toBe(FileOperationType.MOVE);
       expect(result[0].newPath).toContain('documents');
     });
 
@@ -68,7 +69,7 @@ describe('OperationPlanner', () => {
       const result = planner.plan([file]);
 
       expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('rename');
+      expect(result[0].type).toBe(FileOperationType.RENAME);
       expect(result[0].newPath).toContain('test-file.txt');
     });
 
@@ -79,7 +80,7 @@ describe('OperationPlanner', () => {
       const result = planner.plan([testFile]);
 
       expect(result).toHaveLength(1);
-      expect(result[0].type).toBe('move-rename');
+      expect(result[0].type).toBe(FileOperationType.MOVE_RENAME);
       expect(result[0].reason).toContain('Moving to');
       expect(result[0].reason).toContain('renaming to');
     });
