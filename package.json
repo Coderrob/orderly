@@ -1,5 +1,5 @@
 {
-  "name": "orderly",
+  "name": "@coderrob/orderly",
   "version": "1.0.0",
   "description": "Agentic file and folder organization to maintain an orderly directory.",
   "main": "dist/index.js",
@@ -7,10 +7,33 @@
     "orderly": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "npm run clean && tsc",
+    "build:test": "tsc -p tsconfig.test.json",
     "start": "node dist/cli.js",
     "dev": "ts-node src/cli.ts",
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --coverage --ci --maxWorkers=2",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "duplication": "jscpd src",
+    "duplication:check": "jscpd src --exitCode 1",
+    "sonar": "sonar-scanner",
+    "quality": "node scripts/quality-check.js",
+    "quality:fix": "npm run lint:fix && npm run format",
+    "verify": "npm run typecheck && npm run lint && npm run format:check && npm run test:coverage && npm run duplication:check",
+    "setup": "node scripts/setup-and-verify.js",
+    "prepack": "npm run verify && npm run build",
+    "prepublishOnly": "npm run verify",
+    "clean": "rimraf dist coverage reports .eslintcache",
+    "update:check": "npm outdated",
+    "update:patch": "npm update",
+    "update:all": "npx npm-check-updates -u && npm install",
+    "audit:fix": "npm audit fix"
   },
   "keywords": [
     "cli",
@@ -18,8 +41,8 @@
     "file-management",
     "naming-conventions"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Robert Lindley",
+  "license": "Apache-2.0",
   "dependencies": {
     "chalk": "^5.6.2",
     "commander": "^14.0.1",
@@ -28,10 +51,26 @@
     "micromatch": "^4.0.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.38.0",
+    "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/micromatch": "^4.0.9",
-    "@types/node": "^24.8.1",
+    "@types/micromatch": "^4.0.10",
+    "@types/node": "^24.9.1",
+    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@typescript-eslint/parser": "^8.46.2",
+    "eslint": "^9.38.0",
+    "jest": "^30.2.0",
+    "jscpd": "^4.0.5",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
+    "sonarqube-scanner": "^4.3.2",
+    "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }

@@ -5,10 +5,24 @@ export interface CategoryRule {
   targetFolder?: string;
 }
 
+export enum ConfigFormat {
+  JSON = 'json',
+  YAML = 'yaml'
+}
+
+export enum NamingConventionType {
+  KEBAB_CASE = 'kebab-case',
+  SNAKE_CASE = 'snake_case',
+  CAMEL_CASE = 'camelCase',
+  PASCAL_CASE = 'PascalCase'
+}
+
 export interface NamingConvention {
-  type: 'kebab-case' | 'snake_case' | 'camelCase' | 'PascalCase';
+  type: NamingConventionType;
   lowercase?: boolean;
 }
+
+import { LogLevel } from '../types';
 
 export interface OrderlyConfig {
   categories: CategoryRule[];
@@ -17,7 +31,7 @@ export interface OrderlyConfig {
   includeHidden: boolean;
   dryRun: boolean;
   generateManifest: boolean;
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  logLevel: LogLevel;
   logFile?: string;
   targetDirectory?: string;
 }
@@ -51,7 +65,20 @@ export const DEFAULT_CONFIG: OrderlyConfig = {
     },
     {
       name: 'code',
-      extensions: ['.js', '.ts', '.py', '.java', '.cpp', '.c', '.h', '.cs', '.go', '.rs', '.php', '.rb'],
+      extensions: [
+        '.js',
+        '.ts',
+        '.py',
+        '.java',
+        '.cpp',
+        '.c',
+        '.h',
+        '.cs',
+        '.go',
+        '.rs',
+        '.php',
+        '.rb'
+      ],
       targetFolder: 'code'
     },
     {
@@ -66,12 +93,12 @@ export const DEFAULT_CONFIG: OrderlyConfig = {
     }
   ],
   namingConvention: {
-    type: 'kebab-case',
+    type: NamingConventionType.KEBAB_CASE,
     lowercase: true
   },
   excludePatterns: ['node_modules/**', '.git/**', 'dist/**', 'build/**', '.DS_Store'],
   includeHidden: false,
   dryRun: false,
   generateManifest: true,
-  logLevel: 'info'
+  logLevel: LogLevel.INFO
 };

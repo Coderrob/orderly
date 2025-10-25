@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "types": ["jest", "node"],
+    "lib": ["ES2021"],
+    "target": "ES2021"
+  },
+  "exclude": ["node_modules", "dist"],
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*.ts", "src/**/*.test.ts", "jest.config.cjs"]
+}

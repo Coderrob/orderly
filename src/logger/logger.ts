@@ -1,108 +1,106 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as path from 'node:path';
 import chalk from 'chalk';
+import { FileSystemUtils } from '../utils/file-system-utils';
+import { LogEntry, LogLevel } from '../types';
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-
-export interface LogEntry {
-  timestamp: string;
-  level: LogLevel;
-  message: string;
-  details?: any;
-}
-
-export class Logger {
-  private logLevel: LogLevel;
-  private logFile?: string;
-  private logs: LogEntry[] = [];
-
-  private levelPriority: Record<LogLevel, number> = {
-    debug: 0,
-    info: 1,
-    warn: 2,
-    error: 3
+class LogLevelChecker {
+  private readonly levelPriority: Record<LogLevel, number> = {
+    [LogLevel.DEBUG]: 0,
+    [LogLevel.INFO]: 1,
+    [LogLevel.WARN]: 2,
+    [LogLevel.ERROR]: 3
   };
 
-  constructor(logLevel: LogLevel = 'info', logFile?: string) {
-    this.logLevel = logLevel;
-    this.logFile = logFile;
-
-    if (this.logFile) {
-      const dir = path.dirname(this.logFile);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-    }
+  shouldLog(level: LogLevel, configuredLevel: LogLevel): boolean {
+    return this.levelPriority[level] >= this.levelPriority[configuredLevel];
   }
+}
 
-  private shouldLog(level: LogLevel): boolean {
-    return this.levelPriority[level] >= this.levelPriority[this.logLevel];
-  }
-
-  private formatMessage(level: LogLevel, message: string): string {
+class LogFormatter {
+  format(level: LogLevel, message: string): string {
     const timestamp = new Date().toISOString();
     const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
-
-    let coloredPrefix: string;
-    switch (level) {
-      case 'debug':
-        coloredPrefix = chalk.gray(prefix);
-        break;
-      case 'info':
-        coloredPrefix = chalk.blue(prefix);
-        break;
-      case 'warn':
-        coloredPrefix = chalk.yellow(prefix);
-        break;
-      case 'error':
-        coloredPrefix = chalk.red(prefix);
-        break;
-    }
-
+    const coloredPrefix = this.colorizePrefix(prefix, level);
     return `${coloredPrefix} ${message}`;
   }
 
-  private log(level: LogLevel, message: string, details?: any): void {
-    if (!this.shouldLog(level)) {
+  private colorizePrefix(prefix: string, level: LogLevel): string {
+    const colorMap: Record<LogLevel, (text: string) => string> = {
+      [LogLevel.DEBUG]: chalk.gray,
+      [LogLevel.INFO]: chalk.blue,
+      [LogLevel.WARN]: chalk.yellow,
+      [LogLevel.ERROR]: chalk.red
+    };
+    return colorMap[level](prefix);
+  }
+}
+
+export class Logger {
+  private logs: LogEntry[] = [];
+  private readonly levelChecker = new LogLevelChecker();
+  private readonly formatter = new LogFormatter();
+
+  constructor(
+    private readonly logLevel: LogLevel = LogLevel.INFO,
+    private readonly logFile?: string
+  ) {
+    if (this.logFile) {
+      FileSystemUtils.mkdirSync(path.dirname(this.logFile));
+    }
+  }
+
+  private log(level: LogLevel, message: string, details?: unknown): void {
+    if (!this.levelChecker.shouldLog(level, this.logLevel)) {
       return;
     }
 
-    const entry: LogEntry = {
+    const entry = this.createLogEntry(level, message, details);
+    this.logs.push(entry);
+
+    this.writeToConsole(level, message, details);
+    this.writeToFile(entry);
+  }
+
+  private createLogEntry(level: LogLevel, message: string, details?: unknown): LogEntry {
+    return {
       timestamp: new Date().toISOString(),
       level,
       message,
       details
     };
+  }
 
-    this.logs.push(entry);
-
-    const formattedMessage = this.formatMessage(level, message);
+  private writeToConsole(level: LogLevel, message: string, details?: unknown): void {
+    const formattedMessage = this.formatter.format(level, message);
     console.log(formattedMessage);
 
     if (details) {
       console.log(chalk.gray(JSON.stringify(details, null, 2)));
     }
-
-    if (this.logFile) {
-      const logLine = `${entry.timestamp} [${level.toUpperCase()}] ${message}${details ? ' ' + JSON.stringify(details) : ''}\n`;
-      fs.appendFileSync(this.logFile, logLine, 'utf8');
-    }
   }
 
-  debug(message: string, details?: any): void {
-    this.log('debug', message, details);
+  private writeToFile(entry: LogEntry): void {
+    if (!this.logFile) return;
+
+    const detailsStr = entry.details ? ` ${JSON.stringify(entry.details)}` : '';
+    const logLine = `${entry.timestamp} [${entry.level.toUpperCase()}] ${entry.message}${detailsStr}\n`;
+    FileSystemUtils.appendFileSync(this.logFile, logLine);
   }
 
-  info(message: string, details?: any): void {
-    this.log('info', message, details);
+  debug(message: string, details?: unknown): void {
+    this.log(LogLevel.DEBUG, message, details);
   }
 
-  warn(message: string, details?: any): void {
-    this.log('warn', message, details);
+  info(message: string, details?: unknown): void {
+    this.log(LogLevel.INFO, message, details);
   }
 
-  error(message: string, details?: any): void {
-    this.log('error', message, details);
+  warn(message: string, details?: unknown): void {
+    this.log(LogLevel.WARN, message, details);
+  }
+
+  error(message: string, details?: unknown): void {
+    this.log(LogLevel.ERROR, message, details);
   }
 
   getLogs(): LogEntry[] {
@@ -113,3 +111,6 @@ export class Logger {
     this.logs = [];
   }
 }
+
+// Re-export types for convenience
+export { LogLevel, LogEntry } from '../types';
