@@ -9,6 +9,7 @@ import { Logger } from '../logger/logger';
 import { ScannedFile } from '../scanner/file-scanner';
 import { OperationPlanner } from './operation-planner';
 import { OperationExecutor } from './operation-executor';
+import { LogLevel } from '../types';
 
 jest.mock('../logger/logger');
 jest.mock('./operation-planner');
@@ -19,7 +20,7 @@ describe('FileOrganizer', () => {
   let loggerInstance: jest.Mocked<Logger>;
   let plannerInstance: jest.Mocked<OperationPlanner>;
   let executorInstance: {
-    execute: jest.MockedFunction<(operations: FileOperation[]) => Promise<OrganizationResult>>;
+    execute: jest.MockedFunction<(operations: FileOperation[]) => OrganizationResult>;
   };
   let testConfig: OrderlyConfig;
   let testBaseDirectory: string;
@@ -34,7 +35,7 @@ describe('FileOrganizer', () => {
       plan: jest.fn()
     } as any;
 
-    const executeMock = jest.fn<Promise<OrganizationResult>, [FileOperation[]]>();
+    const executeMock = jest.fn<OrganizationResult, [FileOperation[]]>();
     executorInstance = {
       execute: executeMock
     };
@@ -49,7 +50,7 @@ describe('FileOrganizer', () => {
       includeHidden: false,
       dryRun: false,
       generateManifest: true,
-      logLevel: 'info'
+      logLevel: LogLevel.INFO
     };
     testBaseDirectory = '/base/dir';
     testFiles = [
@@ -118,52 +119,52 @@ describe('FileOrganizer', () => {
   });
 
   describe('executeOperations', () => {
-    it('should use OperationExecutor to execute operations', async () => {
+    it('should use OperationExecutor to execute operations', () => {
       const mockResult: OrganizationResult = {
         operations: testOperations,
         successful: 1,
         failed: 0,
         errors: []
       };
-      executorInstance.execute.mockResolvedValue(mockResult);
+      executorInstance.execute.mockReturnValue(mockResult);
 
-      const result = await organizer.executeOperations(testOperations);
+      const result = organizer.executeOperations(testOperations);
 
       expect(executorInstance.execute).toHaveBeenCalledWith(testOperations);
       expect(result).toBe(mockResult);
     });
 
-    it('should pass operations to executor', async () => {
+    it('should pass operations to executor', () => {
       const mockResult: OrganizationResult = {
         operations: testOperations,
         successful: 1,
         failed: 0,
         errors: []
       };
-      executorInstance.execute.mockResolvedValue(mockResult);
+      executorInstance.execute.mockReturnValue(mockResult);
 
-      await organizer.executeOperations(testOperations);
+      organizer.executeOperations(testOperations);
 
       expect(executorInstance.execute).toHaveBeenCalledWith(testOperations);
     });
 
-    it('should return result from executor', async () => {
+    it('should return result from executor', () => {
       const expected: OrganizationResult = {
         operations: testOperations,
         successful: 5,
         failed: 2,
         errors: [{ file: '/test', error: 'error' }]
       };
-      executorInstance.execute.mockResolvedValue(expected);
+      executorInstance.execute.mockReturnValue(expected);
 
-      const result = await organizer.executeOperations(testOperations);
+      const result = organizer.executeOperations(testOperations);
 
       expect(result).toEqual(expected);
     });
   });
 
   describe('integration', () => {
-    it('should orchestrate planning and execution', async () => {
+    it('should orchestrate planning and execution', () => {
       plannerInstance.plan.mockReturnValue(testOperations);
       const mockResult: OrganizationResult = {
         operations: testOperations,
@@ -171,10 +172,10 @@ describe('FileOrganizer', () => {
         failed: 0,
         errors: []
       };
-      executorInstance.execute.mockResolvedValue(mockResult);
+      executorInstance.execute.mockReturnValue(mockResult);
 
       const operations = organizer.planOperations(testFiles);
-      const result = await organizer.executeOperations(operations);
+      const result = organizer.executeOperations(operations);
 
       expect(operations).toBe(testOperations);
       expect(result.successful).toBe(1);

@@ -22,6 +22,8 @@ export interface NamingConvention {
   lowercase?: boolean;
 }
 
+import { LogLevel } from '../types';
+
 export interface OrderlyConfig {
   categories: CategoryRule[];
   namingConvention: NamingConvention;
@@ -29,7 +31,7 @@ export interface OrderlyConfig {
   includeHidden: boolean;
   dryRun: boolean;
   generateManifest: boolean;
-  logLevel: 'debug' | 'info' | 'warn' | 'error';
+  logLevel: LogLevel;
   logFile?: string;
   targetDirectory?: string;
 }
@@ -98,5 +100,5 @@ export const DEFAULT_CONFIG: OrderlyConfig = {
   includeHidden: false,
   dryRun: false,
   generateManifest: true,
-  logLevel: 'info'
+  logLevel: LogLevel.INFO
 };

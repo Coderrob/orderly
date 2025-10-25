@@ -103,7 +103,7 @@ program
       const filename = getFilename(format);
       const configPath = path.join(process.cwd(), filename);
 
-      if (FileSystemUtils.exists(configPath)) {
+      if (FileSystemUtils.existsSync(configPath)) {
         console.error(chalk.red(`Config file already exists: ${configPath}`));
         process.exit(1);
       }
@@ -164,7 +164,7 @@ function createLogger(logLevel: string): Logger {
 
 function validateDirectory(directory: string, logger: Logger) {
   const targetDir = path.resolve(directory);
-  if (!FileSystemUtils.exists(targetDir)) {
+  if (!FileSystemUtils.existsSync(targetDir)) {
     logger.error(`Directory does not exist: ${targetDir}`);
     process.exit(1);
   }

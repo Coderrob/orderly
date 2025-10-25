@@ -1,6 +1,7 @@
 import { FileScanner, ScannedFile } from './file-scanner';
 import { OrderlyConfig, NamingConventionType } from '../config/types';
 import { Logger } from '../logger/logger';
+import { LogLevel } from '../types';
 import { FileSystemUtils } from '../utils/file-system-utils';
 import { FileCategorizer } from '../utils/file-categorizer';
 import { glob } from 'glob';
@@ -33,7 +34,7 @@ describe('FileScanner', () => {
       includeHidden: false,
       dryRun: false,
       generateManifest: true,
-      logLevel: 'info'
+      logLevel: LogLevel.INFO
     };
     testDirectory = '/test/dir';
 
@@ -47,7 +48,7 @@ describe('FileScanner', () => {
   describe('scan', () => {
     it('should scan directory and return scanned files', async () => {
       mockGlob.mockResolvedValue(['file1.jpg', 'file2.txt']);
-      mockFileSystemUtils.stat.mockReturnValue({
+      mockFileSystemUtils.statSync.mockReturnValue({
         isFile: () => true,
         size: 1024
       } as fs.Stats);
@@ -107,7 +108,7 @@ describe('FileScanner', () => {
 
     it('should skip non-file entries', async () => {
       mockGlob.mockResolvedValue(['file.txt', 'directory']);
-      mockFileSystemUtils.stat
+      mockFileSystemUtils.statSync
         .mockReturnValueOnce({ isFile: () => true, size: 100 } as fs.Stats)
         .mockReturnValueOnce({ isFile: () => false, size: 0 } as fs.Stats);
       mockFileCategorizer.categorize.mockReturnValue(undefined);
@@ -119,7 +120,7 @@ describe('FileScanner', () => {
 
     it('should categorize files correctly', async () => {
       mockGlob.mockResolvedValue(['photo.jpg']);
-      mockFileSystemUtils.stat.mockReturnValue({
+      mockFileSystemUtils.statSync.mockReturnValue({
         isFile: () => true,
         size: 2048
       } as fs.Stats);
@@ -143,7 +144,7 @@ describe('FileScanner', () => {
 
     it('should handle uncategorized files', async () => {
       mockGlob.mockResolvedValue(['unknown.xyz']);
-      mockFileSystemUtils.stat.mockReturnValue({
+      mockFileSystemUtils.statSync.mockReturnValue({
         isFile: () => true,
         size: 512
       } as fs.Stats);
@@ -157,7 +158,7 @@ describe('FileScanner', () => {
 
     it('should build complete ScannedFile object', async () => {
       mockGlob.mockResolvedValue(['test-file.txt']);
-      mockFileSystemUtils.stat.mockReturnValue({
+      mockFileSystemUtils.statSync.mockReturnValue({
         isFile: () => true,
         size: 256
       } as fs.Stats);
@@ -178,7 +179,7 @@ describe('FileScanner', () => {
 
     it('should log debug information', async () => {
       mockGlob.mockResolvedValue(['file1.txt', 'file2.txt']);
-      mockFileSystemUtils.stat.mockReturnValue({
+      mockFileSystemUtils.statSync.mockReturnValue({
         isFile: () => true,
         size: 100
       } as fs.Stats);

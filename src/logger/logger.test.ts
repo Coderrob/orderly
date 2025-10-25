@@ -1,6 +1,7 @@
-import { Logger, LogLevel } from './logger';
-import { FileSystemUtils } from '../utils/file-system-utils';
 import * as path from 'node:path';
+import { FileSystemUtils } from '../utils/file-system-utils';
+import { LogLevel } from '../types';
+import { Logger } from './logger';
 
 jest.mock('../utils/file-system-utils');
 jest.mock('path');
@@ -23,7 +24,7 @@ describe('Logger', () => {
   let consoleSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    testLogLevel = 'info';
+    testLogLevel = LogLevel.INFO;
     testLogFile = '/logs/test.log';
     testMessage = 'Test message';
     logger = new Logger(testLogLevel, testLogFile);
@@ -47,21 +48,21 @@ describe('Logger', () => {
     });
 
     it('should create log directory when log file is specified', () => {
-      expect(mockFileSystemUtils.mkdir).toHaveBeenCalledTimes(1);
-      expect(mockFileSystemUtils.mkdir).toHaveBeenNthCalledWith(1, '/logs');
+      expect(mockFileSystemUtils.mkdirSync).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.mkdirSync).toHaveBeenNthCalledWith(1, '/logs');
     });
   });
 
   describe('debug', () => {
     it('should log debug message when log level is debug', () => {
-      const debugLogger = new Logger('debug', testLogFile);
+      const debugLogger = new Logger(LogLevel.DEBUG, testLogFile);
 
       debugLogger.debug(testMessage);
 
       expect(consoleSpy).toHaveBeenCalledTimes(1);
       expect(consoleSpy).toHaveBeenNthCalledWith(1, expect.stringContaining(testMessage));
-      expect(mockFileSystemUtils.appendFile).toHaveBeenCalledTimes(1);
-      expect(mockFileSystemUtils.appendFile).toHaveBeenNthCalledWith(
+      expect(mockFileSystemUtils.appendFileSync).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.appendFileSync).toHaveBeenNthCalledWith(
         1,
         testLogFile,
         expect.stringContaining(testMessage)
@@ -72,11 +73,11 @@ describe('Logger', () => {
       logger.debug(testMessage);
 
       expect(consoleSpy).not.toHaveBeenCalled();
-      expect(mockFileSystemUtils.appendFile).not.toHaveBeenCalled();
+      expect(mockFileSystemUtils.appendFileSync).not.toHaveBeenCalled();
     });
 
     it('should log debug message with details', () => {
-      const debugLogger = new Logger('debug');
+      const debugLogger = new Logger(LogLevel.DEBUG);
       const details = { key: 'value' };
 
       debugLogger.debug(testMessage, details);
@@ -98,19 +99,19 @@ describe('Logger', () => {
     });
 
     it('should not log info message when log level is warn', () => {
-      const warnLogger = new Logger('warn');
+      const warnLogger = new Logger(LogLevel.WARN);
 
       warnLogger.info(testMessage);
 
       expect(consoleSpy).not.toHaveBeenCalled();
-      expect(mockFileSystemUtils.appendFile).not.toHaveBeenCalled();
+      expect(mockFileSystemUtils.appendFileSync).not.toHaveBeenCalled();
     });
 
     it('should write to log file when log file is configured', () => {
       logger.info(testMessage);
 
-      expect(mockFileSystemUtils.appendFile).toHaveBeenCalledTimes(1);
-      expect(mockFileSystemUtils.appendFile).toHaveBeenNthCalledWith(
+      expect(mockFileSystemUtils.appendFileSync).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.appendFileSync).toHaveBeenNthCalledWith(
         1,
         testLogFile,
         expect.stringContaining(testMessage)
@@ -132,12 +133,12 @@ describe('Logger', () => {
     );
 
     it('should not log warn message when log level is error', () => {
-      const errorLogger = new Logger('error');
+      const errorLogger = new Logger(LogLevel.ERROR);
 
       errorLogger.warn(testMessage);
 
       expect(consoleSpy).not.toHaveBeenCalled();
-      expect(mockFileSystemUtils.appendFile).not.toHaveBeenCalled();
+      expect(mockFileSystemUtils.appendFileSync).not.toHaveBeenCalled();
     });
   });
 
@@ -162,8 +163,8 @@ describe('Logger', () => {
       expect(consoleSpy).toHaveBeenCalledTimes(2);
       expect(consoleSpy).toHaveBeenNthCalledWith(1, expect.stringContaining(testMessage));
       expect(consoleSpy).toHaveBeenNthCalledWith(2, expect.stringContaining('"error"'));
-      expect(mockFileSystemUtils.appendFile).toHaveBeenCalledTimes(1);
-      expect(mockFileSystemUtils.appendFile).toHaveBeenNthCalledWith(
+      expect(mockFileSystemUtils.appendFileSync).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.appendFileSync).toHaveBeenNthCalledWith(
         1,
         testLogFile,
         expect.stringContaining(JSON.stringify(details))

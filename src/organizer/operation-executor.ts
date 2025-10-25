@@ -64,13 +64,16 @@ export class OperationExecutor {
 
   private performOperation(operation: FileOperation): void {
     const targetDir = path.dirname(operation.newPath);
-    FileSystemUtils.mkdir(targetDir);
+    FileSystemUtils.mkdirSync(targetDir);
 
-    if (FileSystemUtils.exists(operation.newPath) && operation.newPath !== operation.originalPath) {
+    if (
+      FileSystemUtils.existsSync(operation.newPath) &&
+      operation.newPath !== operation.originalPath
+    ) {
       throw new Error(`Target file already exists: ${operation.newPath}`);
     }
 
-    FileSystemUtils.rename(operation.originalPath, operation.newPath);
+    FileSystemUtils.renameSync(operation.originalPath, operation.newPath);
   }
 
   private handleOperationError(

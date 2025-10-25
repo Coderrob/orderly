@@ -36,13 +36,13 @@ export class ManifestGenerator {
 
   save(manifest: Manifest, outputPath: string): void {
     const content = JSON.stringify(manifest, null, 2);
-    FileSystemUtils.writeFile(outputPath, content);
+    FileSystemUtils.writeFileSync(outputPath, content);
     this.logger.info(`Manifest saved to: ${outputPath}`);
   }
 
   saveMarkdown(manifest: Manifest, outputPath: string): void {
     const content = this.formatter.format(manifest);
-    FileSystemUtils.writeFile(outputPath, content);
+    FileSystemUtils.writeFileSync(outputPath, content);
     this.logger.info(`Markdown manifest saved to: ${outputPath}`);
   }
 }

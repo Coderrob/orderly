@@ -3,6 +3,7 @@ import { OrderlyConfig, NamingConventionType } from '../config/types';
 import { ScannedFile } from '../scanner/file-scanner';
 import { NamingUtils } from '../utils/naming';
 import { FileOperationType } from './file-organizer';
+import { LogLevel } from '../types';
 
 jest.mock('../utils/naming');
 
@@ -23,7 +24,7 @@ describe('OperationPlanner', () => {
       includeHidden: false,
       dryRun: false,
       generateManifest: true,
-      logLevel: 'info'
+      logLevel: LogLevel.INFO
     };
     testFile = {
       originalPath: '/base/dir/TestFile.txt',

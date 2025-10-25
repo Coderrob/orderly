@@ -1,22 +1,14 @@
 import * as path from 'node:path';
 import chalk from 'chalk';
 import { FileSystemUtils } from '../utils/file-system-utils';
-
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
-
-export interface LogEntry {
-  timestamp: string;
-  level: LogLevel;
-  message: string;
-  details?: unknown;
-}
+import { LogEntry, LogLevel } from '../types';
 
 class LogLevelChecker {
   private readonly levelPriority: Record<LogLevel, number> = {
-    debug: 0,
-    info: 1,
-    warn: 2,
-    error: 3
+    [LogLevel.DEBUG]: 0,
+    [LogLevel.INFO]: 1,
+    [LogLevel.WARN]: 2,
+    [LogLevel.ERROR]: 3
   };
 
   shouldLog(level: LogLevel, configuredLevel: LogLevel): boolean {
@@ -34,10 +26,10 @@ class LogFormatter {
 
   private colorizePrefix(prefix: string, level: LogLevel): string {
     const colorMap: Record<LogLevel, (text: string) => string> = {
-      debug: chalk.gray,
-      info: chalk.blue,
-      warn: chalk.yellow,
-      error: chalk.red
+      [LogLevel.DEBUG]: chalk.gray,
+      [LogLevel.INFO]: chalk.blue,
+      [LogLevel.WARN]: chalk.yellow,
+      [LogLevel.ERROR]: chalk.red
     };
     return colorMap[level](prefix);
   }
@@ -49,11 +41,11 @@ export class Logger {
   private readonly formatter = new LogFormatter();
 
   constructor(
-    private readonly logLevel: LogLevel = 'info',
+    private readonly logLevel: LogLevel = LogLevel.INFO,
     private readonly logFile?: string
   ) {
     if (this.logFile) {
-      FileSystemUtils.mkdir(path.dirname(this.logFile));
+      FileSystemUtils.mkdirSync(path.dirname(this.logFile));
     }
   }
 
@@ -92,23 +84,23 @@ export class Logger {
 
     const detailsStr = entry.details ? ` ${JSON.stringify(entry.details)}` : '';
     const logLine = `${entry.timestamp} [${entry.level.toUpperCase()}] ${entry.message}${detailsStr}\n`;
-    FileSystemUtils.appendFile(this.logFile, logLine);
+    FileSystemUtils.appendFileSync(this.logFile, logLine);
   }
 
   debug(message: string, details?: unknown): void {
-    this.log('debug', message, details);
+    this.log(LogLevel.DEBUG, message, details);
   }
 
   info(message: string, details?: unknown): void {
-    this.log('info', message, details);
+    this.log(LogLevel.INFO, message, details);
   }
 
   warn(message: string, details?: unknown): void {
-    this.log('warn', message, details);
+    this.log(LogLevel.WARN, message, details);
   }
 
   error(message: string, details?: unknown): void {
-    this.log('error', message, details);
+    this.log(LogLevel.ERROR, message, details);
   }
 
   getLogs(): LogEntry[] {
@@ -119,3 +111,6 @@ export class Logger {
     this.logs = [];
   }
 }
+
+// Re-export types for convenience
+export { LogLevel, LogEntry } from '../types';

@@ -2,6 +2,7 @@ import { ConfigParser } from './config-parser';
 import { FileSystemUtils } from './file-system-utils';
 import * as yaml from 'js-yaml';
 import { OrderlyConfig, ConfigFormat } from '../config/types';
+import { LogLevel } from '../types';
 
 jest.mock('./file-system-utils');
 jest.mock('js-yaml');
@@ -15,7 +16,7 @@ describe('ConfigParser', () => {
 
   beforeEach(() => {
     testContent = 'test: config';
-    testConfig = { logLevel: 'info', dryRun: false };
+    testConfig = { logLevel: LogLevel.INFO, dryRun: false };
   });
 
   afterEach(() => {
@@ -29,12 +30,12 @@ describe('ConfigParser', () => {
     ])('should parse %s file as %s', ext => {
       const jsonPath = `/config/test${ext}`;
       const jsonContent = JSON.stringify(testConfig);
-      mockFileSystemUtils.readFile.mockReturnValue(jsonContent);
+      mockFileSystemUtils.readFileSync.mockReturnValue(jsonContent);
 
       const result = ConfigParser.parse(jsonPath);
 
       expect(result).toEqual(testConfig);
-      expect(mockFileSystemUtils.readFile).toHaveBeenCalledWith(jsonPath);
+      expect(mockFileSystemUtils.readFileSync).toHaveBeenCalledWith(jsonPath);
     });
 
     it.each([
@@ -44,19 +45,19 @@ describe('ConfigParser', () => {
       ['.YAML', 'YAML']
     ])('should parse %s file as %s', ext => {
       const yamlPath = `/config/test${ext}`;
-      mockFileSystemUtils.readFile.mockReturnValue(testContent);
+      mockFileSystemUtils.readFileSync.mockReturnValue(testContent);
       mockYaml.load.mockReturnValue(testConfig);
 
       const result = ConfigParser.parse(yamlPath);
 
       expect(result).toEqual(testConfig);
-      expect(mockFileSystemUtils.readFile).toHaveBeenCalledWith(yamlPath);
+      expect(mockFileSystemUtils.readFileSync).toHaveBeenCalledWith(yamlPath);
       expect(mockYaml.load).toHaveBeenCalledWith(testContent);
     });
 
     it('should throw error for unsupported file format', () => {
       const unsupportedPath = '/config/test.txt';
-      mockFileSystemUtils.readFile.mockReturnValue(testContent);
+      mockFileSystemUtils.readFileSync.mockReturnValue(testContent);
 
       expect(() => ConfigParser.parse(unsupportedPath)).toThrow(
         'Unsupported config file format: .txt'

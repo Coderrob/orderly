@@ -34,24 +34,24 @@ describe('OperationExecutor', () => {
   });
 
   describe('execute (dry run)', () => {
-    it('should log operations without executing in dry run mode', async () => {
+    it('should log operations without executing in dry run mode', () => {
       const dryRunExecutor = new OperationExecutor(loggerInstance, true);
 
-      const result = await dryRunExecutor.execute(testOperations);
+      const result = dryRunExecutor.execute(testOperations);
 
       expect(result.successful).toBe(1);
       expect(result.failed).toBe(0);
-      expect(mockFileSystemUtils.rename).not.toHaveBeenCalled();
+      expect(mockFileSystemUtils.renameSync).not.toHaveBeenCalled();
       expect(loggerInstance.info).toHaveBeenCalledTimes(2);
       expect(loggerInstance.info).toHaveBeenNthCalledWith(1, expect.stringContaining('DRY RUN'));
       expect(loggerInstance.info).toHaveBeenNthCalledWith(2, expect.stringContaining('move'));
     });
 
-    it('should log all operations in dry run mode', async () => {
+    it('should log all operations in dry run mode', () => {
       const dryRunExecutor = new OperationExecutor(loggerInstance, true);
       const operations = [testOperation, { ...testOperation, originalPath: '/source/file2.txt' }];
 
-      const result = await dryRunExecutor.execute(operations);
+      const result = dryRunExecutor.execute(operations);
 
       expect(result.successful).toBe(2);
       expect(loggerInstance.info).toHaveBeenCalledTimes(3); // 1 header + 2 operations
@@ -60,70 +60,70 @@ describe('OperationExecutor', () => {
   });
 
   describe('execute (real)', () => {
-    it('should execute operation successfully', async () => {
-      mockFileSystemUtils.exists.mockReturnValue(false);
+    it('should execute operation successfully', () => {
+      mockFileSystemUtils.existsSync.mockReturnValue(false);
 
-      const result = await executor.execute(testOperations);
+      const result = executor.execute(testOperations);
 
       expect(result.successful).toBe(1);
       expect(result.failed).toBe(0);
       expect(result.errors).toHaveLength(0);
-      expect(mockFileSystemUtils.mkdir).toHaveBeenCalledTimes(1);
-      expect(mockFileSystemUtils.mkdir).toHaveBeenNthCalledWith(1, '/target');
-      expect(mockFileSystemUtils.rename).toHaveBeenCalledTimes(1);
-      expect(mockFileSystemUtils.rename).toHaveBeenNthCalledWith(
+      expect(mockFileSystemUtils.mkdirSync).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.mkdirSync).toHaveBeenNthCalledWith(1, '/target');
+      expect(mockFileSystemUtils.renameSync).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.renameSync).toHaveBeenNthCalledWith(
         1,
         testOperation.originalPath,
         testOperation.newPath
       );
     });
 
-    it('should create target directory if it does not exist', async () => {
-      mockFileSystemUtils.exists.mockReturnValue(false);
+    it('should create target directory if it does not exist', () => {
+      mockFileSystemUtils.existsSync.mockReturnValue(false);
 
-      await executor.execute(testOperations);
+      executor.execute(testOperations);
 
-      expect(mockFileSystemUtils.mkdir).toHaveBeenCalledTimes(1);
-      expect(mockFileSystemUtils.mkdir).toHaveBeenNthCalledWith(1, '/target');
+      expect(mockFileSystemUtils.mkdirSync).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.mkdirSync).toHaveBeenNthCalledWith(1, '/target');
     });
 
-    it('should throw error when target file already exists', async () => {
-      mockFileSystemUtils.exists.mockReturnValue(true);
+    it('should throw error when target file already exists', () => {
+      mockFileSystemUtils.existsSync.mockReturnValue(true);
 
-      const result = await executor.execute(testOperations);
+      const result = executor.execute(testOperations);
 
       expect(result.successful).toBe(0);
       expect(result.failed).toBe(1);
       expect(result.errors[0].error).toContain('Target file already exists');
     });
 
-    it('should handle multiple operations', async () => {
+    it('should handle multiple operations', () => {
       const operations = [
         testOperation,
         { ...testOperation, originalPath: '/source/file2.txt', newPath: '/target/file2.txt' }
       ];
-      mockFileSystemUtils.exists.mockReturnValue(false);
+      mockFileSystemUtils.existsSync.mockReturnValue(false);
 
-      const result = await executor.execute(operations);
+      const result = executor.execute(operations);
 
       expect(result.successful).toBe(2);
       expect(result.failed).toBe(0);
-      expect(mockFileSystemUtils.rename).toHaveBeenCalledTimes(2);
+      expect(mockFileSystemUtils.renameSync).toHaveBeenCalledTimes(2);
     });
 
-    it('should continue processing after one operation fails', async () => {
+    it('should continue processing after one operation fails', () => {
       const operations = [
         testOperation,
         { ...testOperation, originalPath: '/source/file2.txt', newPath: '/target/file2.txt' }
       ];
-      mockFileSystemUtils.exists.mockReturnValue(false);
-      mockFileSystemUtils.rename
+      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.renameSync
         .mockImplementationOnce(() => {
           throw new Error('File locked');
         })
         .mockImplementationOnce(() => {});
 
-      const result = await executor.execute(operations);
+      const result = executor.execute(operations);
 
       expect(result.successful).toBe(1);
       expect(result.failed).toBe(1);
@@ -131,10 +131,10 @@ describe('OperationExecutor', () => {
       expect(result.errors[0].file).toBe('/source/file.txt');
     });
 
-    it('should log successful operation', async () => {
-      mockFileSystemUtils.exists.mockReturnValue(false);
+    it('should log successful operation', () => {
+      mockFileSystemUtils.existsSync.mockReturnValue(false);
 
-      await executor.execute(testOperations);
+      executor.execute(testOperations);
 
       expect(loggerInstance.info).toHaveBeenCalledWith(
         expect.stringContaining('✓'),
@@ -145,13 +145,13 @@ describe('OperationExecutor', () => {
       );
     });
 
-    it('should log failed operation', async () => {
-      mockFileSystemUtils.exists.mockReturnValue(false);
-      mockFileSystemUtils.rename.mockImplementation(() => {
+    it('should log failed operation', () => {
+      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.renameSync.mockImplementation(() => {
         throw new Error('Permission denied');
       });
 
-      await executor.execute(testOperations);
+      executor.execute(testOperations);
 
       expect(loggerInstance.error).toHaveBeenCalledWith(
         expect.stringContaining('✗'),
@@ -159,21 +159,21 @@ describe('OperationExecutor', () => {
       );
     });
 
-    it('should allow rename when target equals original', async () => {
+    it('should allow rename when target equals original', () => {
       const samePathOperation = {
         ...testOperation,
         originalPath: '/same/file.txt',
         newPath: '/same/file.txt'
       };
-      mockFileSystemUtils.exists.mockReturnValue(true);
-      mockFileSystemUtils.mkdir.mockReturnValue(undefined);
-      mockFileSystemUtils.rename.mockReturnValue(undefined);
+      mockFileSystemUtils.existsSync.mockReturnValue(true);
+      mockFileSystemUtils.mkdirSync.mockReturnValue(undefined);
+      mockFileSystemUtils.renameSync.mockReturnValue(undefined);
 
-      const result = await executor.execute([samePathOperation]);
+      const result = executor.execute([samePathOperation]);
 
       expect(result.successful).toBe(1);
-      expect(mockFileSystemUtils.rename).toHaveBeenCalledTimes(1);
-      expect(mockFileSystemUtils.rename).toHaveBeenNthCalledWith(
+      expect(mockFileSystemUtils.renameSync).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.renameSync).toHaveBeenNthCalledWith(
         1,
         '/same/file.txt',
         '/same/file.txt'

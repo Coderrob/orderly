@@ -73,7 +73,7 @@ describe('ManifestGenerator', () => {
 
       generator.save(testManifest, outputPath);
 
-      expect(jest.mocked(FileSystemUtils).writeFile).toHaveBeenCalledWith(
+      expect(jest.mocked(FileSystemUtils).writeFileSync).toHaveBeenCalledWith(
         outputPath,
         expectedContent
       );
@@ -99,7 +99,7 @@ describe('ManifestGenerator', () => {
       generator.saveMarkdown(testManifest, outputPath);
 
       expect(formatterInstance.format).toHaveBeenCalledWith(testManifest);
-      expect(jest.mocked(FileSystemUtils).writeFile).toHaveBeenCalledWith(
+      expect(jest.mocked(FileSystemUtils).writeFileSync).toHaveBeenCalledWith(
         outputPath,
         formattedContent
       );

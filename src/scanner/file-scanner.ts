@@ -59,7 +59,7 @@ export class FileScanner {
 
   private processFile(directory: string, file: string): ScannedFile | null {
     const fullPath = path.join(directory, file);
-    const stats = FileSystemUtils.stat(fullPath);
+    const stats = FileSystemUtils.statSync(fullPath);
 
     if (!stats.isFile()) {
       return null;

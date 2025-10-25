@@ -6,7 +6,7 @@ import { FileSystemUtils } from './file-system-utils';
 export class ConfigParser {
   static parse(filePath: string): Partial<OrderlyConfig> {
     const ext = path.extname(filePath).toLowerCase();
-    const content = FileSystemUtils.readFile(filePath);
+    const content = FileSystemUtils.readFileSync(filePath);
 
     if (ext === '.json') {
       return JSON.parse(content) as Partial<OrderlyConfig>;

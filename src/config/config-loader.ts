@@ -24,7 +24,7 @@ export class ConfigLoader {
   }
 
   private static loadFromPath(configPath: string, baseConfig: OrderlyConfig): OrderlyConfig {
-    if (!FileSystemUtils.exists(configPath)) {
+    if (!FileSystemUtils.existsSync(configPath)) {
       throw new Error(`Config file not found: ${configPath}`);
     }
     const override = ConfigParser.parse(configPath);
@@ -44,7 +44,7 @@ export class ConfigLoader {
     const cwd = process.cwd();
     for (const configFile of this.CONFIG_FILES) {
       const fullPath = path.join(cwd, configFile);
-      if (FileSystemUtils.exists(fullPath)) {
+      if (FileSystemUtils.existsSync(fullPath)) {
         return fullPath;
       }
     }
@@ -67,6 +67,6 @@ export class ConfigLoader {
     const ext = path.extname(filePath).toLowerCase();
     const format = ext === '.json' ? ConfigFormat.JSON : ConfigFormat.YAML;
     const content = ConfigParser.stringify(config, format);
-    FileSystemUtils.writeFile(filePath, content);
+    FileSystemUtils.writeFileSync(filePath, content);
   }
 }
