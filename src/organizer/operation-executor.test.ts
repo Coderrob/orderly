@@ -42,7 +42,9 @@ describe('OperationExecutor', () => {
       expect(result.successful).toBe(1);
       expect(result.failed).toBe(0);
       expect(mockFileSystemUtils.rename).not.toHaveBeenCalled();
-      expect(loggerInstance.info).toHaveBeenCalledWith(expect.stringContaining('DRY RUN'));
+      expect(loggerInstance.info).toHaveBeenCalledTimes(2);
+      expect(loggerInstance.info).toHaveBeenNthCalledWith(1, expect.stringContaining('DRY RUN'));
+      expect(loggerInstance.info).toHaveBeenNthCalledWith(2, expect.stringContaining('move'));
     });
 
     it('should log all operations in dry run mode', async () => {
@@ -53,6 +55,7 @@ describe('OperationExecutor', () => {
 
       expect(result.successful).toBe(2);
       expect(loggerInstance.info).toHaveBeenCalledTimes(3); // 1 header + 2 operations
+      expect(loggerInstance.info).toHaveBeenNthCalledWith(1, expect.stringContaining('DRY RUN'));
     });
   });
 
@@ -65,8 +68,11 @@ describe('OperationExecutor', () => {
       expect(result.successful).toBe(1);
       expect(result.failed).toBe(0);
       expect(result.errors).toHaveLength(0);
-      expect(mockFileSystemUtils.mkdir).toHaveBeenCalled();
-      expect(mockFileSystemUtils.rename).toHaveBeenCalledWith(
+      expect(mockFileSystemUtils.mkdir).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.mkdir).toHaveBeenNthCalledWith(1, '/target');
+      expect(mockFileSystemUtils.rename).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.rename).toHaveBeenNthCalledWith(
+        1,
         testOperation.originalPath,
         testOperation.newPath
       );
@@ -77,7 +83,8 @@ describe('OperationExecutor', () => {
 
       await executor.execute(testOperations);
 
-      expect(mockFileSystemUtils.mkdir).toHaveBeenCalledWith('/target');
+      expect(mockFileSystemUtils.mkdir).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.mkdir).toHaveBeenNthCalledWith(1, '/target');
     });
 
     it('should throw error when target file already exists', async () => {
@@ -165,7 +172,12 @@ describe('OperationExecutor', () => {
       const result = await executor.execute([samePathOperation]);
 
       expect(result.successful).toBe(1);
-      expect(mockFileSystemUtils.rename).toHaveBeenCalled();
+      expect(mockFileSystemUtils.rename).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.rename).toHaveBeenNthCalledWith(
+        1,
+        '/same/file.txt',
+        '/same/file.txt'
+      );
     });
   });
 });

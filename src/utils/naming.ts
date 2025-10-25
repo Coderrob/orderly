@@ -25,11 +25,10 @@ export class NamingUtils {
   }
 
   static toPascalCase(str: string): string {
-    // Note: replaceAll() doesn't support callback functions with regex, so we use replace() with 'g' flag
     return str
       .toLowerCase()
-      .replace(/[-_\s]+(.)?/g, (_: string, char: string) => (char ? char.toUpperCase() : ''))
-      .replace(/^./, (char: string) => char.toUpperCase());
+      .replaceAll(/[-_\s]+(.)?/g, (_: string, char: string) => (char ? char.toUpperCase() : ''))
+      .replaceAll(/^./g, (char: string) => char.toUpperCase());
   }
 
   static applyNamingConvention(filename: string, convention: NamingConvention): string {

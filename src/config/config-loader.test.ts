@@ -64,7 +64,11 @@ describe('ConfigLoader', () => {
         const result = ConfigLoader.load();
 
         expect(result.logLevel).toBe('debug');
-        expect(mockConfigParser.parse).toHaveBeenCalled();
+        expect(mockConfigParser.parse).toHaveBeenCalledTimes(1);
+        expect(mockConfigParser.parse).toHaveBeenNthCalledWith(
+          1,
+          expect.stringContaining(configFile)
+        );
       }
     );
 
@@ -88,7 +92,7 @@ describe('ConfigLoader', () => {
 
       const result = ConfigLoader.load(testConfigPath);
 
-      expect(result.namingConvention.type).toBe('snake_case');
+      expect(result.namingConvention.type).toBe(NamingConventionType.SNAKE_CASE);
       expect(result.namingConvention.lowercase).toBe(DEFAULT_CONFIG.namingConvention.lowercase);
     });
   });

@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 jest.mock('node:fs');
+jest.mock('node:path');
 
 describe('FileSystemUtils', () => {
   let testPath: string;
@@ -22,6 +23,7 @@ describe('FileSystemUtils', () => {
     jest.mocked(fs.mkdirSync).mockImplementation();
     jest.mocked(fs.renameSync).mockImplementation();
     jest.mocked(fs.statSync).mockReturnValue({} as fs.Stats);
+    jest.mocked(path.dirname).mockReturnValue('/test/path');
   });
 
   afterEach(() => {
@@ -49,7 +51,8 @@ describe('FileSystemUtils', () => {
       const result = FileSystemUtils.readFile(testPath);
 
       expect(result).toBe(testContent);
-      expect(fs.readFileSync).toHaveBeenCalledWith(testPath, 'utf8');
+      expect(fs.readFileSync).toHaveBeenCalledTimes(1);
+      expect(fs.readFileSync).toHaveBeenNthCalledWith(1, testPath, 'utf8');
     });
   });
 
@@ -59,18 +62,27 @@ describe('FileSystemUtils', () => {
 
       FileSystemUtils.writeFile(testPath, testContent);
 
-      expect(fs.writeFileSync).toHaveBeenCalledWith(testPath, testContent, 'utf8');
+      expect(path.dirname).toHaveBeenCalledTimes(1);
+      expect(path.dirname).toHaveBeenNthCalledWith(1, testPath);
+      expect(fs.existsSync).toHaveBeenCalledTimes(1);
+      expect(fs.mkdirSync).not.toHaveBeenCalled();
+      expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
+      expect(fs.writeFileSync).toHaveBeenNthCalledWith(1, testPath, testContent, 'utf8');
     });
 
     it('should create directory and write file when directory does not exist', () => {
-      jest.mocked(fs.existsSync).mockReturnValueOnce(false);
       const dirPath = '/test/path';
-      jest.spyOn(path, 'dirname').mockReturnValue(dirPath);
+      jest.mocked(path.dirname).mockReturnValue(dirPath);
+      jest.mocked(fs.existsSync).mockReturnValueOnce(false);
 
       FileSystemUtils.writeFile(testPath, testContent);
 
-      expect(fs.mkdirSync).toHaveBeenCalledWith(dirPath, { recursive: true });
-      expect(fs.writeFileSync).toHaveBeenCalledWith(testPath, testContent, 'utf8');
+      expect(path.dirname).toHaveBeenCalledTimes(1);
+      expect(path.dirname).toHaveBeenNthCalledWith(1, testPath);
+      expect(fs.mkdirSync).toHaveBeenCalledTimes(1);
+      expect(fs.mkdirSync).toHaveBeenNthCalledWith(1, dirPath, { recursive: true });
+      expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
+      expect(fs.writeFileSync).toHaveBeenNthCalledWith(1, testPath, testContent, 'utf8');
     });
   });
 
@@ -78,7 +90,8 @@ describe('FileSystemUtils', () => {
     it('should append content to file', () => {
       FileSystemUtils.appendFile(testPath, testContent);
 
-      expect(fs.appendFileSync).toHaveBeenCalledWith(testPath, testContent, 'utf8');
+      expect(fs.appendFileSync).toHaveBeenCalledTimes(1);
+      expect(fs.appendFileSync).toHaveBeenNthCalledWith(1, testPath, testContent, 'utf8');
     });
   });
 
@@ -88,7 +101,8 @@ describe('FileSystemUtils', () => {
 
       FileSystemUtils.mkdir(testDir);
 
-      expect(fs.mkdirSync).toHaveBeenCalledWith(testDir, { recursive: true });
+      expect(fs.mkdirSync).toHaveBeenCalledTimes(1);
+      expect(fs.mkdirSync).toHaveBeenNthCalledWith(1, testDir, { recursive: true });
     });
 
     it('should not create directory when it already exists', () => {
@@ -97,6 +111,8 @@ describe('FileSystemUtils', () => {
       FileSystemUtils.mkdir(testDir);
 
       expect(fs.mkdirSync).not.toHaveBeenCalled();
+      expect(fs.existsSync).toHaveBeenCalledTimes(1);
+      expect(fs.existsSync).toHaveBeenNthCalledWith(1, testDir);
     });
   });
 
@@ -107,7 +123,8 @@ describe('FileSystemUtils', () => {
 
       FileSystemUtils.rename(oldPath, newPath);
 
-      expect(fs.renameSync).toHaveBeenCalledWith(oldPath, newPath);
+      expect(fs.renameSync).toHaveBeenCalledTimes(1);
+      expect(fs.renameSync).toHaveBeenNthCalledWith(1, oldPath, newPath);
     });
   });
 
@@ -119,7 +136,8 @@ describe('FileSystemUtils', () => {
       const result = FileSystemUtils.stat(testPath);
 
       expect(result).toBe(mockStats);
-      expect(fs.statSync).toHaveBeenCalledWith(testPath);
+      expect(fs.statSync).toHaveBeenCalledTimes(1);
+      expect(fs.statSync).toHaveBeenNthCalledWith(1, testPath);
     });
   });
 });

@@ -42,11 +42,13 @@ describe('Logger', () => {
 
       defaultLogger.info('test');
 
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+      expect(consoleSpy).toHaveBeenNthCalledWith(1, expect.stringContaining('test'));
     });
 
     it('should create log directory when log file is specified', () => {
-      expect(mockFileSystemUtils.mkdir).toHaveBeenCalledWith('/logs');
+      expect(mockFileSystemUtils.mkdir).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.mkdir).toHaveBeenNthCalledWith(1, '/logs');
     });
   });
 
@@ -56,14 +58,21 @@ describe('Logger', () => {
 
       debugLogger.debug(testMessage);
 
-      expect(consoleSpy).toHaveBeenCalled();
-      expect(mockFileSystemUtils.appendFile).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+      expect(consoleSpy).toHaveBeenNthCalledWith(1, expect.stringContaining(testMessage));
+      expect(mockFileSystemUtils.appendFile).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.appendFile).toHaveBeenNthCalledWith(
+        1,
+        testLogFile,
+        expect.stringContaining(testMessage)
+      );
     });
 
     it('should not log debug message when log level is info', () => {
       logger.debug(testMessage);
 
       expect(consoleSpy).not.toHaveBeenCalled();
+      expect(mockFileSystemUtils.appendFile).not.toHaveBeenCalled();
     });
 
     it('should log debug message with details', () => {
@@ -73,6 +82,8 @@ describe('Logger', () => {
       debugLogger.debug(testMessage, details);
 
       expect(consoleSpy).toHaveBeenCalledTimes(2);
+      expect(consoleSpy).toHaveBeenNthCalledWith(1, expect.stringContaining(testMessage));
+      expect(consoleSpy).toHaveBeenNthCalledWith(2, expect.stringContaining('"key"'));
     });
   });
 
@@ -82,7 +93,8 @@ describe('Logger', () => {
 
       testLogger.info(testMessage);
 
-      expect(consoleSpy).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+      expect(consoleSpy).toHaveBeenNthCalledWith(1, expect.stringContaining(testMessage));
     });
 
     it('should not log info message when log level is warn', () => {
@@ -91,12 +103,15 @@ describe('Logger', () => {
       warnLogger.info(testMessage);
 
       expect(consoleSpy).not.toHaveBeenCalled();
+      expect(mockFileSystemUtils.appendFile).not.toHaveBeenCalled();
     });
 
     it('should write to log file when log file is configured', () => {
       logger.info(testMessage);
 
-      expect(mockFileSystemUtils.appendFile).toHaveBeenCalledWith(
+      expect(mockFileSystemUtils.appendFile).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.appendFile).toHaveBeenNthCalledWith(
+        1,
         testLogFile,
         expect.stringContaining(testMessage)
       );
@@ -111,7 +126,8 @@ describe('Logger', () => {
 
         testLogger.warn(testMessage);
 
-        expect(consoleSpy).toHaveBeenCalled();
+        expect(consoleSpy).toHaveBeenCalledTimes(1);
+        expect(consoleSpy).toHaveBeenNthCalledWith(1, expect.stringContaining(testMessage));
       }
     );
 
@@ -121,6 +137,7 @@ describe('Logger', () => {
       errorLogger.warn(testMessage);
 
       expect(consoleSpy).not.toHaveBeenCalled();
+      expect(mockFileSystemUtils.appendFile).not.toHaveBeenCalled();
     });
   });
 
@@ -132,7 +149,8 @@ describe('Logger', () => {
 
         testLogger.error(testMessage);
 
-        expect(consoleSpy).toHaveBeenCalled();
+        expect(consoleSpy).toHaveBeenCalledTimes(1);
+        expect(consoleSpy).toHaveBeenNthCalledWith(1, expect.stringContaining(testMessage));
       }
     );
 
@@ -142,7 +160,11 @@ describe('Logger', () => {
       logger.error(testMessage, details);
 
       expect(consoleSpy).toHaveBeenCalledTimes(2);
-      expect(mockFileSystemUtils.appendFile).toHaveBeenCalledWith(
+      expect(consoleSpy).toHaveBeenNthCalledWith(1, expect.stringContaining(testMessage));
+      expect(consoleSpy).toHaveBeenNthCalledWith(2, expect.stringContaining('"error"'));
+      expect(mockFileSystemUtils.appendFile).toHaveBeenCalledTimes(1);
+      expect(mockFileSystemUtils.appendFile).toHaveBeenNthCalledWith(
+        1,
         testLogFile,
         expect.stringContaining(JSON.stringify(details))
       );
