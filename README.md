@@ -35,7 +35,7 @@ A configurable CLI tool that scans folders, categorizes and organizes files by t
 [![Code Duplication](https://img.shields.io/badge/duplication-%3C1%25-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
 [![Maintainability](https://img.shields.io/badge/maintainability-A-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
 [![Dependencies](https://img.shields.io/badge/dependencies-5-blue.svg?style=flat-square)](package.json)
-[![DevDependencies](https://img.shields.io/badge/devDependencies-16-blue.svg?style=flat-square)](package.json)
+[![DevDependencies](https://img.shields.io/badge/devDependencies-19-blue.svg?style=flat-square)](package.json)
 
 <!-- Additional Badges -->
 [![GitHub Stars](https://img.shields.io/github/stars/Coderrob/orderly?style=flat-square)](https://github.com/Coderrob/orderly/stargazers)
@@ -58,7 +58,7 @@ A configurable CLI tool that scans folders, categorizes and organizes files by t
 - 🔒 **Dry Run Mode**: Preview changes before applying them
 - 🎨 **Colorized Output**: Easy-to-read console output with colors
 - 🛡️ **Type Safety**: Built with TypeScript using strict mode and type-safe enums
-- ✅ **Production Ready**: 99.66% test coverage, zero lint errors, comprehensive quality gates
+- ✅ **Production Ready**: 99.69% test coverage, zero lint errors, comprehensive quality gates
 
 ## Installation
 
@@ -346,7 +346,7 @@ npm run test:watch
 npm run test:ci
 ```
 
-**Test Results**: All 157 tests passing across 13 test suites with 99.66% code coverage.
+**Test Results**: All 570 tests passing across 40 test suites with 99.69% code coverage.
 
 ### Code Quality
 
@@ -385,9 +385,9 @@ npm run quality:fix
 
 | Metric | Target | Current | Status |
 |--------|--------|---------|--------|
-| Test Coverage | ≥ 90% | **99.66%** | ✅ |
-| Tests Passing | 100% | **157/157** | ✅ |
-| Test Suites | All | **13/13** | ✅ |
+| Test Coverage | ≥ 90% | **99.69%** | ✅ |
+| Tests Passing | 100% | **570/570** | ✅ |
+| Test Suites | All | **40/40** | ✅ |
 | Code Duplication | < 1% | **< 1%** | ✅ |
 | TypeScript Errors | 0 | **0** | ✅ |
 | ESLint Errors | 0 | **0** | ✅ |
@@ -412,11 +412,10 @@ npm run quality:fix
 
 Comprehensive documentation is available:
 
-- [TESTING_STANDARDS.md](./TESTING_STANDARDS.md) - Testing guidelines and best practices
-- [CODE_QUALITY_STANDARDS.md](./CODE_QUALITY_STANDARDS.md) - SOLID principles and clean code
-- [QUALITY_GATE.md](./QUALITY_GATE.md) - Automated quality checks and gates
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
-- [CONTRIBUTING.md](./CONTRIBUTING.md) - How to contribute
+- [TESTING_STANDARDS.md](./.automation/TESTING_STANDARDS.md) - Testing guidelines and best practices
+- [CODE_QUALITY_STANDARDS.md](./.automation/CODE_QUALITY_STANDARDS.md) - SOLID principles and clean code
+- [QUALITY_GATE.md](./.automation/QUALITY_GATE.md) - Automated quality checks and gates
+- [AGENTS.md](./AGENTS.md) - AI agent expectations and standards
 
 ## Recent Improvements
 
@@ -432,7 +431,7 @@ Comprehensive documentation is available:
   - Argument validation with `toHaveBeenNthCalledWith()`
   - Proper module mocking with `node:` prefix consistency
 - ✅ **Bug Fixes**: Resolved critical module import mismatches and test mocking issues
-- ✅ **Quality Gates**: Achieved 99.66% test coverage with 157 passing tests
+- ✅ **Quality Gates**: Achieved 99.69% test coverage with 570 passing tests
 - ✅ **Zero Defects**: No TypeScript errors, no lint errors, no code duplication
 
 ## License
