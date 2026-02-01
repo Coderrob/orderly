@@ -42,6 +42,7 @@ describe('InitHandler', () => {
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
       expect(result.message).toContain('Configuration file already exists');
+      expect(mockConfigLoader.save).not.toHaveBeenCalled();
     });
 
     it('should handle yaml format', async () => {
@@ -79,6 +80,40 @@ describe('InitHandler', () => {
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
       expect(result.message).toContain('Init failed: Save failed');
+    });
+
+    it('should handle non-Error save failure', async () => {
+      mockConfigLoader.load.mockImplementation(() => {
+        throw new Error('Config not found');
+      });
+      mockConfigLoader.save.mockImplementation(() => {
+        throw 'Save failed';
+      });
+
+      const result = await handler.execute({ format: 'json' });
+
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
+      expect(result.message).toContain('Init failed: Save failed');
+    });
+
+    it('should return error when config exists via configExists branch', async () => {
+      const configExistsSpy = jest
+        .spyOn(
+          handler as unknown as { configExists: (configPath: string) => boolean },
+          'configExists'
+        )
+        .mockReturnValue(true);
+
+      const result = await handler.execute({ format: 'json' });
+
+      expect(result.success).toBe(false);
+      expect(result.exitCode).toBe(1);
+      expect(result.message).toContain('Configuration file already exists');
+      expect(mockConfigLoader.save).not.toHaveBeenCalled();
+      expect(configExistsSpy).toHaveBeenCalledWith('.orderly.config.json');
+
+      configExistsSpy.mockRestore();
     });
   });
 

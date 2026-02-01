@@ -24,7 +24,8 @@ module.exports = {
     '!src/cli.ts',
     '!src/**/types.ts',
     '!src/**/types/**',
-    '!src/**/index.ts'
+    '!src/**/index.ts',
+    '!src/**/interfaces.ts'
   ],
   coverageThreshold: {
     global: {
@@ -34,7 +35,7 @@ module.exports = {
       statements: 95
     }
   },
-  coverageReporters: ['text', 'text-summary', 'lcov', 'html', 'json'],
+  coverageReporters: ['text', 'text-summary', 'lcov', 'html', 'json', 'json-summary'],
   coverageDirectory: 'coverage',
   verbose: true,
   clearMocks: false,

@@ -17,4 +17,4 @@ export {
 } from './guards.js';
 export { formatJson, parseJsonFile, safeJsonParse, writeJsonFile } from './json.parser.js';
 export { NamingUtils } from './naming.js';
-export type { INamingUtils } from './naming.js';
+export type { INamingUtils } from './interfaces.js';

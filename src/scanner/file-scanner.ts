@@ -1,4 +1,4 @@
-import * as path from 'node:path';
+import { basename, extname, join } from 'node:path';
 
 import { glob } from 'glob';
 
@@ -12,15 +12,18 @@ import type { IScannedFile, IFileScanner } from './interfaces';
 export type { IScannedFile, IFileScanner } from './interfaces';
 
 export class FileScanner implements IFileScanner {
+  private readonly config: OrderlyConfig;
+  private readonly logger: Logger;
+
   /**
    *
    * @param config
    * @param logger
    */
-  constructor(
-    private readonly config: OrderlyConfig,
-    private readonly logger: Logger
-  ) {}
+  constructor(config: OrderlyConfig, logger: Logger) {
+    this.config = config;
+    this.logger = logger;
+  }
 
   /**
    *
@@ -76,19 +79,19 @@ export class FileScanner implements IFileScanner {
    * @param file
    */
   private processFile(directory: string, file: string): IScannedFile | null {
-    const fullPath = path.join(directory, file);
+    const fullPath = join(directory, file);
     const stats = FileSystemUtils.statSync(fullPath);
 
     if (!stats.isFile()) {
       return null;
     }
 
-    const ext = path.extname(file).toLowerCase();
+    const ext = extname(file).toLowerCase();
     const category = FileCategorizer.categorize(ext, file, this.config.categories);
 
     return {
       originalPath: fullPath,
-      filename: path.basename(file),
+      filename: basename(file),
       extension: ext,
       size: stats.size,
       category: category?.name,

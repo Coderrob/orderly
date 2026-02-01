@@ -48,6 +48,8 @@ describe('DirectoryValidator', () => {
       expect(() => {
         validator.validate('nonexistent');
       }).toThrow('Directory does not exist: nonexistent');
+      expect(mockFs.statSync).not.toHaveBeenCalled();
+      expect(mockFs.readdirSync).not.toHaveBeenCalled();
     });
 
     it('should handle absolute paths correctly', () => {
@@ -71,6 +73,7 @@ describe('DirectoryValidator', () => {
       expect(() => {
         validator.validate('file.txt');
       }).toThrow('Path is not a directory: file.txt');
+      expect(mockFs.readdirSync).not.toHaveBeenCalled();
     });
 
     it('should throw error when directory is not accessible', () => {
@@ -81,6 +84,30 @@ describe('DirectoryValidator', () => {
       expect(() => {
         validator.validate('inaccessible');
       }).toThrow('Directory is not accessible: inaccessible');
+    });
+
+    it('should rethrow stat errors', () => {
+      mockFs.statSync.mockImplementation(() => {
+        throw new Error('Stat failed');
+      });
+
+      expect(() => {
+        validator.validate('stat-fails');
+      }).toThrow('Stat failed');
+      expect(mockFs.readdirSync).not.toHaveBeenCalled();
+    });
+
+    it('should rethrow resolve errors', () => {
+      mockPath.resolve.mockImplementation(() => {
+        throw new Error('Resolve failed');
+      });
+
+      expect(() => {
+        validator.validate('bad-path');
+      }).toThrow('Resolve failed');
+      expect(mockFs.existsSync).not.toHaveBeenCalled();
+      expect(mockFs.statSync).not.toHaveBeenCalled();
+      expect(mockFs.readdirSync).not.toHaveBeenCalled();
     });
 
     it('should resolve relative paths', () => {

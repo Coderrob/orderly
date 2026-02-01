@@ -116,6 +116,15 @@ describe('FileSystemUtils', () => {
       expect(fs.existsSync).toHaveBeenCalledTimes(1);
       expect(fs.existsSync).toHaveBeenNthCalledWith(1, testDir);
     });
+
+    it('should create deeply nested directories recursively', () => {
+      jest.mocked(fs.existsSync).mockReturnValue(false);
+      const deepPath = '/path/to/deeply/nested/dir';
+
+      FileSystemUtils.mkdirSync(deepPath);
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith(deepPath, { recursive: true });
+    });
   });
 
   describe('rename', () => {

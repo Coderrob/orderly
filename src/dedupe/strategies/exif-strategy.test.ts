@@ -57,6 +57,36 @@ describe('ExifStrategy', () => {
       expect(strategy.supports(mockTextFile)).toBe(false);
     });
 
+    it('should normalize uppercase extensions from filename', () => {
+      const file: IScannedFile = {
+        ...mockImageFile,
+        filename: 'PHOTO.JPG',
+        extension: '.JPG'
+      };
+
+      expect(strategy.supports(file)).toBe(true);
+    });
+
+    it('should use filename extension over provided extension field', () => {
+      const file: IScannedFile = {
+        ...mockImageFile,
+        filename: 'photo.jpg',
+        extension: '.txt'
+      };
+
+      expect(strategy.supports(file)).toBe(true);
+    });
+
+    it('should return false when filename has no extension', () => {
+      const file: IScannedFile = {
+        ...mockTextFile,
+        filename: 'readme',
+        extension: ''
+      };
+
+      expect(strategy.supports(file)).toBe(false);
+    });
+
     it('should support EXIF-compatible extensions', () => {
       const exifExtensions = ['.jpg', '.jpeg', '.png', '.tiff', '.tif', '.raw', '.cr2', '.nef'];
 

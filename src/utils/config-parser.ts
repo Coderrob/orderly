@@ -7,6 +7,7 @@ import { UnsupportedConfigFormatError, InvalidFormatError } from '../errors';
 
 import { FileSystemUtils } from './file-system-utils';
 
+/* istanbul ignore next */
 export interface IConfigParser {
   parse(filePath: string): Partial<OrderlyConfig>;
   stringify(config: OrderlyConfig, format: ConfigFormat): string;

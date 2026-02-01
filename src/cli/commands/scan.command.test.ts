@@ -42,7 +42,7 @@ describe('ScanHandler', () => {
         { filename: 'file2.txt', category: 'document' } as any,
         { filename: 'file3.txt', category: 'document' } as any,
         { filename: 'file4.txt', category: 'document' } as any,
-        { filename: 'file5.txt', category: 'document' } as any,
+        { filename: 'file5.txt' } as any,
         { filename: 'file6.txt', category: 'document' } as any
       ];
       const summary = new Map([['document', 6]]);
@@ -72,7 +72,7 @@ describe('ScanHandler', () => {
       expect(mockConsoleLog).toHaveBeenCalledWith('  2. file2.txt (document)');
       expect(mockConsoleLog).toHaveBeenCalledWith('  3. file3.txt (document)');
       expect(mockConsoleLog).toHaveBeenCalledWith('  4. file4.txt (document)');
-      expect(mockConsoleLog).toHaveBeenCalledWith('  5. file5.txt (document)');
+      expect(mockConsoleLog).toHaveBeenCalledWith('  5. file5.txt (uncategorized)');
       expect(mockConsoleLog).toHaveBeenCalledWith('  ... and 1 more files');
     });
 
@@ -100,7 +100,7 @@ describe('ScanHandler', () => {
       expect(result.exitCode).toBe(0);
       expect(result.message).toContain('Found 8 files');
 
-      // Verify display output
+      // Verify display output - should show only 5 files
       expect(mockConsoleLog).toHaveBeenCalledWith('\n🗂️  Orderly - File Scan Results\n');
       expect(mockConsoleLog).toHaveBeenCalledWith('Found 8 files\n');
       expect(mockConsoleLog).toHaveBeenCalledWith('File categories:');
@@ -111,8 +111,7 @@ describe('ScanHandler', () => {
       expect(mockConsoleLog).toHaveBeenCalledWith('  3. file3.txt (document)');
       expect(mockConsoleLog).toHaveBeenCalledWith('  4. file4.txt (document)');
       expect(mockConsoleLog).toHaveBeenCalledWith('  5. file5.txt (document)');
-      expect(mockConsoleLog).toHaveBeenCalledWith('  6. file6.txt (document)');
-      expect(mockConsoleLog).toHaveBeenCalledWith('  ... and 2 more files');
+      expect(mockConsoleLog).toHaveBeenCalledWith('  ... and 3 more files');
     });
 
     it('should handle scan error', async () => {
@@ -195,33 +194,6 @@ describe('ScanHandler', () => {
       expect(result.success).toBe(false);
       expect(result.exitCode).toBe(1);
       expect(result.message).toContain('Scan failed: Invalid dir');
-    });
-
-    it('should display exactly 6 files when there are exactly 6 files', async () => {
-      const config = { logLevel: 'info' as any };
-      const targetDir = '/test/dir';
-      const files = Array.from(
-        { length: 6 },
-        (_, i) =>
-          ({
-            filename: `file${i + 1}.txt`,
-            category: 'document'
-          }) as any
-      );
-      const summary = new Map([['document', 6]]);
-
-      mockConfigService.loadWithOverrides.mockReturnValue(config);
-      mockDirectoryValidator.validate.mockReturnValue(targetDir);
-      mockFileScanner.prototype.scan.mockResolvedValue(files);
-      mockFileScanner.prototype.getCategorySummary.mockReturnValue(summary);
-
-      const result = await handler.execute(targetDir, {});
-
-      expect(result.success).toBe(true);
-      expect(result.exitCode).toBe(0);
-
-      // Should not show "and X more files" when exactly 6 files
-      expect(mockConsoleLog).not.toHaveBeenCalledWith(expect.stringContaining('and'));
     });
 
     it('should handle multiple categories', async () => {

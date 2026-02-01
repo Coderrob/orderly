@@ -110,6 +110,15 @@ describe('ConfigLoader', () => {
       expect(result.namingConvention).toEqual(DEFAULT_CONFIG.namingConvention);
       expect(result.logLevel).toBe(LogLevel.INFO);
     });
+
+    it('should return default config when no config files found', () => {
+      mockFileSystemUtils.existsSync.mockReturnValue(false);
+
+      const result = ConfigLoader.load();
+
+      expect(result).toEqual(DEFAULT_CONFIG);
+      expect(mockFileSystemUtils.existsSync).toHaveBeenCalled();
+    });
   });
 
   describe('save', () => {

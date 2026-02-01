@@ -12,7 +12,7 @@ export class ExifStrategy implements IDedupeStrategy {
   readonly name = 'exif';
   readonly priority = 15; // High priority for metadata-based detection
 
-  private readonly imageExtensions = new Set([
+  private static readonly IMAGE_EXTENSIONS = new Set<string>([
     '.jpg',
     '.jpeg',
     '.png',
@@ -35,7 +35,7 @@ export class ExifStrategy implements IDedupeStrategy {
    */
   supports(file: IScannedFile): boolean {
     const ext = path.extname(file.filename).toLowerCase();
-    return this.imageExtensions.has(ext);
+    return ExifStrategy.IMAGE_EXTENSIONS.has(ext);
   }
 
   /**

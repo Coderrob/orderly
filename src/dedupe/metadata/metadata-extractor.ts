@@ -1,5 +1,5 @@
 import { promises as fs, Stats } from 'node:fs';
-import * as path from 'node:path';
+import { basename, extname, normalize } from 'node:path';
 
 import { IMetadataExtractor } from '../interfaces';
 import { IImageDimensions, IFileProperties, IFileAttributes } from '../types';
@@ -83,7 +83,7 @@ export class MetadataExtractor implements IMetadataExtractor {
    * @param filePath
    */
   private isHiddenFile(filePath: string): boolean {
-    const filename = path.basename(filePath);
+    const filename = basename(filePath);
 
     // Cross-platform hidden file detection
     if (filename.startsWith('.')) {
@@ -114,7 +114,7 @@ export class MetadataExtractor implements IMetadataExtractor {
     } else {
       // On Unix-like systems, check if path is in system directories
       const systemPaths = ['/sys', '/proc', '/dev'];
-      const normalizedPath = path.normalize(filePath).replaceAll('\\', '/');
+      const normalizedPath = normalize(filePath).replaceAll('\\', '/');
       return systemPaths.some(sysPath => normalizedPath.includes(sysPath));
     }
   }
@@ -135,7 +135,7 @@ export class MetadataExtractor implements IMetadataExtractor {
    * @param filePath
    */
   private getMimeTypeFromExtension(filePath: string): string {
-    const ext = path.extname(filePath).toLowerCase();
+    const ext = extname(filePath).toLowerCase();
 
     const mimeTypes: Record<string, string> = {
       '.txt': 'text/plain',

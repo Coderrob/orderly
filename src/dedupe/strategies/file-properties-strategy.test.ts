@@ -83,6 +83,67 @@ describe('FilePropertiesStrategy', () => {
       expect(result).toBe('created:1672531200000|mime:text/plain|size:100');
     });
 
+    it('should generate key with only modifiedAt', async () => {
+      const mockProperties = {
+        modifiedAt: new Date('2023-01-02T00:00:00Z'),
+        mimeType: 'text/plain'
+      };
+
+      mockMetadataExtractor.extractProperties.mockResolvedValue(mockProperties);
+
+      const result = await strategy.getKey(mockFile);
+
+      expect(result).toBe('modified:1672617600000|mime:text/plain|size:100');
+    });
+
+    it('should generate key with only mime type and size', async () => {
+      const mockProperties = {
+        mimeType: 'application/pdf'
+      };
+
+      mockMetadataExtractor.extractProperties.mockResolvedValue(mockProperties);
+
+      const result = await strategy.getKey(mockFile);
+
+      expect(result).toBe('mime:application/pdf|size:100');
+    });
+
+    it('should include createdAt timestamp when provided', async () => {
+      const getTime = jest.fn().mockReturnValue(123);
+      const mockProperties = {
+        createdAt: { getTime } as unknown as Date
+      };
+
+      mockMetadataExtractor.extractProperties.mockResolvedValue(mockProperties);
+
+      const result = await strategy.getKey(mockFile);
+
+      expect(getTime).toHaveBeenCalled();
+      expect(result).toBe('created:123|size:100');
+    });
+
+    it('should include mime type when provided', async () => {
+      const mockProperties = {
+        mimeType: 'image/png'
+      };
+
+      mockMetadataExtractor.extractProperties.mockResolvedValue(mockProperties);
+
+      const result = await strategy.getKey(mockFile);
+
+      expect(result).toBe('mime:image/png|size:100');
+    });
+
+    it('should generate key with only size when no properties available', async () => {
+      const mockProperties = {};
+
+      mockMetadataExtractor.extractProperties.mockResolvedValue(mockProperties);
+
+      const result = await strategy.getKey(mockFile);
+
+      expect(result).toBe('size:100');
+    });
+
     it('should handle extraction errors', async () => {
       mockMetadataExtractor.extractProperties.mockRejectedValue(new Error('Extraction failed'));
 

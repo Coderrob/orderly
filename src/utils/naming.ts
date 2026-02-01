@@ -2,14 +2,7 @@ import * as path from 'node:path';
 
 import { NamingConvention, NamingConventionType } from '../config/types';
 
-export interface INamingUtils {
-  toKebabCase(str: string): string;
-  toSnakeCase(str: string): string;
-  toCamelCase(str: string): string;
-  toPascalCase(str: string): string;
-  applyNamingConvention(filename: string, convention: NamingConvention): string;
-  needsRename(filename: string, convention: NamingConvention): boolean;
-}
+import type { INamingUtils } from './interfaces';
 
 export class NamingUtils implements INamingUtils {
   /**
@@ -18,11 +11,10 @@ export class NamingUtils implements INamingUtils {
    * @returns The string converted to kebab-case
    */
   static toKebabCase(str: string): string {
-    return str
-      .replaceAll(/([a-z])([A-Z])/g, '$1-$2')
-      .replaceAll(/[\s_]+/g, '-')
-      .replaceAll(/[^a-zA-Z0-9-]/g, '')
-      .toLowerCase();
+    const withHyphens = str.replaceAll(/([a-z])([A-Z])/g, '$1-$2');
+    const normalizedSeparators = withHyphens.replaceAll(/[\s_]+/g, '-');
+    const cleaned = normalizedSeparators.replaceAll(/[^a-zA-Z0-9-]/g, '');
+    return cleaned.toLowerCase();
   }
 
   /**
