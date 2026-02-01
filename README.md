@@ -1,7 +1,7 @@
 <p align="center">
   <img
     src="public/img/orderly-logo-small.png"
-    alt="Barrel Roll logo"
+    alt="Orderly logo"
   />
 </p>
 
