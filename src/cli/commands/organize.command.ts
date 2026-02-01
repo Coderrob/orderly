@@ -6,6 +6,7 @@ import { FileOrganizer } from '../../organizer/file-organizer';
 import type { IOrganizationResult } from '../../organizer/types';
 import { FileScanner } from '../../scanner/file-scanner';
 import type { IScannedFile } from '../../scanner/interfaces';
+import { ExitCode, COMMAND_MESSAGES } from '../constants';
 import type {
   IOrganizeOptions,
   IOrganizeHandler,
@@ -54,7 +55,7 @@ export class OrganizeHandler implements IOrganizeHandler {
 
       // Scan files
       const files = await scanner.scan(targetDir);
-      logger.info(`Found ${files.length} files to process`);
+      logger.info(COMMAND_MESSAGES.FILES_FOUND.replace('{0}', String(files.length)));
 
       // Process duplicates if enabled
       let filesToOrganize = files;
@@ -64,7 +65,7 @@ export class OrganizeHandler implements IOrganizeHandler {
 
       // Plan operations
       const operations = organizer.planOperations(filesToOrganize);
-      logger.info(`Planned ${operations.length} operations`);
+      logger.info(COMMAND_MESSAGES.OPERATIONS_PLANNED.replace('{0}', String(operations.length)));
 
       // Execute operations
       const result = organizer.executeOperations(operations);
@@ -72,7 +73,7 @@ export class OrganizeHandler implements IOrganizeHandler {
       // Generate manifests if requested
       if (options.manifest) {
         this.manifestService.saveManifests(result, targetDir);
-        logger.info('Manifests generated');
+        logger.info(COMMAND_MESSAGES.MANIFESTS_GENERATED);
       }
 
       // Log results
@@ -80,14 +81,14 @@ export class OrganizeHandler implements IOrganizeHandler {
 
       return {
         success: true,
-        exitCode: 0,
-        message: `Successfully organized ${result.operations.length} files`
+        exitCode: ExitCode.SUCCESS,
+        message: COMMAND_MESSAGES.ORGANIZED_SUCCESS.replace('{0}', String(result.operations.length))
       };
     } catch (error) {
       return {
         success: false,
-        exitCode: 1,
-        message: `Organization failed: ${error instanceof Error ? error.message : String(error)}`
+        exitCode: ExitCode.ERROR,
+        message: `${COMMAND_MESSAGES.ORGANIZATION_FAILED}${error instanceof Error ? error.message : String(error)}`
       };
     }
   }

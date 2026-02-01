@@ -670,12 +670,12 @@ describe('CliService', () => {
     describe('getFilename', () => {
       it('should return json filename for json format', () => {
         const result = (cliService as any).getFilename('json');
-        expect(result).toBe('orderly.config.json');
+        expect(result).toBe('.orderly.config.json');
       });
 
       it('should return yaml filename for yaml format', () => {
         const result = (cliService as any).getFilename('yaml');
-        expect(result).toBe('.orderly.yml');
+        expect(result).toBe('.orderly.config.yaml');
       });
     });
 

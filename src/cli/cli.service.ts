@@ -14,7 +14,7 @@ import type { IScannedFile } from '../scanner/interfaces';
 import { LogLevel } from '../types';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
-import { CLI_CONSTANTS, type ConfigFormat } from './constants';
+import { CLI_CONSTANTS, ExitCode, CONFIG_FILE_NAMES } from './constants';
 import type { IOrganizeOptions, IInitOptions, IScanOptions } from './interfaces';
 
 /**
@@ -72,7 +72,7 @@ export class CliService {
       .option(
         '-f, --format <format>',
         `Config file format (${CLI_CONSTANTS.VALID_FORMATS.join(', ')})`,
-        CLI_CONSTANTS.DEFAULT_FORMAT
+        CLI_CONSTANTS.DEFAULT_CONFIG_FORMAT
       )
       .action((options: IInitOptions) => {
         try {
@@ -151,7 +151,7 @@ export class CliService {
     console.log(chalk.blue.bold('\n✨ Organization complete!\n'));
 
     if (result.failed > 0) {
-      process.exit(1);
+      process.exit(ExitCode.ERROR);
     }
   }
 
@@ -165,7 +165,7 @@ export class CliService {
 
     if (FileSystemUtils.existsSync(configPath)) {
       console.error(chalk.red(`Config file already exists: ${configPath}`));
-      process.exit(1);
+      process.exit(ExitCode.ERROR);
     }
 
     ConfigLoader.save(DEFAULT_CONFIG, configPath);
@@ -223,7 +223,7 @@ export class CliService {
     const targetDir = path.resolve(directory);
     if (!FileSystemUtils.existsSync(targetDir)) {
       logger.error(`Directory does not exist: ${targetDir}`);
-      process.exit(1);
+      process.exit(ExitCode.ERROR);
     }
     return targetDir;
   }
@@ -276,21 +276,28 @@ export class CliService {
 
   /**
    * Validates the config format
+   * @param format
    */
-  private validateFormat(format?: string): ConfigFormat {
-    const normalized = (format || CLI_CONSTANTS.DEFAULT_FORMAT).toLowerCase();
-    if (!CLI_CONSTANTS.VALID_FORMATS.includes(normalized as ConfigFormat)) {
-      console.error(chalk.red(`Invalid format. Use ${CLI_CONSTANTS.VALID_FORMATS.join(' or ')}.`));
-      process.exit(1);
+  private validateFormat(format?: string): string {
+    const normalized = (format || CLI_CONSTANTS.DEFAULT_CONFIG_FORMAT).toLowerCase();
+    const validFormats = CLI_CONSTANTS.VALID_FORMATS.map(f => f.toLowerCase());
+    if (!validFormats.includes(normalized)) {
+      console.error(
+        chalk.red(
+          `Invalid format. Use ${CLI_CONSTANTS.VALID_FORMATS.map(f => f.toLowerCase()).join(' or ')}.`
+        )
+      );
+      process.exit(ExitCode.ERROR);
     }
-    return normalized as ConfigFormat;
+    return normalized;
   }
 
   /**
    * Gets the filename for a config format
+   * @param format
    */
-  private getFilename(format: ConfigFormat): string {
-    return format === 'json' ? CLI_CONSTANTS.CONFIG_JSON : CLI_CONSTANTS.CONFIG_YAML;
+  private getFilename(format: string): string {
+    return format === 'json' ? CONFIG_FILE_NAMES.JSON : CONFIG_FILE_NAMES.YAML;
   }
 
   /**
@@ -332,6 +339,6 @@ export class CliService {
    */
   private handleError(error: unknown): void {
     console.error(chalk.red('Error:'), error instanceof Error ? error.message : error);
-    process.exit(1);
+    process.exit(ExitCode.ERROR);
   }
 }

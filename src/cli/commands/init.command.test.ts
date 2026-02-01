@@ -56,7 +56,7 @@ describe('InitHandler', () => {
       expect(mockConfigLoader.save).toHaveBeenCalledWith(DEFAULT_CONFIG, '.orderly.config.yaml');
     });
 
-    it('should default to json format', async () => {
+    it('should default to yaml format', async () => {
       mockConfigLoader.load.mockImplementation(() => {
         throw new Error('Config not found');
       });
@@ -64,7 +64,7 @@ describe('InitHandler', () => {
 
       await handler.execute({});
 
-      expect(mockConfigLoader.save).toHaveBeenCalledWith(DEFAULT_CONFIG, '.orderly.config.json');
+      expect(mockConfigLoader.save).toHaveBeenCalledWith(DEFAULT_CONFIG, '.orderly.config.yaml');
     });
 
     it('should handle save error', async () => {

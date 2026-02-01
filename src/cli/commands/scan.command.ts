@@ -1,6 +1,7 @@
 import { Logger } from '../../logger/logger';
 import { FileScanner } from '../../scanner/file-scanner';
 import type { IScannedFile } from '../../scanner/interfaces';
+import { ExitCode, COMMAND_MESSAGES } from '../constants';
 import type {
   IScanOptions,
   IScanHandler,
@@ -51,14 +52,17 @@ export class ScanHandler implements IScanHandler {
 
       return {
         success: true,
-        exitCode: 0,
-        message: `Found ${files.length} files in ${targetDir}`
+        exitCode: ExitCode.SUCCESS,
+        message: COMMAND_MESSAGES.SCAN_SUCCESS.replace('{0}', String(files.length)).replace(
+          '{1}',
+          targetDir
+        )
       };
     } catch (error) {
       return {
         success: false,
-        exitCode: 1,
-        message: `Scan failed: ${error instanceof Error ? error.message : String(error)}`
+        exitCode: ExitCode.ERROR,
+        message: `${COMMAND_MESSAGES.SCAN_FAILED}${error instanceof Error ? error.message : String(error)}`
       };
     }
   }

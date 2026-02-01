@@ -2,6 +2,7 @@ import * as path from 'node:path';
 
 import { ConfigLoader } from '../../config/config-loader';
 import { DEFAULT_CONFIG } from '../../config/types';
+import { ExitCode, ConfigFileFormat, CLI_CONSTANTS, COMMAND_MESSAGES } from '../constants';
 import type { IInitOptions, IInitHandler, ICommandResult } from '../interfaces';
 
 /**
@@ -15,15 +16,15 @@ export class InitHandler implements IInitHandler {
    */
   execute(options: IInitOptions): Promise<ICommandResult> {
     try {
-      const format = options.format || 'json';
+      const format = options.format || CLI_CONSTANTS.DEFAULT_CONFIG_FORMAT;
       const configPath = this.getConfigPath(format);
 
       // Check if config already exists
       if (this.configExists(configPath)) {
         return Promise.resolve({
           success: false,
-          exitCode: 1,
-          message: `Configuration file already exists: ${configPath}`
+          exitCode: ExitCode.ERROR,
+          message: `${COMMAND_MESSAGES.CONFIG_EXISTS}${configPath}`
         });
       }
 
@@ -32,14 +33,14 @@ export class InitHandler implements IInitHandler {
 
       return Promise.resolve({
         success: true,
-        exitCode: 0,
-        message: `Created configuration file: ${configPath}`
+        exitCode: ExitCode.SUCCESS,
+        message: `${COMMAND_MESSAGES.CONFIG_CREATED}${configPath}`
       });
     } catch (error) {
       return Promise.resolve({
         success: false,
-        exitCode: 1,
-        message: `Init failed: ${error instanceof Error ? error.message : String(error)}`
+        exitCode: ExitCode.ERROR,
+        message: `${COMMAND_MESSAGES.INIT_FAILED}${error instanceof Error ? error.message : String(error)}`
       });
     }
   }
@@ -49,9 +50,10 @@ export class InitHandler implements IInitHandler {
    * @param format - Configuration format (json or yaml)
    * @returns Configuration file path
    */
-  private getConfigPath(format: string): string {
-    const extension = format === 'yaml' ? 'yaml' : 'json';
-    return path.resolve(`.orderly.config.${extension}`);
+  private getConfigPath(format: ConfigFileFormat | string): string {
+    const formatLower = typeof format === 'string' ? format.toLowerCase() : format;
+    const extension = formatLower === 'yaml' || formatLower === 'yml' ? 'yaml' : 'json';
+    return path.resolve(`${CLI_CONSTANTS.CONFIG_PREFIX}${extension}`);
   }
 
   /**
