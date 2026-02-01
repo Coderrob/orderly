@@ -1,7 +1,9 @@
 import chalk from 'chalk';
+
 import { IOutputWriter, OutputFormat } from '../types';
-import { formatJson } from './json.parser';
+
 import { isNullOrUndefined, isObject, isArray, isString, isNumber, isBoolean } from './guards';
+import { formatJson } from './json.parser';
 
 /**
  * Console-based implementation of IOutputWriter.
@@ -12,6 +14,7 @@ import { isNullOrUndefined, isObject, isArray, isString, isNumber, isBoolean } f
 export class ConsoleOutputWriter implements IOutputWriter {
   /**
    * Writes a success message with green coloring.
+   * @param message
    */
   success(message: string): void {
     console.log(chalk.green(message));
@@ -19,6 +22,7 @@ export class ConsoleOutputWriter implements IOutputWriter {
 
   /**
    * Writes an informational message.
+   * @param message
    */
   info(message: string): void {
     console.log(message);
@@ -26,6 +30,7 @@ export class ConsoleOutputWriter implements IOutputWriter {
 
   /**
    * Writes a warning message with yellow coloring.
+   * @param message
    */
   warning(message: string): void {
     console.log(chalk.yellow(message));
@@ -33,6 +38,7 @@ export class ConsoleOutputWriter implements IOutputWriter {
 
   /**
    * Writes an error message with red coloring.
+   * @param message
    */
   error(message: string): void {
     console.log(chalk.red(message));
@@ -40,6 +46,7 @@ export class ConsoleOutputWriter implements IOutputWriter {
 
   /**
    * Writes a plain message without any formatting.
+   * @param message
    */
   write(message: string): void {
     console.log(message);
@@ -54,6 +61,8 @@ export class ConsoleOutputWriter implements IOutputWriter {
 
   /**
    * Writes structured data in the specified format.
+   * @param data
+   * @param format
    */
   writeFormatted(data: unknown, format: OutputFormat): void {
     switch (format) {
@@ -73,6 +82,7 @@ export class ConsoleOutputWriter implements IOutputWriter {
 
   /**
    * Writes a section header with bold formatting.
+   * @param title
    */
   section(title: string): void {
     console.log(chalk.bold(title));
@@ -80,6 +90,8 @@ export class ConsoleOutputWriter implements IOutputWriter {
 
   /**
    * Writes a key-value pair with aligned formatting.
+   * @param key
+   * @param value
    */
   keyValue(key: string, value: string): void {
     console.log(`${key}: ${value}`);
@@ -87,17 +99,20 @@ export class ConsoleOutputWriter implements IOutputWriter {
 
   /**
    * Writes data in CSV format.
+   * @param data
    */
   private writeCsv(data: unknown): void {
-    if (isArray(data)) {
-      this.writeCsvArray(data);
-    } else {
+    if (!isArray(data)) {
       console.log(String(data));
+      return;
     }
+
+    this.writeCsvArray(data);
   }
 
   /**
    * Writes an array of objects in CSV format.
+   * @param data
    */
   private writeCsvArray(data: unknown[]): void {
     if (data.length === 0) return;
@@ -140,6 +155,7 @@ export class ConsoleOutputWriter implements IOutputWriter {
 
   /**
    * Writes data in table format (simplified).
+   * @param data
    */
   private writeTable(data: unknown): void {
     if (isArray(data)) {

@@ -3,6 +3,8 @@
  * These functions provide type-safe checks with proper TypeScript narrowing.
  */
 
+import type { IOrderlyError } from '../errors';
+
 /**
  * Returns true when the provided value is a non-null object.
  * Excludes arrays.
@@ -76,4 +78,14 @@ export function isPrimitive(
     typeof value === 'symbol' ||
     typeof value === 'bigint'
   );
+}
+
+/**
+ * Type guard for IOrderlyError instances.
+ * Enables type-safe error handling for Orderly-specific errors.
+ * @param error The error to check
+ * @returns True when the error is an IOrderlyError; otherwise false.
+ */
+export function isOrderlyError(error: unknown): error is IOrderlyError {
+  return error instanceof Error && 'code' in error && 'category' in error;
 }

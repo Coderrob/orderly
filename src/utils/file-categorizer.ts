@@ -1,7 +1,22 @@
 import micromatch from 'micromatch';
+
 import { CategoryRule } from '../config/types';
 
-export class FileCategorizer {
+export interface IFileCategorizer {
+  categorize(
+    extension: string,
+    filename: string,
+    categories: CategoryRule[]
+  ): CategoryRule | undefined;
+}
+
+export class FileCategorizer implements IFileCategorizer {
+  /**
+   *
+   * @param extension
+   * @param filename
+   * @param categories
+   */
   static categorize(
     extension: string,
     filename: string,
@@ -15,6 +30,26 @@ export class FileCategorizer {
     return undefined;
   }
 
+  /**
+   *
+   * @param extension
+   * @param filename
+   * @param categories
+   */
+  categorize(
+    extension: string,
+    filename: string,
+    categories: CategoryRule[]
+  ): CategoryRule | undefined {
+    return FileCategorizer.categorize(extension, filename, categories);
+  }
+
+  /**
+   *
+   * @param extension
+   * @param filename
+   * @param category
+   */
   private static matchesCategory(
     extension: string,
     filename: string,

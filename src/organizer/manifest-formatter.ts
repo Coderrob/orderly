@@ -1,6 +1,14 @@
 import { Manifest, ManifestEntry, OperationStatus } from './manifest-generator';
 
-export class ManifestFormatter {
+export interface IManifestFormatter {
+  format(manifest: Manifest): string;
+}
+
+export class ManifestFormatter implements IManifestFormatter {
+  /**
+   *
+   * @param manifest
+   */
   format(manifest: Manifest): string {
     const lines: string[] = [
       '# Orderly File Organization Manifest\n',
@@ -17,6 +25,10 @@ export class ManifestFormatter {
     return lines.join('\n');
   }
 
+  /**
+   *
+   * @param entries
+   */
   private formatEntries(entries: ManifestEntry[]): string[] {
     const lines: string[] = [];
 

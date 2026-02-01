@@ -1,9 +1,15 @@
 import * as path from 'node:path';
-import chalk from 'chalk';
-import { FileSystemUtils } from '../utils/file-system-utils';
-import { LogEntry, LogLevel } from '../types';
 
-class LogLevelChecker {
+import chalk from 'chalk';
+
+import { LogEntry, LogLevel } from '../types';
+import { FileSystemUtils } from '../utils/file-system-utils';
+
+import type { ILogLevelChecker, ILogFormatter, ILogger } from './interfaces';
+
+export type { ILogger, ILogLevelChecker, ILogFormatter } from './interfaces';
+
+class LogLevelChecker implements ILogLevelChecker {
   private readonly levelPriority: Record<LogLevel, number> = {
     [LogLevel.DEBUG]: 0,
     [LogLevel.INFO]: 1,
@@ -11,12 +17,22 @@ class LogLevelChecker {
     [LogLevel.ERROR]: 3
   };
 
+  /**
+   *
+   * @param level
+   * @param configuredLevel
+   */
   shouldLog(level: LogLevel, configuredLevel: LogLevel): boolean {
     return this.levelPriority[level] >= this.levelPriority[configuredLevel];
   }
 }
 
-class LogFormatter {
+class LogFormatter implements ILogFormatter {
+  /**
+   *
+   * @param level
+   * @param message
+   */
   format(level: LogLevel, message: string): string {
     const timestamp = new Date().toISOString();
     const prefix = `[${timestamp}] [${level.toUpperCase()}]`;
@@ -24,6 +40,11 @@ class LogFormatter {
     return `${coloredPrefix} ${message}`;
   }
 
+  /**
+   *
+   * @param prefix
+   * @param level
+   */
   private colorizePrefix(prefix: string, level: LogLevel): string {
     const colorMap: Record<LogLevel, (text: string) => string> = {
       [LogLevel.DEBUG]: chalk.gray,
@@ -35,11 +56,16 @@ class LogFormatter {
   }
 }
 
-export class Logger {
+export class Logger implements ILogger {
   private logs: LogEntry[] = [];
   private readonly levelChecker = new LogLevelChecker();
   private readonly formatter = new LogFormatter();
 
+  /**
+   *
+   * @param logLevel
+   * @param logFile
+   */
   constructor(
     private readonly logLevel: LogLevel = LogLevel.INFO,
     private readonly logFile?: string
@@ -49,6 +75,12 @@ export class Logger {
     }
   }
 
+  /**
+   *
+   * @param level
+   * @param message
+   * @param details
+   */
   private log(level: LogLevel, message: string, details?: unknown): void {
     if (!this.levelChecker.shouldLog(level, this.logLevel)) {
       return;
@@ -61,6 +93,12 @@ export class Logger {
     this.writeToFile(entry);
   }
 
+  /**
+   *
+   * @param level
+   * @param message
+   * @param details
+   */
   private createLogEntry(level: LogLevel, message: string, details?: unknown): LogEntry {
     return {
       timestamp: new Date().toISOString(),
@@ -70,6 +108,12 @@ export class Logger {
     };
   }
 
+  /**
+   *
+   * @param level
+   * @param message
+   * @param details
+   */
   private writeToConsole(level: LogLevel, message: string, details?: unknown): void {
     const formattedMessage = this.formatter.format(level, message);
     console.log(formattedMessage);
@@ -79,6 +123,10 @@ export class Logger {
     }
   }
 
+  /**
+   *
+   * @param entry
+   */
   private writeToFile(entry: LogEntry): void {
     if (!this.logFile) return;
 
@@ -87,30 +135,53 @@ export class Logger {
     FileSystemUtils.appendFileSync(this.logFile, logLine);
   }
 
+  /**
+   *
+   * @param message
+   * @param details
+   */
   debug(message: string, details?: unknown): void {
     this.log(LogLevel.DEBUG, message, details);
   }
 
+  /**
+   *
+   * @param message
+   * @param details
+   */
   info(message: string, details?: unknown): void {
     this.log(LogLevel.INFO, message, details);
   }
 
+  /**
+   *
+   * @param message
+   * @param details
+   */
   warn(message: string, details?: unknown): void {
     this.log(LogLevel.WARN, message, details);
   }
 
+  /**
+   *
+   * @param message
+   * @param details
+   */
   error(message: string, details?: unknown): void {
     this.log(LogLevel.ERROR, message, details);
   }
 
+  /**
+   *
+   */
   getLogs(): LogEntry[] {
     return [...this.logs];
   }
 
+  /**
+   *
+   */
   clearLogs(): void {
     this.logs = [];
   }
 }
-
-// Re-export types for convenience
-export { LogLevel, LogEntry } from '../types';

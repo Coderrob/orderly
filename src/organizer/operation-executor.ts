@@ -1,15 +1,28 @@
 import * as path from 'node:path';
-import { FileSystemUtils } from '../utils/file-system-utils';
-import { FileOperation, OrganizationResult } from './file-organizer';
-import { Logger } from '../logger/logger';
 
-export class OperationExecutor {
+import { FileExistsError } from '../errors';
+import { Logger } from '../logger/logger';
+import { FileSystemUtils } from '../utils/file-system-utils';
+
+import type { IOperationExecutor } from './interfaces';
+import type { IFileOperation, IOrganizationResult } from './types';
+
+export class OperationExecutor implements IOperationExecutor {
+  /**
+   *
+   * @param logger
+   * @param dryRun
+   */
   constructor(
     private readonly logger: Logger,
     private readonly dryRun: boolean
   ) {}
 
-  execute(operations: FileOperation[]): OrganizationResult {
+  /**
+   *
+   * @param operations
+   */
+  execute(operations: IFileOperation[]): IOrganizationResult {
     const result = this.createEmptyResult(operations);
 
     if (this.dryRun) {
@@ -19,7 +32,11 @@ export class OperationExecutor {
     return this.executeReal(operations, result);
   }
 
-  private createEmptyResult(operations: FileOperation[]): OrganizationResult {
+  /**
+   *
+   * @param operations
+   */
+  private createEmptyResult(operations: IFileOperation[]): IOrganizationResult {
     return {
       operations,
       successful: 0,
@@ -28,10 +45,15 @@ export class OperationExecutor {
     };
   }
 
+  /**
+   *
+   * @param operations
+   * @param result
+   */
   private executeDryRun(
-    operations: FileOperation[],
-    result: OrganizationResult
-  ): OrganizationResult {
+    operations: IFileOperation[],
+    result: IOrganizationResult
+  ): IOrganizationResult {
     this.logger.info('DRY RUN: No files will be modified');
 
     for (const op of operations) {
@@ -42,14 +64,27 @@ export class OperationExecutor {
     return result;
   }
 
-  private executeReal(operations: FileOperation[], result: OrganizationResult): OrganizationResult {
+  /**
+   *
+   * @param operations
+   * @param result
+   */
+  private executeReal(
+    operations: IFileOperation[],
+    result: IOrganizationResult
+  ): IOrganizationResult {
     for (const operation of operations) {
       this.executeOperation(operation, result);
     }
     return result;
   }
 
-  private executeOperation(operation: FileOperation, result: OrganizationResult): void {
+  /**
+   *
+   * @param operation
+   * @param result
+   */
+  private executeOperation(operation: IFileOperation, result: IOrganizationResult): void {
     try {
       this.performOperation(operation);
       result.successful++;
@@ -62,7 +97,11 @@ export class OperationExecutor {
     }
   }
 
-  private performOperation(operation: FileOperation): void {
+  /**
+   *
+   * @param operation
+   */
+  private performOperation(operation: IFileOperation): void {
     const targetDir = path.dirname(operation.newPath);
     FileSystemUtils.mkdirSync(targetDir);
 
@@ -70,16 +109,22 @@ export class OperationExecutor {
       FileSystemUtils.existsSync(operation.newPath) &&
       operation.newPath !== operation.originalPath
     ) {
-      throw new Error(`Target file already exists: ${operation.newPath}`);
+      throw new FileExistsError(operation.newPath);
     }
 
     FileSystemUtils.renameSync(operation.originalPath, operation.newPath);
   }
 
+  /**
+   *
+   * @param operation
+   * @param error
+   * @param result
+   */
   private handleOperationError(
-    operation: FileOperation,
+    operation: IFileOperation,
     error: unknown,
-    result: OrganizationResult
+    result: IOrganizationResult
   ): void {
     result.failed++;
     const errorMessage = error instanceof Error ? error.message : String(error);

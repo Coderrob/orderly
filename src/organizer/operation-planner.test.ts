@@ -1,8 +1,8 @@
 import { OperationPlanner } from './operation-planner';
 import { OrderlyConfig, NamingConventionType } from '../config/types';
-import { ScannedFile } from '../scanner/file-scanner';
+import type { IScannedFile } from '../scanner/interfaces';
 import { NamingUtils } from '../utils/naming';
-import { FileOperationType } from './file-organizer';
+import { FileOperationType } from './types';
 import { LogLevel } from '../types';
 
 jest.mock('../utils/naming');
@@ -13,7 +13,7 @@ describe('OperationPlanner', () => {
   let planner: OperationPlanner;
   let testConfig: OrderlyConfig;
   let testBaseDirectory: string;
-  let testFile: ScannedFile;
+  let testFile: IScannedFile;
 
   beforeEach(() => {
     testBaseDirectory = '/base/dir';
@@ -44,7 +44,7 @@ describe('OperationPlanner', () => {
 
   describe('plan', () => {
     it('should return empty array when no files need operations', () => {
-      const file: ScannedFile = { ...testFile, targetFolder: undefined };
+      const file: IScannedFile = { ...testFile, targetFolder: undefined };
       mockNamingUtils.needsRename.mockReturnValue(false);
 
       const result = planner.plan([file]);
@@ -63,7 +63,7 @@ describe('OperationPlanner', () => {
     });
 
     it('should plan rename operation when file needs to be renamed', () => {
-      const file: ScannedFile = { ...testFile, targetFolder: undefined };
+      const file: IScannedFile = { ...testFile, targetFolder: undefined };
       mockNamingUtils.needsRename.mockReturnValue(true);
       mockNamingUtils.applyNamingConvention.mockReturnValue('test-file.txt');
 
@@ -110,8 +110,19 @@ describe('OperationPlanner', () => {
       expect(normalizedPath).toContain('/output/documents');
     });
 
+    it('should use base directory when target directory is not configured', () => {
+      // config already has targetDirectory undefined by default
+      mockNamingUtils.needsRename.mockReturnValue(false);
+
+      const result = planner.plan([testFile]);
+
+      // Path separators vary by OS, so normalize for comparison
+      const normalizedPath = result[0].newPath.replaceAll('\\', '/');
+      expect(normalizedPath).toContain('/base/dir/documents');
+    });
+
     it('should not create operation when new path equals original path', () => {
-      const file: ScannedFile = {
+      const file: IScannedFile = {
         ...testFile,
         originalPath: '/base/dir/documents/test-file.txt',
         filename: 'test-file.txt',

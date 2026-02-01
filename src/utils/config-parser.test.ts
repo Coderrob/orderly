@@ -86,10 +86,58 @@ describe('ConfigParser', () => {
       expect(mockYaml.dump).toHaveBeenCalledWith(config);
     });
 
+    it('should handle YAML format with complex objects', () => {
+      const config = {
+        categories: [{ name: 'docs', extensions: ['.txt'] }],
+        namingConvention: { type: 'kebab-case', lowercase: true }
+      } as OrderlyConfig;
+      const yamlOutput = 'categories:\n  - name: docs\n';
+      mockYaml.dump.mockReturnValue(yamlOutput);
+
+      const result = ConfigParser.stringify(config, ConfigFormat.YAML);
+
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('string');
+    });
+
     it('should throw error for unsupported format', () => {
       const config = testConfig as OrderlyConfig;
 
-      expect(() => ConfigParser.stringify(config, 'xml' as any)).toThrow('Unsupported format: xml');
+      expect(() => ConfigParser.stringify(config, 'xml' as any)).toThrow(
+        'Invalid format: xml, expected: json or yaml'
+      );
+    });
+  });
+
+  describe('instance methods', () => {
+    let configParser: ConfigParser;
+
+    beforeEach(() => {
+      configParser = new ConfigParser();
+    });
+
+    describe('parse', () => {
+      it('should delegate to static method', () => {
+        const jsonPath = '/config/test.json';
+        const jsonContent = JSON.stringify(testConfig);
+        mockFileSystemUtils.readFileSync.mockReturnValue(jsonContent);
+
+        const result = configParser.parse(jsonPath);
+
+        expect(result).toEqual(testConfig);
+        expect(mockFileSystemUtils.readFileSync).toHaveBeenCalledWith(jsonPath);
+      });
+    });
+
+    describe('stringify', () => {
+      it('should delegate to static method', () => {
+        const config = testConfig as OrderlyConfig;
+        const expected = JSON.stringify(config, null, 2);
+
+        const result = configParser.stringify(config, ConfigFormat.JSON);
+
+        expect(result).toBe(expected);
+      });
     });
   });
 });

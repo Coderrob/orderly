@@ -1,6 +1,7 @@
 import { ManifestFormatter } from './manifest-formatter';
 import { Manifest, ManifestEntry, OperationStatus } from './manifest-generator';
-import { FileOperation, FileOperationType } from './file-organizer';
+import { FileOperationType } from './types';
+import type { IFileOperation } from './types';
 
 describe('ManifestFormatter', () => {
   let formatter: ManifestFormatter;
@@ -9,7 +10,7 @@ describe('ManifestFormatter', () => {
 
   beforeEach(() => {
     formatter = new ManifestFormatter();
-    const testOperation: FileOperation = {
+    const testOperation: IFileOperation = {
       type: FileOperationType.MOVE,
       originalPath: '/source/file.txt',
       newPath: '/target/file.txt',

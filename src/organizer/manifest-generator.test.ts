@@ -1,5 +1,5 @@
 import { ManifestGenerator, Manifest } from './manifest-generator';
-import { OrganizationResult } from './file-organizer';
+import type { IOrganizationResult, IFileError } from './types';
 import { Logger } from '../logger/logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
 import { ManifestBuilder } from './manifest-builder';
@@ -15,8 +15,8 @@ describe('ManifestGenerator', () => {
   let loggerInstance: jest.Mocked<Logger>;
   let builderInstance: jest.Mocked<ManifestBuilder>;
   let formatterInstance: jest.Mocked<ManifestFormatter>;
-  let testResult: OrganizationResult;
-  let testErrors: Array<{ file: string; error: string }>;
+  let testResult: IOrganizationResult;
+  let testErrors: IFileError[];
   let testManifest: Manifest;
 
   beforeEach(() => {

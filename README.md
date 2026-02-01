@@ -1,3 +1,10 @@
+<p align="center">
+  <img
+    src="public/img/orderly-logo-small.png"
+    alt="Barrel Roll logo"
+  />
+</p>
+
 # Orderly
 
 A configurable CLI tool that scans folders, categorizes and organizes files by type and context, enforces naming conventions (e.g., lowercase kebab case), moves and renames files, generates a manifest, and logs all actions for full auditability—ensuring a clean, consistent, and traceable directory structure.

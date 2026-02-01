@@ -98,6 +98,18 @@ describe('ConfigLoader', () => {
       expect(result.namingConvention.type).toBe(NamingConventionType.SNAKE_CASE);
       expect(result.namingConvention.lowercase).toBe(DEFAULT_CONFIG.namingConvention.lowercase);
     });
+
+    it('should preserve default naming convention when not overridden', () => {
+      mockFileSystemUtils.existsSync.mockReturnValue(true);
+      mockConfigParser.parse.mockReturnValue({
+        logLevel: LogLevel.INFO // Override something else, not namingConvention
+      });
+
+      const result = ConfigLoader.load(testConfigPath);
+
+      expect(result.namingConvention).toEqual(DEFAULT_CONFIG.namingConvention);
+      expect(result.logLevel).toBe(LogLevel.INFO);
+    });
   });
 
   describe('save', () => {
@@ -115,6 +127,42 @@ describe('ConfigLoader', () => {
 
       expect(mockConfigParser.stringify).toHaveBeenCalledWith(config, format);
       expect(mockFileSystemUtils.writeFileSync).toHaveBeenCalledWith(filePath, stringified);
+    });
+  });
+
+  describe('instance methods', () => {
+    let configLoader: ConfigLoader;
+
+    beforeEach(() => {
+      configLoader = new ConfigLoader();
+    });
+
+    describe('load', () => {
+      it('should delegate to static method', () => {
+        mockFileSystemUtils.existsSync.mockReturnValue(true);
+        mockConfigParser.parse.mockReturnValue(testConfig);
+
+        const result = configLoader.load(testConfigPath);
+
+        expect(result.logLevel).toBe(LogLevel.DEBUG);
+        expect(mockFileSystemUtils.existsSync).toHaveBeenCalledWith(testConfigPath);
+      });
+    });
+
+    describe('save', () => {
+      it('should delegate to static method', () => {
+        const config = { ...DEFAULT_CONFIG, logLevel: LogLevel.DEBUG } as OrderlyConfig;
+        const stringified = '{}';
+        mockConfigParser.stringify.mockReturnValue(stringified);
+
+        configLoader.save(config, '/config/test.json');
+
+        expect(mockConfigParser.stringify).toHaveBeenCalledWith(config, 'json');
+        expect(mockFileSystemUtils.writeFileSync).toHaveBeenCalledWith(
+          '/config/test.json',
+          stringified
+        );
+      });
     });
   });
 });

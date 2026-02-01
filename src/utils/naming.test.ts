@@ -3,9 +3,11 @@ import { NamingConvention, NamingConventionType } from '../config/types';
 
 describe('NamingUtils', () => {
   let testConvention: NamingConvention;
+  let namingUtils: NamingUtils;
 
   beforeEach(() => {
     testConvention = { type: NamingConventionType.KEBAB_CASE, lowercase: true };
+    namingUtils = new NamingUtils();
   });
 
   afterEach(() => {
@@ -30,6 +32,29 @@ describe('NamingUtils', () => {
 
       expect(result).toBe('testfilename');
     });
+
+    it('should handle empty string', () => {
+      const result = NamingUtils.toKebabCase('');
+
+      expect(result).toBe('');
+    });
+
+    it('should handle string with only special characters', () => {
+      const result = NamingUtils.toKebabCase('@#$%^&*()');
+
+      expect(result).toBe('');
+    });
+
+    it('should handle unicode characters', () => {
+      const result = NamingUtils.toKebabCase('tëst fílé');
+
+      expect(result).toBe('tst-fl');
+    });
+    it('should handle multiple consecutive separators', () => {
+      const result = NamingUtils.toKebabCase('test__file  name');
+
+      expect(result).toBe('test-file-name');
+    });
   });
 
   describe('toSnakeCase', () => {
@@ -37,7 +62,8 @@ describe('NamingUtils', () => {
       ['TestFileName', 'test_file_name'],
       ['test file name', 'test_file_name'],
       ['test-file-name', 'test_file_name'],
-      ['TEST_FILE_NAME', 'test_file_name']
+      ['TEST_FILE_NAME', 'test_file_name'],
+      ['test-', 'test_']
     ])('should convert "%s" to "%s"', (input, expected) => {
       const result = NamingUtils.toSnakeCase(input);
 
@@ -48,6 +74,18 @@ describe('NamingUtils', () => {
       const result = NamingUtils.toSnakeCase('test@file#name');
 
       expect(result).toBe('testfilename');
+    });
+
+    it('should handle empty string', () => {
+      const result = NamingUtils.toSnakeCase('');
+
+      expect(result).toBe('');
+    });
+
+    it('should handle string with only special characters', () => {
+      const result = NamingUtils.toSnakeCase('@#$%^&*()');
+
+      expect(result).toBe('');
     });
   });
 
@@ -62,6 +100,12 @@ describe('NamingUtils', () => {
 
       expect(result).toBe(expected);
     });
+
+    it('should handle trailing separators', () => {
+      const result = NamingUtils.toCamelCase('test-file-');
+
+      expect(result).toBe('testFile');
+    });
   });
 
   describe('toPascalCase', () => {
@@ -74,6 +118,12 @@ describe('NamingUtils', () => {
       const result = NamingUtils.toPascalCase(input);
 
       expect(result).toBe(expected);
+    });
+
+    it('should handle trailing separators', () => {
+      const result = NamingUtils.toPascalCase('test-file-');
+
+      expect(result).toBe('TestFile');
     });
   });
 
@@ -126,6 +176,26 @@ describe('NamingUtils', () => {
 
       expect(result).toBe('TestFile.txt');
     });
+
+    it('should handle unknown convention type', () => {
+      const convention: NamingConvention = {
+        type: 'unknown' as any,
+        lowercase: true
+      };
+      const result = NamingUtils.applyNamingConvention('Test File.txt', convention);
+
+      expect(result).toBe('test file.txt');
+    });
+
+    it('should not apply lowercase when convention.lowercase is false', () => {
+      const convention: NamingConvention = {
+        type: NamingConventionType.KEBAB_CASE,
+        lowercase: false
+      };
+      const result = NamingUtils.applyNamingConvention('Test File.txt', convention);
+
+      expect(result).toBe('test-file.txt');
+    });
   });
 
   describe('needsRename', () => {
@@ -142,6 +212,70 @@ describe('NamingUtils', () => {
       const result = NamingUtils.needsRename(filename, convention);
 
       expect(result).toBe(expected);
+    });
+
+    it('should return false for empty filename', () => {
+      const result = NamingUtils.needsRename('', testConvention);
+      expect(result).toBe(false);
+    });
+
+    it('should return false for filename without extension', () => {
+      const result = NamingUtils.needsRename('testfile', testConvention);
+      expect(result).toBe(false);
+    });
+
+    it('should return true for filename with only extension starting with dot', () => {
+      const result = NamingUtils.needsRename('.txt', testConvention);
+      expect(result).toBe(true);
+    });
+
+    it('should handle filename with multiple dots', () => {
+      const result = NamingUtils.needsRename('test.file.name.txt', testConvention);
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('instance methods', () => {
+    describe('toKebabCase', () => {
+      it('should delegate to static method', () => {
+        const result = namingUtils.toKebabCase('TestFileName');
+        expect(result).toBe('test-file-name');
+      });
+    });
+
+    describe('toSnakeCase', () => {
+      it('should delegate to static method', () => {
+        const result = namingUtils.toSnakeCase('TestFileName');
+        expect(result).toBe('test_file_name');
+      });
+    });
+
+    describe('toCamelCase', () => {
+      it('should delegate to static method', () => {
+        const result = namingUtils.toCamelCase('test-file-name');
+        expect(result).toBe('testFileName');
+      });
+    });
+
+    describe('toPascalCase', () => {
+      it('should delegate to static method', () => {
+        const result = namingUtils.toPascalCase('test-file-name');
+        expect(result).toBe('TestFileName');
+      });
+    });
+
+    describe('applyNamingConvention', () => {
+      it('should delegate to static method', () => {
+        const result = namingUtils.applyNamingConvention('Test File.txt', testConvention);
+        expect(result).toBe('test-file.txt');
+      });
+    });
+
+    describe('needsRename', () => {
+      it('should delegate to static method', () => {
+        const result = namingUtils.needsRename('Test File.txt', testConvention);
+        expect(result).toBe(true);
+      });
     });
   });
 });

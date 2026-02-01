@@ -9,11 +9,13 @@ describe('FileSystemUtils', () => {
   let testPath: string;
   let testContent: string;
   let testDir: string;
+  let fileSystemUtils: FileSystemUtils;
 
   beforeEach(() => {
     testPath = '/test/path/file.txt';
     testContent = 'test content';
     testDir = '/test/dir';
+    fileSystemUtils = new FileSystemUtils();
 
     // Configure mocks
     jest.mocked(fs.existsSync).mockReturnValue(false);
@@ -138,6 +140,84 @@ describe('FileSystemUtils', () => {
       expect(result).toBe(mockStats);
       expect(fs.statSync).toHaveBeenCalledTimes(1);
       expect(fs.statSync).toHaveBeenNthCalledWith(1, testPath);
+    });
+  });
+
+  describe('instance methods', () => {
+    describe('existsSync', () => {
+      it('should delegate to static method', () => {
+        jest.mocked(fs.existsSync).mockReturnValue(true);
+
+        const result = fileSystemUtils.existsSync(testPath);
+
+        expect(result).toBe(true);
+        expect(fs.existsSync).toHaveBeenCalledWith(testPath);
+      });
+    });
+
+    describe('readFileSync', () => {
+      it('should delegate to static method', () => {
+        jest.mocked(fs.readFileSync).mockReturnValue(testContent);
+
+        const result = fileSystemUtils.readFileSync(testPath);
+
+        expect(result).toBe(testContent);
+        expect(fs.readFileSync).toHaveBeenCalledWith(testPath, 'utf8');
+      });
+    });
+
+    describe('writeFileSync', () => {
+      it('should delegate to static method', () => {
+        jest.mocked(fs.existsSync).mockReturnValue(true);
+
+        fileSystemUtils.writeFileSync(testPath, testContent);
+
+        expect(path.dirname).toHaveBeenCalledWith(testPath);
+        expect(fs.existsSync).toHaveBeenCalledWith('/test/path');
+        expect(fs.writeFileSync).toHaveBeenCalledWith(testPath, testContent, 'utf8');
+      });
+    });
+
+    describe('appendFileSync', () => {
+      it('should delegate to static method', () => {
+        fileSystemUtils.appendFileSync(testPath, testContent);
+
+        expect(fs.appendFileSync).toHaveBeenCalledWith(testPath, testContent, 'utf8');
+      });
+    });
+
+    describe('mkdirSync', () => {
+      it('should delegate to static method', () => {
+        jest.mocked(fs.existsSync).mockReturnValue(false);
+
+        fileSystemUtils.mkdirSync(testDir);
+
+        expect(fs.existsSync).toHaveBeenCalledWith(testDir);
+        expect(fs.mkdirSync).toHaveBeenCalledWith(testDir, { recursive: true });
+      });
+    });
+
+    describe('renameSync', () => {
+      it('should delegate to static method', () => {
+        const oldPath = '/old/path.txt';
+        const newPath = '/new/path.txt';
+
+        fileSystemUtils.renameSync(oldPath, newPath);
+
+        expect(fs.renameSync).toHaveBeenCalledWith(oldPath, newPath);
+      });
+    });
+
+    describe('statSync', () => {
+      it('should delegate to static method', () => {
+        const mockStats = { size: 1024, isFile: () => true } as fs.Stats;
+        jest.mocked(fs.statSync).mockReturnValue(mockStats);
+
+        const result = fileSystemUtils.statSync(testPath);
+
+        expect(result).toBe(mockStats);
+        expect(fs.statSync).toHaveBeenCalledWith(testPath);
+      });
     });
   });
 });

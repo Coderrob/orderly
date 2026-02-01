@@ -1,0 +1,192 @@
+import { IScannedFile } from '../scanner/interfaces';
+
+import { IDedupeService, IDedupeStrategy } from './interfaces';
+import {
+  DedupeAction,
+  IDedupeResult,
+  IDedupeOutcome,
+  IDuplicateGroup,
+  IDedupeCandidate
+} from './types';
+
+/**
+ * Main dedupe orchestration service.
+ * Coordinates multiple strategies to find and handle duplicate files.
+ */
+export class DedupeService implements IDedupeService {
+  /**
+   *
+   * @param strategies
+   */
+  constructor(private readonly strategies: readonly IDedupeStrategy[]) {}
+
+  /**
+   * Finds duplicate files using all configured strategies.
+   * Groups files by strategy-generated keys and returns duplicate groups.
+   * @param files
+   */
+  async findDuplicates(files: IScannedFile[]): Promise<IDedupeResult> {
+    const allCandidates: IDedupeCandidate[] = [];
+    const strategiesUsed: string[] = [];
+
+    // Execute all strategies and collect candidates
+    for (const strategy of this.strategies) {
+      const candidates = await this.executeStrategy(strategy, files);
+      allCandidates.push(...candidates);
+      if (candidates.length > 0) {
+        strategiesUsed.push(strategy.name);
+      }
+    }
+
+    // Group candidates by key and strategy
+    const groups = this.groupCandidates(allCandidates);
+
+    return {
+      groups,
+      totalFiles: files.length,
+      totalDuplicates: groups.reduce((sum, group) => sum + group.files.length, 0),
+      strategiesUsed: [...strategiesUsed].sort((a, b) => a.localeCompare(b))
+    };
+  }
+
+  /**
+   * Applies the configured action to duplicate groups.
+   * Currently supports SKIP action - others can be added later.
+   * Async for future extensibility (e.g., REPLACE action may need file operations).
+   * @param result
+   * @param action
+   */
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async applyAction(result: IDedupeResult, action: DedupeAction): Promise<IDedupeOutcome> {
+    switch (action) {
+      case DedupeAction.SKIP:
+        return this.applySkipAction(result);
+      case DedupeAction.REPORT:
+        return this.applyReportAction(result);
+      case DedupeAction.REPLACE:
+        return this.applyReplaceAction(result);
+      default:
+        throw new Error(`Unsupported dedupe action: ${String(action)}`);
+    }
+  }
+
+  /**
+   * Executes a single strategy on all files and returns candidates.
+   * @param strategy
+   * @param files
+   */
+  private async executeStrategy(
+    strategy: IDedupeStrategy,
+    files: IScannedFile[]
+  ): Promise<IDedupeCandidate[]> {
+    const candidates: IDedupeCandidate[] = [];
+
+    for (const file of files) {
+      if (!strategy.supports(file)) {
+        continue;
+      }
+
+      const key = await strategy.getKey(file);
+      if (key !== null) {
+        candidates.push({
+          file,
+          key,
+          strategy: strategy.name
+        });
+      }
+    }
+
+    return candidates;
+  }
+
+  /**
+   * Groups candidates by key and strategy, creating duplicate groups.
+   * @param candidates
+   */
+  private groupCandidates(candidates: IDedupeCandidate[]): IDuplicateGroup[] {
+    const groupsMap = new Map<string, IDedupeCandidate[]>();
+
+    // Group by composite key (strategy + key)
+    for (const candidate of candidates) {
+      const compositeKey = `${candidate.strategy}:${candidate.key}`;
+      const group = groupsMap.get(compositeKey) || [];
+      group.push(candidate);
+      groupsMap.set(compositeKey, group);
+    }
+
+    // Convert to IDuplicateGroup, keeping only groups with multiple files
+    const groups: IDuplicateGroup[] = [];
+    for (const [compositeKey, groupCandidates] of groupsMap) {
+      if (groupCandidates.length > 1) {
+        const [strategy, key] = compositeKey.split(':', 2);
+        groups.push({
+          key,
+          strategy,
+          files: groupCandidates.map(c => c.file),
+          primary: groupCandidates[0].file // First file as primary
+        });
+      }
+    }
+
+    return groups;
+  }
+
+  /**
+   * Applies SKIP action - marks duplicates for removal from operation queue.
+   * @param result
+   */
+  private applySkipAction(result: IDedupeResult): IDedupeOutcome {
+    const skipped: IScannedFile[] = [];
+    for (const group of result.groups) {
+      // Skip primary, remove duplicates
+      for (let i = 1; i < group.files.length; i++) {
+        skipped.push(group.files[i]);
+      }
+    }
+
+    return {
+      action: DedupeAction.SKIP,
+      skipped,
+      replaced: [],
+      reported: [],
+      errors: []
+    };
+  }
+
+  /**
+   * Applies REPORT action - generates report without modifying operations.
+   * @param result
+   */
+  private applyReportAction(result: IDedupeResult): IDedupeOutcome {
+    return {
+      action: DedupeAction.REPORT,
+      skipped: [],
+      replaced: [],
+      reported: result.groups,
+      errors: []
+    };
+  }
+
+  /**
+   * Applies REPLACE action - schedules duplicates for deletion.
+   * Note: Actual deletion would be handled by operation executor.
+   * @param result
+   */
+  private applyReplaceAction(result: IDedupeResult): IDedupeOutcome {
+    const replaced: IScannedFile[] = [];
+    for (const group of result.groups) {
+      // All except primary
+      for (let i = 1; i < group.files.length; i++) {
+        replaced.push(group.files[i]);
+      }
+    }
+
+    return {
+      action: DedupeAction.REPLACE,
+      skipped: [],
+      replaced,
+      reported: [],
+      errors: []
+    };
+  }
+}

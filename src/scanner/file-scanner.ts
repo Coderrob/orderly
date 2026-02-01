@@ -1,28 +1,32 @@
 import * as path from 'node:path';
+
 import { glob } from 'glob';
+
 import { OrderlyConfig } from '../config/types';
 import { Logger } from '../logger/logger';
-import { FileSystemUtils } from '../utils/file-system-utils';
 import { FileCategorizer } from '../utils/file-categorizer';
+import { FileSystemUtils } from '../utils/file-system-utils';
 
-export interface ScannedFile {
-  originalPath: string;
-  filename: string;
-  extension: string;
-  size: number;
-  category?: string;
-  targetFolder?: string;
-  needsRename: boolean;
-  suggestedName?: string;
-}
+import type { IScannedFile, IFileScanner } from './interfaces';
 
-export class FileScanner {
+export type { IScannedFile, IFileScanner } from './interfaces';
+
+export class FileScanner implements IFileScanner {
+  /**
+   *
+   * @param config
+   * @param logger
+   */
   constructor(
-    private config: OrderlyConfig,
-    private logger: Logger
+    private readonly config: OrderlyConfig,
+    private readonly logger: Logger
   ) {}
 
-  async scan(directory: string): Promise<ScannedFile[]> {
+  /**
+   *
+   * @param directory
+   */
+  async scan(directory: string): Promise<IScannedFile[]> {
     this.logger.info(`Scanning directory: ${directory}`);
 
     const files = await this.findFiles(directory);
@@ -34,6 +38,10 @@ export class FileScanner {
     return scannedFiles;
   }
 
+  /**
+   *
+   * @param directory
+   */
   private async findFiles(directory: string): Promise<string[]> {
     const pattern = this.config.includeHidden ? '**/*' : '**/[!.]*';
     return glob(pattern, {
@@ -44,8 +52,13 @@ export class FileScanner {
     });
   }
 
-  private processFiles(directory: string, files: string[]): ScannedFile[] {
-    const scannedFiles: ScannedFile[] = [];
+  /**
+   *
+   * @param directory
+   * @param files
+   */
+  private processFiles(directory: string, files: string[]): IScannedFile[] {
+    const scannedFiles: IScannedFile[] = [];
 
     for (const file of files) {
       const scannedFile = this.processFile(directory, file);
@@ -57,7 +70,12 @@ export class FileScanner {
     return scannedFiles;
   }
 
-  private processFile(directory: string, file: string): ScannedFile | null {
+  /**
+   *
+   * @param directory
+   * @param file
+   */
+  private processFile(directory: string, file: string): IScannedFile | null {
     const fullPath = path.join(directory, file);
     const stats = FileSystemUtils.statSync(fullPath);
 
@@ -79,7 +97,11 @@ export class FileScanner {
     };
   }
 
-  getCategorySummary(files: ScannedFile[]): Map<string, number> {
+  /**
+   *
+   * @param files
+   */
+  getCategorySummary(files: IScannedFile[]): Map<string, number> {
     const summary = new Map<string, number>();
 
     for (const file of files) {

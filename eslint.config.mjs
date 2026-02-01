@@ -1,6 +1,8 @@
 // @ts-check
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import importPlugin from 'eslint-plugin-import';
+import jsdocPlugin from 'eslint-plugin-jsdoc';
 
 export default tseslint.config(
   {
@@ -17,6 +19,10 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
+    plugins: {
+      import: importPlugin,
+      jsdoc: jsdocPlugin
+    },
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -24,8 +30,29 @@ export default tseslint.config(
       }
     },
     rules: {
+      // Import sorting
+      'import/order': [
+        'error',
+        {
+          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+          'newlines-between': 'always',
+          alphabetize: {
+            order: 'asc',
+            caseInsensitive: true
+          }
+        }
+      ],
+
       // TypeScript specific rules
-      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/explicit-function-return-type': [
+        'error',
+        {
+          allowExpressions: true,
+          allowTypedFunctionExpressions: true,
+          allowHigherOrderFunctions: true,
+          allowDirectConstAssertionInArrowFunctions: true
+        }
+      ],
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': [
@@ -38,6 +65,14 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
+
+      // JSDoc requirements (temporarily disabled - requires manual implementation)
+      // TODO: Add JSDoc comments to all functions with @param and @returns tags
+      'jsdoc/require-jsdoc': 'off',
+      'jsdoc/require-param': 'off',
+      'jsdoc/require-returns': 'off',
+      'jsdoc/require-param-type': 'off', // TypeScript handles this
+      'jsdoc/require-returns-type': 'off', // TypeScript handles this
 
       // Complexity rules (SOLID and Clean Code)
       complexity: ['error', 10],
