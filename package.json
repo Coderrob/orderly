@@ -10,7 +10,7 @@
     "build": "npm run clean && tsc",
     "build:test": "tsc -p tsconfig.test.json",
     "start": "node dist/cli.js",
-    "dev": "ts-node src/cli/index.ts",
+    "dev": "tsx src/cli.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage && npm run make-badge",
@@ -68,6 +68,7 @@
     "sonarqube-scanner": "^4.3.4",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.54.0"
   },
