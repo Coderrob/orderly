@@ -1,3 +1,10 @@
+<p align="center">
+  <img
+    src="public/img/orderly-logo-small.png"
+    alt="Orderly logo"
+  />
+</p>
+
 # Orderly
 
 A configurable CLI tool that scans folders, categorizes and organizes files by type and context, enforces naming conventions (e.g., lowercase kebab case), moves and renames files, generates a manifest, and logs all actions for full auditability—ensuring a clean, consistent, and traceable directory structure.
@@ -7,28 +14,34 @@ A configurable CLI tool that scans folders, categorizes and organizes files by t
 <!-- Primary Badges -->
 <div align="center">
 
-[![NPM Version](https://img.shields.io/badge/npm-v1.0.0-blue.svg)](https://www.npmjs.com/package/@coderrob/orderly)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![NPM Version](https://img.shields.io/npm/v/@coderrob/orderly?style=flat-square)](https://www.npmjs.com/package/@coderrob/orderly)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
+[![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg?style=flat-square)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 
 <!-- Quality Badges -->
-[![Test Coverage](https://img.shields.io/badge/coverage-99.66%25-brightgreen.svg)](https://github.com/Coderrob/orderly)
-[![Tests Passing](https://img.shields.io/badge/tests-157%20passing-brightgreen.svg)](https://github.com/Coderrob/orderly)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/Coderrob/orderly)
-[![Code Quality](https://img.shields.io/badge/code%20quality-A+-brightgreen.svg)](https://github.com/Coderrob/orderly)
+[![Coverage Badge](.github/badges/coverage.svg)](https://github.com/Coderrob/orderly)
+[![Tests](https://img.shields.io/badge/tests-570%20passing-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
+[![Code Quality](https://img.shields.io/badge/code%20quality-A+-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
 
 <!-- Standards & Tools -->
-[![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://prettier.io/)
-[![Linter: ESLint](https://img.shields.io/badge/linter-ESLint-4B32C3.svg)](https://eslint.org/)
-[![Tested with Jest](https://img.shields.io/badge/tested_with-jest-99424f.svg)](https://jestjs.io/)
-[![Commitizen Friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cli/)
+[![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square&logo=prettier)](https://prettier.io/)
+[![Linter: ESLint](https://img.shields.io/badge/linter-ESLint-4B32C3.svg?style=flat-square&logo=eslint)](https://eslint.org/)
+[![Tested with Jest](https://img.shields.io/badge/tested_with-jest-99424f.svg?style=flat-square&logo=jest)](https://jestjs.io/)
+[![Commitizen Friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg?style=flat-square)](http://commitizen.github.io/cz-cli/)
 
 <!-- Metrics -->
-[![Code Duplication](https://img.shields.io/badge/duplication-%3C1%25-brightgreen.svg)](https://github.com/Coderrob/orderly)
-[![Maintainability](https://img.shields.io/badge/maintainability-A-brightgreen.svg)](https://github.com/Coderrob/orderly)
-[![Dependencies](https://img.shields.io/badge/dependencies-5-blue.svg)](package.json)
-[![DevDependencies](https://img.shields.io/badge/devDependencies-15-blue.svg)](package.json)
+[![Code Duplication](https://img.shields.io/badge/duplication-%3C1%25-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
+[![Maintainability](https://img.shields.io/badge/maintainability-A-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
+[![Dependencies](https://img.shields.io/badge/dependencies-5-blue.svg?style=flat-square)](package.json)
+[![DevDependencies](https://img.shields.io/badge/devDependencies-16-blue.svg?style=flat-square)](package.json)
+
+<!-- Additional Badges -->
+[![GitHub Stars](https://img.shields.io/github/stars/Coderrob/orderly?style=flat-square)](https://github.com/Coderrob/orderly/stargazers)
+[![GitHub Issues](https://img.shields.io/github/issues/Coderrob/orderly?style=flat-square)](https://github.com/Coderrob/orderly/issues)
+[![GitHub Last Commit](https://img.shields.io/github/last-commit/Coderrob/orderly?style=flat-square)](https://github.com/Coderrob/orderly/commits/main)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
 
 </div>
 

@@ -1,6 +1,16 @@
+import {
+  ReadonlyExtensionList,
+  DEFAULT_CATEGORIES,
+  DEFAULT_DRY_RUN,
+  DEFAULT_GENERATE_MANIFEST,
+  DEFAULT_INCLUDE_HIDDEN
+} from '../constants';
+import { IDedupeConfig } from '../dedupe/types';
+import { LogLevel } from '../types/logging';
+
 export interface CategoryRule {
   name: string;
-  extensions: string[];
+  extensions: ReadonlyExtensionList;
   patterns?: string[];
   targetFolder?: string;
 }
@@ -22,8 +32,6 @@ export interface NamingConvention {
   lowercase?: boolean;
 }
 
-import { LogLevel } from '../types';
-
 export interface OrderlyConfig {
   categories: CategoryRule[];
   namingConvention: NamingConvention;
@@ -34,71 +42,18 @@ export interface OrderlyConfig {
   logLevel: LogLevel;
   logFile?: string;
   targetDirectory?: string;
+  dedupe?: IDedupeConfig;
 }
 
 export const DEFAULT_CONFIG: OrderlyConfig = {
-  categories: [
-    {
-      name: 'images',
-      extensions: ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp', '.ico'],
-      targetFolder: 'images'
-    },
-    {
-      name: 'documents',
-      extensions: ['.pdf', '.doc', '.docx', '.txt', '.md', '.odt', '.rtf'],
-      targetFolder: 'documents'
-    },
-    {
-      name: 'videos',
-      extensions: ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm'],
-      targetFolder: 'videos'
-    },
-    {
-      name: 'audio',
-      extensions: ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a'],
-      targetFolder: 'audio'
-    },
-    {
-      name: 'archives',
-      extensions: ['.zip', '.tar', '.gz', '.rar', '.7z', '.bz2', '.xz'],
-      targetFolder: 'archives'
-    },
-    {
-      name: 'code',
-      extensions: [
-        '.js',
-        '.ts',
-        '.py',
-        '.java',
-        '.cpp',
-        '.c',
-        '.h',
-        '.cs',
-        '.go',
-        '.rs',
-        '.php',
-        '.rb'
-      ],
-      targetFolder: 'code'
-    },
-    {
-      name: 'spreadsheets',
-      extensions: ['.xlsx', '.xls', '.csv', '.ods'],
-      targetFolder: 'spreadsheets'
-    },
-    {
-      name: 'presentations',
-      extensions: ['.ppt', '.pptx', '.odp', '.key'],
-      targetFolder: 'presentations'
-    }
-  ],
+  categories: DEFAULT_CATEGORIES as CategoryRule[],
   namingConvention: {
     type: NamingConventionType.KEBAB_CASE,
     lowercase: true
   },
   excludePatterns: ['node_modules/**', '.git/**', 'dist/**', 'build/**', '.DS_Store'],
-  includeHidden: false,
-  dryRun: false,
-  generateManifest: true,
+  includeHidden: DEFAULT_INCLUDE_HIDDEN,
+  dryRun: DEFAULT_DRY_RUN,
+  generateManifest: DEFAULT_GENERATE_MANIFEST,
   logLevel: LogLevel.INFO
 };

@@ -72,4 +72,15 @@ describe('FileCategorizer', () => {
       expect(result).toBeUndefined();
     });
   });
+
+  describe('instance method', () => {
+    it('should delegate to static method', () => {
+      const categorizer = new FileCategorizer();
+      const categories = [{ name: 'documents', extensions: ['.txt'], targetFolder: 'docs' }];
+
+      const result = categorizer.categorize('.txt', 'test.txt', categories);
+
+      expect(result).toEqual(categories[0]);
+    });
+  });
 });

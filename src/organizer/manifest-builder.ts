@@ -1,8 +1,17 @@
-import { FileOperation, OrganizationResult } from './file-organizer';
 import { Manifest, ManifestEntry, OperationStatus } from './manifest-generator';
+import type { IFileOperation, IOrganizationResult, IFileError } from './types';
 
-export class ManifestBuilder {
-  build(result: OrganizationResult, errors: Array<{ file: string; error: string }>): Manifest {
+export interface IManifestBuilder {
+  build(result: IOrganizationResult, errors: IFileError[]): Manifest;
+}
+
+export class ManifestBuilder implements IManifestBuilder {
+  /**
+   *
+   * @param result
+   * @param errors
+   */
+  build(result: IOrganizationResult, errors: IFileError[]): Manifest {
     const timestamp = new Date().toISOString();
     const entries = this.buildEntries(result.operations, errors, timestamp);
 
@@ -15,9 +24,15 @@ export class ManifestBuilder {
     };
   }
 
+  /**
+   *
+   * @param operations
+   * @param errors
+   * @param timestamp
+   */
   private buildEntries(
-    operations: FileOperation[],
-    errors: Array<{ file: string; error: string }>,
+    operations: IFileOperation[],
+    errors: IFileError[],
     timestamp: string
   ): ManifestEntry[] {
     return operations.map(operation => {

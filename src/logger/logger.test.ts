@@ -206,4 +206,32 @@ describe('Logger', () => {
       expect(logger.getLogs()).toHaveLength(0);
     });
   });
+  describe('edge cases', () => {
+    it('should handle details with nested objects', () => {
+      const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+      const nestedDetails = { user: { name: 'test', data: { id: 123 } } };
+
+      logger.info('Test with nested', nestedDetails);
+
+      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Test with nested'));
+      mockConsoleLog.mockRestore();
+    });
+
+    it('should handle empty string messages', () => {
+      logger.info('');
+
+      const logs = logger.getLogs();
+      expect(logs[logs.length - 1].message).toBe('');
+    });
+
+    it('should write to file with no details', () => {
+      const loggerWithFile = new Logger(LogLevel.INFO, '/test/log/file.log');
+      loggerWithFile.info('Test message');
+
+      expect(mockFileSystemUtils.appendFileSync).toHaveBeenCalledWith(
+        '/test/log/file.log',
+        expect.stringContaining('Test message')
+      );
+    });
+  });
 });

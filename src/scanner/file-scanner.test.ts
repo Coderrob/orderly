@@ -1,4 +1,5 @@
-import { FileScanner, ScannedFile } from './file-scanner';
+import { FileScanner } from './file-scanner';
+import type { IScannedFile } from './interfaces';
 import { OrderlyConfig, NamingConventionType } from '../config/types';
 import { Logger } from '../logger/logger';
 import { LogLevel } from '../types';
@@ -193,7 +194,7 @@ describe('FileScanner', () => {
 
   describe('getCategorySummary', () => {
     it('should return summary of categorized files', () => {
-      const files: ScannedFile[] = [
+      const files: IScannedFile[] = [
         {
           originalPath: '/test/file1.jpg',
           filename: 'file1.jpg',
@@ -230,7 +231,7 @@ describe('FileScanner', () => {
     });
 
     it('should count uncategorized files', () => {
-      const files: ScannedFile[] = [
+      const files: IScannedFile[] = [
         {
           originalPath: '/test/file.xyz',
           filename: 'file.xyz',
@@ -252,7 +253,7 @@ describe('FileScanner', () => {
     });
 
     it('should handle mixed categorized and uncategorized files', () => {
-      const files: ScannedFile[] = [
+      const files: IScannedFile[] = [
         {
           originalPath: '/test/file1.jpg',
           filename: 'file1.jpg',

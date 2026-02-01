@@ -1,33 +1,26 @@
 import { OrderlyConfig } from '../config/types';
 import { Logger } from '../logger/logger';
-import { ScannedFile } from '../scanner/file-scanner';
-import { OperationPlanner } from './operation-planner';
+import type { IScannedFile } from '../scanner/interfaces';
+
+import type { IFileOrganizer } from './interfaces';
 import { OperationExecutor } from './operation-executor';
+import { OperationPlanner } from './operation-planner';
+import type { IFileOperation, IOrganizationResult } from './types';
 
-export enum FileOperationType {
-  MOVE = 'move',
-  RENAME = 'rename',
-  MOVE_RENAME = 'move-rename'
-}
+export { FileOperationType } from './types';
+export type { IFileOperation, IOrganizationResult, IFileError } from './types';
+export type { IFileOrganizer } from './interfaces';
 
-export interface FileOperation {
-  type: FileOperationType;
-  originalPath: string;
-  newPath: string;
-  reason: string;
-}
-
-export interface OrganizationResult {
-  operations: FileOperation[];
-  successful: number;
-  failed: number;
-  errors: Array<{ file: string; error: string }>;
-}
-
-export class FileOrganizer {
+export class FileOrganizer implements IFileOrganizer {
   private readonly planner: OperationPlanner;
   private readonly executor: OperationExecutor;
 
+  /**
+   *
+   * @param config
+   * @param logger
+   * @param baseDirectory
+   */
   constructor(
     private readonly config: OrderlyConfig,
     private readonly logger: Logger,
@@ -37,13 +30,21 @@ export class FileOrganizer {
     this.executor = new OperationExecutor(logger, config.dryRun);
   }
 
-  planOperations(files: ScannedFile[]): FileOperation[] {
+  /**
+   *
+   * @param files
+   */
+  planOperations(files: IScannedFile[]): IFileOperation[] {
     const operations = this.planner.plan(files);
     this.logger.info(`Planned ${operations.length} operations`);
     return operations;
   }
 
-  executeOperations(operations: FileOperation[]): OrganizationResult {
+  /**
+   *
+   * @param operations
+   */
+  executeOperations(operations: IFileOperation[]): IOrganizationResult {
     return this.executor.execute(operations);
   }
 }

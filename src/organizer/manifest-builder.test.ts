@@ -1,11 +1,12 @@
 import { ManifestBuilder } from './manifest-builder';
-import { FileOperation, OrganizationResult, FileOperationType } from './file-organizer';
+import { FileOperationType } from './types';
+import type { IFileOperation, IOrganizationResult, IFileError } from './types';
 
 describe('ManifestBuilder', () => {
   let builder: ManifestBuilder;
-  let testResult: OrganizationResult;
-  let testErrors: Array<{ file: string; error: string }>;
-  let testOperations: FileOperation[];
+  let testResult: IOrganizationResult;
+  let testErrors: IFileError[];
+  let testOperations: IFileOperation[];
 
   beforeEach(() => {
     builder = new ManifestBuilder();
@@ -88,7 +89,7 @@ describe('ManifestBuilder', () => {
     });
 
     it('should handle empty operations', () => {
-      const emptyResult: OrganizationResult = {
+      const emptyResult: IOrganizationResult = {
         operations: [],
         successful: 0,
         failed: 0,
@@ -102,7 +103,7 @@ describe('ManifestBuilder', () => {
     });
 
     it('should handle all successful operations', () => {
-      const successResult: OrganizationResult = {
+      const successResult: IOrganizationResult = {
         operations: testOperations,
         successful: 2,
         failed: 0,

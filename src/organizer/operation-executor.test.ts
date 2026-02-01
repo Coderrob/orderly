@@ -1,5 +1,6 @@
 import { OperationExecutor } from './operation-executor';
-import { FileOperation, FileOperationType } from './file-organizer';
+import { FileOperationType } from './types';
+import type { IFileOperation } from './types';
 import { Logger } from '../logger/logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
@@ -11,8 +12,8 @@ describe('OperationExecutor', () => {
 
   let executor: OperationExecutor;
   let loggerInstance: jest.Mocked<Logger>;
-  let testOperation: FileOperation;
-  let testOperations: FileOperation[];
+  let testOperation: IFileOperation;
+  let testOperations: IFileOperation[];
 
   beforeEach(() => {
     loggerInstance = {
@@ -156,6 +157,24 @@ describe('OperationExecutor', () => {
       expect(loggerInstance.error).toHaveBeenCalledWith(
         expect.stringContaining('✗'),
         expect.stringContaining('Permission denied')
+      );
+    });
+
+    it('should handle non-Error exceptions', () => {
+      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.renameSync.mockImplementation(() => {
+        // eslint-disable-next-line @typescript-eslint/no-throw-literal
+        throw { message: 'Custom error' } as any;
+      });
+
+      const result = executor.execute(testOperations);
+
+      expect(result.successful).toBe(0);
+      expect(result.failed).toBe(1);
+      expect(result.errors[0].error).toBe('[object Object]');
+      expect(loggerInstance.error).toHaveBeenCalledWith(
+        expect.stringContaining('✗'),
+        '[object Object]'
       );
     });
 

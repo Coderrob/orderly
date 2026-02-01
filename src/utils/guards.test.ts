@@ -5,7 +5,8 @@ import {
   isBoolean,
   isArray,
   isNullOrUndefined,
-  isPrimitive
+  isPrimitive,
+  isOrderlyError
 } from './guards';
 
 describe('isObject', () => {
@@ -112,5 +113,46 @@ describe('isPrimitive', () => {
     [() => {}, false, 'function']
   ])('should return %s for %s', (input, expected, description) => {
     expect(isPrimitive(input)).toBe(expected);
+  });
+});
+
+describe('isOrderlyError', () => {
+  it('should return true for OrderlyError instances', () => {
+    const error = new (class extends Error {
+      code = 'TEST_ERROR';
+      category = 'validation';
+    })();
+
+    expect(isOrderlyError(error)).toBe(true);
+  });
+
+  it('should return false for regular Error instances', () => {
+    const error = new Error('test');
+
+    expect(isOrderlyError(error)).toBe(false);
+  });
+
+  it('should return false for Error with code but no category', () => {
+    const error = new (class extends Error {
+      code = 'TEST_ERROR';
+    })();
+
+    expect(isOrderlyError(error)).toBe(false);
+  });
+
+  it('should return false for Error with category but no code', () => {
+    const error = new (class extends Error {
+      category = 'validation';
+    })();
+
+    expect(isOrderlyError(error)).toBe(false);
+  });
+
+  it('should return false for non-Error objects', () => {
+    expect(isOrderlyError('string')).toBe(false);
+    expect(isOrderlyError(42)).toBe(false);
+    expect(isOrderlyError(null)).toBe(false);
+    expect(isOrderlyError(undefined)).toBe(false);
+    expect(isOrderlyError({})).toBe(false);
   });
 });

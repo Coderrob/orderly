@@ -1,12 +1,8 @@
-import {
-  FileOrganizer,
-  FileOperation,
-  OrganizationResult,
-  FileOperationType
-} from './file-organizer';
+import { FileOrganizer, FileOperationType } from './file-organizer';
+import type { IFileOperation, IOrganizationResult } from './types';
 import { OrderlyConfig, NamingConventionType } from '../config/types';
 import { Logger } from '../logger/logger';
-import { ScannedFile } from '../scanner/file-scanner';
+import type { IScannedFile } from '../scanner/interfaces';
 import { OperationPlanner } from './operation-planner';
 import { OperationExecutor } from './operation-executor';
 import { LogLevel } from '../types';
@@ -20,12 +16,12 @@ describe('FileOrganizer', () => {
   let loggerInstance: jest.Mocked<Logger>;
   let plannerInstance: jest.Mocked<OperationPlanner>;
   let executorInstance: {
-    execute: jest.MockedFunction<(operations: FileOperation[]) => OrganizationResult>;
+    execute: jest.MockedFunction<(operations: IFileOperation[]) => IOrganizationResult>;
   };
   let testConfig: OrderlyConfig;
   let testBaseDirectory: string;
-  let testFiles: ScannedFile[];
-  let testOperations: FileOperation[];
+  let testFiles: IScannedFile[];
+  let testOperations: IFileOperation[];
 
   beforeEach(() => {
     loggerInstance = {
@@ -35,7 +31,7 @@ describe('FileOrganizer', () => {
       plan: jest.fn()
     } as any;
 
-    const executeMock = jest.fn<OrganizationResult, [FileOperation[]]>();
+    const executeMock = jest.fn<IOrganizationResult, [IFileOperation[]]>();
     executorInstance = {
       execute: executeMock
     };
@@ -120,7 +116,7 @@ describe('FileOrganizer', () => {
 
   describe('executeOperations', () => {
     it('should use OperationExecutor to execute operations', () => {
-      const mockResult: OrganizationResult = {
+      const mockResult: IOrganizationResult = {
         operations: testOperations,
         successful: 1,
         failed: 0,
@@ -135,7 +131,7 @@ describe('FileOrganizer', () => {
     });
 
     it('should pass operations to executor', () => {
-      const mockResult: OrganizationResult = {
+      const mockResult: IOrganizationResult = {
         operations: testOperations,
         successful: 1,
         failed: 0,
@@ -149,7 +145,7 @@ describe('FileOrganizer', () => {
     });
 
     it('should return result from executor', () => {
-      const expected: OrganizationResult = {
+      const expected: IOrganizationResult = {
         operations: testOperations,
         successful: 5,
         failed: 2,
@@ -166,7 +162,7 @@ describe('FileOrganizer', () => {
   describe('integration', () => {
     it('should orchestrate planning and execution', () => {
       plannerInstance.plan.mockReturnValue(testOperations);
-      const mockResult: OrganizationResult = {
+      const mockResult: IOrganizationResult = {
         operations: testOperations,
         successful: 1,
         failed: 0,

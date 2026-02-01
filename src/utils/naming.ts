@@ -1,15 +1,36 @@
 import * as path from 'node:path';
+
 import { NamingConvention, NamingConventionType } from '../config/types';
 
-export class NamingUtils {
+import type { INamingUtils } from './interfaces';
+
+export class NamingUtils implements INamingUtils {
+  /**
+   * Converts a string to kebab-case format.
+   * @param str - The input string to convert
+   * @returns The string converted to kebab-case
+   */
   static toKebabCase(str: string): string {
-    return str
-      .replaceAll(/([a-z])([A-Z])/g, '$1-$2')
-      .replaceAll(/[\s_]+/g, '-')
-      .replaceAll(/[^a-zA-Z0-9-]/g, '')
-      .toLowerCase();
+    const withHyphens = str.replaceAll(/([a-z])([A-Z])/g, '$1-$2');
+    const normalizedSeparators = withHyphens.replaceAll(/[\s_]+/g, '-');
+    const cleaned = normalizedSeparators.replaceAll(/[^a-zA-Z0-9-]/g, '');
+    return cleaned.toLowerCase();
   }
 
+  /**
+   * Converts a string to kebab-case format.
+   * @param str - The input string to convert
+   * @returns The string converted to kebab-case
+   */
+  toKebabCase(str: string): string {
+    return NamingUtils.toKebabCase(str);
+  }
+
+  /**
+   * Converts a string to snake_case format.
+   * @param str - The input string to convert
+   * @returns The string converted to snake_case
+   */
   static toSnakeCase(str: string): string {
     return str
       .replaceAll(/([a-z])([A-Z])/g, '$1_$2')
@@ -18,12 +39,40 @@ export class NamingUtils {
       .toLowerCase();
   }
 
+  /**
+   * Converts a string to snake_case format.
+   * @param str - The input string to convert
+   * @returns The string converted to snake_case
+   */
+  toSnakeCase(str: string): string {
+    return NamingUtils.toSnakeCase(str);
+  }
+
+  /**
+   * Converts a string to camelCase format.
+   * @param str - The input string to convert
+   * @returns The string converted to camelCase
+   */
   static toCamelCase(str: string): string {
     return str
       .toLowerCase()
       .replaceAll(/[-_\s]+(.)?/g, (_: string, char: string) => (char ? char.toUpperCase() : ''));
   }
 
+  /**
+   * Converts a string to camelCase format.
+   * @param str - The input string to convert
+   * @returns The string converted to camelCase
+   */
+  toCamelCase(str: string): string {
+    return NamingUtils.toCamelCase(str);
+  }
+
+  /**
+   * Converts a string to PascalCase format.
+   * @param str - The input string to convert
+   * @returns The string converted to PascalCase
+   */
   static toPascalCase(str: string): string {
     return str
       .toLowerCase()
@@ -31,6 +80,21 @@ export class NamingUtils {
       .replaceAll(/^./g, (char: string) => char.toUpperCase());
   }
 
+  /**
+   * Converts a string to PascalCase format.
+   * @param str - The input string to convert
+   * @returns The string converted to PascalCase
+   */
+  toPascalCase(str: string): string {
+    return NamingUtils.toPascalCase(str);
+  }
+
+  /**
+   * Applies a naming convention to a filename.
+   * @param filename - The filename to apply the convention to
+   * @param convention - The naming convention to apply
+   * @returns The filename with the naming convention applied
+   */
   static applyNamingConvention(filename: string, convention: NamingConvention): string {
     const ext = path.extname(filename);
     const nameWithoutExt = path.basename(filename, ext);
@@ -64,8 +128,34 @@ export class NamingUtils {
     return convertedName + ext.toLowerCase();
   }
 
+  /**
+   * Applies a naming convention to a filename.
+   * @param filename - The filename to apply the convention to
+   * @param convention - The naming convention to apply
+   * @returns The filename with the naming convention applied
+   */
+  applyNamingConvention(filename: string, convention: NamingConvention): string {
+    return NamingUtils.applyNamingConvention(filename, convention);
+  }
+
+  /**
+   * Determines if a filename needs to be renamed according to the given convention.
+   * @param filename - The filename to check
+   * @param convention - The naming convention to check against
+   * @returns True if the filename needs to be renamed, false otherwise
+   */
   static needsRename(filename: string, convention: NamingConvention): boolean {
     const converted = this.applyNamingConvention(filename, convention);
     return filename !== converted;
+  }
+
+  /**
+   * Determines if a filename needs to be renamed according to the given convention.
+   * @param filename - The filename to check
+   * @param convention - The naming convention to check against
+   * @returns True if the filename needs to be renamed, false otherwise
+   */
+  needsRename(filename: string, convention: NamingConvention): boolean {
+    return NamingUtils.needsRename(filename, convention);
   }
 }

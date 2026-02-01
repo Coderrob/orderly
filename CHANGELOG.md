@@ -2,9 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Improved
+
+- **Interface-Driven Development**: Consolidated duplicate `ConfigFormat` enum into single source of truth
+- **Code Quality**: Fixed utils barrel export by removing .js extensions and adding interface re-exports
+- **Test Coverage**: Added comprehensive tests for `ConsoleOutputWriter` implementing `IOutputWriter` interface
+- **Architecture**: Extracted organizer interfaces to dedicated types file following IDD principles
+- **CLI Refactoring**: Restructured CLI into modular command/service architecture with dependency injection
+- **Error Handling**: Created typed error module with `IOrderlyError` interface and specific error classes for config, file operations, and validation
+
+### Added
+
+- **Error Module**: New `src/errors/` module with typed error classes extending `IOrderlyError`
+- **Type Guards**: Added `isOrderlyError()` type guard function for runtime error type checking
+
 ## [1.0.0] - 2025-10-19
 
 ### Added
+
 - Initial release of Orderly CLI tool
 - File scanning and categorization by extension
 - Support for 8 default file categories (images, documents, videos, audio, archives, code, spreadsheets, presentations)
