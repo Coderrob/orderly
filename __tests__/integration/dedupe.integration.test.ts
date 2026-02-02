@@ -51,21 +51,14 @@ describe('Dedupe Integration Tests', () => {
     it('should detect duplicate files with identical content', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       // Create duplicate files
@@ -98,21 +91,14 @@ describe('Dedupe Integration Tests', () => {
     it('should skip duplicate files when action is skip', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const content = 'duplicate content';
@@ -134,14 +120,14 @@ describe('Dedupe Integration Tests', () => {
     it('should handle unique files correctly', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = createTestConfig({ dryRun: false });
-      // Override dedupe
-      (config as any).dedupe = {
-        enabled: true,
-        recursive: false,
-        strategy: { mode: 'any', sha256: true },
-        action: 'skip'
-      };
+      const config = createTestConfig({
+        dryRun: false,
+        dedupe: {
+          enabled: true,
+          strategy: 'hash',
+          action: 'skip'
+        }
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       // Create unique files
@@ -167,21 +153,14 @@ describe('Dedupe Integration Tests', () => {
     it('should handle large files for hash comparison', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       // Create large duplicate files (1MB each)
@@ -202,21 +181,14 @@ describe('Dedupe Integration Tests', () => {
     it('should detect duplicates based on name and size', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: true,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'metadata',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       // Create files with same name in different directories
@@ -234,18 +206,14 @@ describe('Dedupe Integration Tests', () => {
     it('should not consider files as duplicates if sizes differ', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = createTestConfig({ dryRun: false });
-      // Manually override dedupe to use proper structure
-      (config as any).dedupe = {
-        enabled: true,
-        recursive: true,
-        strategy: {
-          mode: 'any',
-          size: true,
-          name: { caseSensitive: false, ignoreExtension: false }
-        },
-        action: 'skip'
-      };
+      const config = createTestConfig({
+        dryRun: false,
+        dedupe: {
+          enabled: true,
+          strategy: 'metadata',
+          action: 'skip'
+        }
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       testEnv.createFile(path.join(testDir, 'folder1', 'file.txt'), 'short');
@@ -272,21 +240,14 @@ describe('Dedupe Integration Tests', () => {
     it('should use both hash and metadata for deduplication', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'combined',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const content = 'duplicate content';
@@ -306,21 +267,14 @@ describe('Dedupe Integration Tests', () => {
     it('should report duplicates in dry-run mode without modifying files', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: true,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'report'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const content = 'duplicate';
@@ -345,21 +299,14 @@ describe('Dedupe Integration Tests', () => {
     it('should report duplicates when action is report', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'report'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const content = 'duplicate';
@@ -380,21 +327,14 @@ describe('Dedupe Integration Tests', () => {
     it('should handle command-line dedupe action override', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const content = 'duplicate';
@@ -416,21 +356,14 @@ describe('Dedupe Integration Tests', () => {
     it('should organize files after deduplication', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       // Create mix of unique and duplicate files
@@ -457,21 +390,14 @@ describe('Dedupe Integration Tests', () => {
     it('should maintain file integrity during dedupe and organize', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const uniqueContent = 'This content should be preserved';
@@ -496,21 +422,15 @@ describe('Dedupe Integration Tests', () => {
     it('should include deduplication info in manifest', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
+        generateManifest: true,
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const content = 'duplicate';
@@ -540,21 +460,14 @@ describe('Dedupe Integration Tests', () => {
     it('should handle 50 duplicate files efficiently', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const duplicateContent = 'duplicate content';
@@ -578,21 +491,14 @@ describe('Dedupe Integration Tests', () => {
     it('should handle empty files as duplicates', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       // Create empty files
@@ -610,21 +516,14 @@ describe('Dedupe Integration Tests', () => {
     it('should handle files with special characters in names', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: [],
         dedupe: {
           enabled: true,
           strategy: 'hash',
           action: 'skip'
         }
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const content = 'duplicate';

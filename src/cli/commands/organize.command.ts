@@ -1,3 +1,6 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 import type { OrderlyConfig } from '../../config/types';
 import { DedupeAction } from '../../dedupe';
 import { DedupeStrategyFactory } from '../../dedupe/dedupe-factory';
@@ -170,10 +173,6 @@ export class OrganizeHandler implements IOrganizeHandler {
    * @returns Path to config file if found, null otherwise
    */
   private findConfigInDirectory(directory: string): string | null {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const path = require('node:path') as typeof import('node:path');
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require('node:fs') as typeof import('node:fs');
     const configNames = ['.orderly.config.json', '.orderly.config.yaml', '.orderly.config.yml'];
 
     for (const configName of configNames) {

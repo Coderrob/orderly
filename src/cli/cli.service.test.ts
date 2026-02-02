@@ -3,7 +3,12 @@ import * as path from 'node:path';
 import chalk from 'chalk';
 import { Command } from 'commander';
 
+import { ConfigLoader } from '../config/config-loader';
+import { FileOrganizer } from '../organizer/file-organizer';
+import { FileScanner } from '../scanner/file-scanner';
+import { FileSystemUtils } from '../utils/file-system-utils';
 import type { IScannedFile } from '../scanner/interfaces';
+import { Logger } from '../logger/logger';
 import { CliService } from './cli.service';
 
 jest.mock('commander');
@@ -178,11 +183,9 @@ describe('CliService', () => {
 
     it('should handle init command successfully', () => {
       // Mock FileSystemUtils.existsSync to return false (file doesn't exist)
-      const { FileSystemUtils } = require('../utils/file-system-utils');
       FileSystemUtils.existsSync.mockReturnValue(false);
 
       // Mock ConfigLoader.save
-      const { ConfigLoader } = require('../config/config-loader');
       ConfigLoader.save.mockImplementation(() => {});
 
       // Call the private method directly
@@ -194,7 +197,6 @@ describe('CliService', () => {
 
     it('should handle init command with default format', () => {
       // Mock FileSystemUtils.existsSync to return false (file doesn't exist)
-      const { FileSystemUtils } = require('../utils/file-system-utils');
       FileSystemUtils.existsSync.mockReturnValue(false);
 
       // Mock ConfigLoader.save

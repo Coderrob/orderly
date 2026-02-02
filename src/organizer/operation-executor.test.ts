@@ -149,6 +149,34 @@ describe('OperationExecutor', () => {
       );
     });
 
+    it('should warn and fallback to keep-both for unknown collision strategy', () => {
+      const config = { ...DEFAULT_CONFIG, collisionResolution: { strategy: 'unknown' as any } };
+      const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
+
+      // Mock existsSync to return true for collision, then false for suggested name
+      mockFileSystemUtils.existsSync.mockImplementation((path: string) => {
+        return path === '/target/file.txt'; // Collision exists
+      });
+
+      const result = executorWithConfig.execute(testOperations);
+
+      expect(result.successful).toBe(1);
+      expect(result.failed).toBe(0);
+      expect(loggerInstance.warn).toHaveBeenCalledWith(
+        "Unknown collision resolution strategy 'unknown', falling back to 'keep-both'",
+        {
+          operation: '/source/file.txt',
+          target: '/target/file.txt',
+          providedStrategy: 'unknown',
+          validStrategies: ['skip', 'keep-both', 'replace']
+        }
+      );
+      expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
+        '/source/file.txt',
+        '/target/file-1.txt'.replaceAll('/', path.sep)
+      );
+    });
+
     it('should handle multiple operations', () => {
       const operations = [
         testOperation,

@@ -150,7 +150,16 @@ export class OperationExecutor implements IOperationExecutor {
         return targetPath; // Use original target path
 
       default:
-        return null;
+        this.logger.warn(
+          `Unknown collision resolution strategy '${strategy}', falling back to 'keep-both'`,
+          {
+            operation: operation.originalPath,
+            target: targetPath,
+            providedStrategy: strategy,
+            validStrategies: ['skip', 'keep-both', 'replace']
+          }
+        );
+        return this.generateSuggestedName(targetPath);
     }
   }
 

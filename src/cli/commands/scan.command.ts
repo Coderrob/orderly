@@ -1,3 +1,6 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
 import { Logger } from '../../logger/logger';
 import { FileScanner } from '../../scanner/file-scanner';
 import type { IScannedFile } from '../../scanner/interfaces';
@@ -115,10 +118,6 @@ export class ScanHandler implements IScanHandler {
    * @returns Path to config file if found, null otherwise
    */
   private findConfigInDirectory(directory: string): string | null {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const path = require('node:path') as typeof import('node:path');
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require('node:fs') as typeof import('node:fs');
     const configNames = ['.orderly.config.json', '.orderly.config.yaml', '.orderly.config.yml'];
 
     for (const configName of configNames) {
