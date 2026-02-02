@@ -40,11 +40,20 @@ export class OrganizeHandler implements IOrganizeHandler {
    */
   async execute(directory: string, options: IOrganizeOptions): Promise<ICommandResult> {
     try {
-      // Load configuration
-      const config = this.configService.loadWithOverrides(options);
-
-      // Validate and resolve directory
+      // Validate and resolve directory first
       const targetDir = this.directoryValidator.validate(directory);
+
+      // If no config specified, check target directory for config file
+      const configOptions = { ...options };
+      if (!configOptions.config) {
+        const targetConfig = this.findConfigInDirectory(targetDir);
+        if (targetConfig) {
+          configOptions.config = targetConfig;
+        }
+      }
+
+      // Load configuration
+      const config = this.configService.loadWithOverrides(configOptions);
 
       // Create logger
       const logger = new Logger(config.logLevel);
@@ -141,14 +150,39 @@ export class OrganizeHandler implements IOrganizeHandler {
 
     // Filter out duplicates based on action
     if (config.dedupe!.action === DedupeAction.SKIP) {
+      // Keep only primary files from duplicate groups, remove all duplicates
       const duplicatePaths = new Set(
-        dedupeResult.groups.flatMap(group => group.files.map(f => f.originalPath))
+        dedupeResult.groups.flatMap(group => group.files.slice(1).map(f => f.originalPath))
       );
       const filteredFiles = files.filter(file => !duplicatePaths.has(file.originalPath));
-      logger.info(`Filtered out ${files.length - filteredFiles.length} duplicate files`);
+      logger.info(
+        `Kept ${dedupeResult.groups.length} primary files, filtered out ${duplicatePaths.size} duplicate files`
+      );
       return filteredFiles;
     }
 
     return files;
+  }
+
+  /**
+   * Searches for a config file in the target directory.
+   * @param directory - Directory to search in
+   * @returns Path to config file if found, null otherwise
+   */
+  private findConfigInDirectory(directory: string): string | null {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require('node:path') as typeof import('node:path');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require('node:fs') as typeof import('node:fs');
+    const configNames = ['.orderly.config.json', '.orderly.config.yaml', '.orderly.config.yml'];
+
+    for (const configName of configNames) {
+      const configPath = path.join(directory, configName);
+      if (fs.existsSync(configPath)) {
+        return configPath;
+      }
+    }
+
+    return null;
   }
 }

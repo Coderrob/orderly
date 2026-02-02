@@ -23,6 +23,8 @@ export interface Manifest {
   successful: number;
   failed: number;
   entries: ManifestEntry[];
+  // Backward compatibility: operations is an alias for entries
+  operations?: ManifestEntry[];
 }
 
 export interface IManifestGenerator {
@@ -47,7 +49,10 @@ export class ManifestGenerator implements IManifestGenerator {
    * @param errors
    */
   generate(result: IOrganizationResult, errors: IFileError[]): Manifest {
-    return this.builder.build(result, errors);
+    const manifest = this.builder.build(result, errors);
+    // Add operations property for backward compatibility
+    manifest.operations = manifest.entries;
+    return manifest;
   }
 
   /**

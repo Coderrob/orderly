@@ -61,6 +61,7 @@ export class OperationExecutor implements IOperationExecutor {
     }
 
     result.successful = operations.length;
+    // Critical: Return early without executing performOperation
     return result;
   }
 
