@@ -241,18 +241,18 @@ describe('Dedupe Integration Tests', () => {
     it('should not consider files as duplicates if sizes differ', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = createTestConfig({
-        dryRun: false,
-        dedupe: {
-          enabled: true,
-          recursive: true,
-          strategy: { mode: 'metadata' },
-          action: 'skip'
-        }
-      });
-      testEnv.createFile(configPath, JSON.stringify(config, null, 2));
-
-      // Create files with same name but different sizes
+      const config = createTestConfig({ dryRun: false });
+      // Manually override dedupe to use proper structure
+      (config as any).dedupe = {
+        enabled: true,
+        recursive: true,
+        strategy: { 
+          mode: 'any',
+          size: true,
+          name: { caseSensitive: false, ignoreExtension: false }
+        },
+        action: 'skip'
+      };
       testEnv.createFile(path.join(testDir, 'folder1', 'file.txt'), 'short');
       testEnv.createFile(path.join(testDir, 'folder2', 'file.txt'), 'much longer content');
 
