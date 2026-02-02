@@ -9,7 +9,27 @@ import { FileScanner } from '../scanner/file-scanner';
 import { FileSystemUtils } from '../utils/file-system-utils';
 import type { IScannedFile } from '../scanner/interfaces';
 import { Logger } from '../logger/logger';
+import { ManifestGenerator } from '../organizer/manifest-generator';
 import { CliService } from './cli.service';
+import { LogLevel } from '../types';
+import { OrderlyConfig, NamingConventionType } from '../config/types';
+
+// Mock configuration for tests
+const mockConfig: OrderlyConfig = {
+  categories: [
+    { name: 'images', extensions: ['.jpg', '.png'], targetFolder: 'images' },
+    { name: 'documents', extensions: ['.pdf', '.doc'], targetFolder: 'documents' }
+  ],
+  namingConvention: {
+    type: NamingConventionType.KEBAB_CASE,
+    lowercase: true
+  },
+  excludePatterns: ['node_modules/**'],
+  includeHidden: false,
+  dryRun: false,
+  generateManifest: false,
+  logLevel: LogLevel.INFO
+};
 
 jest.mock('commander');
 jest.mock('node:path');
@@ -19,6 +39,39 @@ jest.mock('../scanner/file-scanner');
 jest.mock('../organizer/file-organizer');
 jest.mock('../organizer/manifest-generator');
 jest.mock('../logger/logger');
+
+// Get mocked versions
+const mockConfigLoader = jest.mocked(ConfigLoader);
+const mockFileSystemUtils = jest.mocked(FileSystemUtils);
+const mockLoggerConstructor = jest.mocked(Logger);
+const mockFileScanner = jest.mocked(FileScanner);
+const mockFileOrganizer = jest.mocked(FileOrganizer);
+const mockManifestGenerator = jest.mocked(ManifestGenerator);
+
+// Create mock logger instance
+const mockLoggerInstance = {
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn()
+};
+
+// Create mock instances
+const mockScannerInstance = {
+  scan: jest.fn(),
+  getCategorySummary: jest.fn()
+};
+
+const mockOrganizerInstance = {
+  planOperations: jest.fn(),
+  executeOperations: jest.fn()
+};
+
+const mockManifestGeneratorInstance = {
+  generate: jest.fn(),
+  save: jest.fn(),
+  saveMarkdown: jest.fn()
+};
 
 describe('CliService', () => {
   let cliService: CliService;
@@ -44,7 +97,15 @@ describe('CliService', () => {
       parse: jest.fn()
     } as any;
 
-    (Command as jest.MockedClass<typeof Command>).mockImplementation(() => mockCommand);
+    (Command as jest.MockedClass<typeof Command>).mockImplementationOnce(() => mockCommand);
+
+    // Mock Logger constructor
+    mockLoggerConstructor.mockImplementationOnce(() => mockLoggerInstance as any);
+
+    // Mock constructor implementations
+    (mockFileScanner as any).mockImplementationOnce(() => mockScannerInstance);
+    (mockFileOrganizer as any).mockImplementationOnce(() => mockOrganizerInstance);
+    (mockManifestGenerator as any).mockImplementationOnce(() => mockManifestGeneratorInstance);
 
     // Mock process methods
     originalArgv = process.argv;
@@ -183,37 +244,35 @@ describe('CliService', () => {
 
     it('should handle init command successfully', () => {
       // Mock FileSystemUtils.existsSync to return false (file doesn't exist)
-      FileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.existsSync.mockReturnValueOnce(false);
 
       // Mock ConfigLoader.save
-      ConfigLoader.save.mockImplementation(() => {});
+      mockConfigLoader.save.mockImplementationOnce(() => {});
 
       // Call the private method directly
       (cliService as any).handleInitCommand({ format: 'json' });
 
-      expect(ConfigLoader.save).toHaveBeenCalled();
+      expect(mockConfigLoader.save).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Created config file'));
     });
 
     it('should handle init command with default format', () => {
       // Mock FileSystemUtils.existsSync to return false (file doesn't exist)
-      FileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.existsSync.mockReturnValueOnce(false);
 
       // Mock ConfigLoader.save
-      const { ConfigLoader } = require('../config/config-loader');
-      ConfigLoader.save.mockImplementation(() => {});
+      mockConfigLoader.save.mockImplementationOnce(() => {});
 
       // Call the private method directly with no format (should use default)
       (cliService as any).handleInitCommand({});
 
-      expect(ConfigLoader.save).toHaveBeenCalled();
+      expect(mockConfigLoader.save).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Created config file'));
     });
 
     it('should handle init command when config already exists', () => {
       // Mock FileSystemUtils.existsSync to return true (file exists)
-      const { FileSystemUtils } = require('../utils/file-system-utils');
-      FileSystemUtils.existsSync.mockReturnValue(true);
+      mockFileSystemUtils.existsSync.mockReturnValueOnce(true);
 
       // Call the private method directly
       (cliService as any).handleInitCommand({ format: 'json' });
@@ -226,137 +285,103 @@ describe('CliService', () => {
 
     it('should handle scan command successfully', async () => {
       // Mock dependencies
-      const { ConfigLoader } = require('../config/config-loader');
-      const { Logger } = require('../logger/logger');
-      const { FileScanner } = require('../scanner/file-scanner');
-
-      const mockConfig = { dryRun: false, logLevel: 'info' };
-      const mockLogger = { info: jest.fn() };
-      const mockScanner = { scan: jest.fn(), getCategorySummary: jest.fn() };
       const mockFiles = [{ path: 'file1.txt' }];
 
-      ConfigLoader.load.mockReturnValue(mockConfig);
-      Logger.mockImplementation(() => mockLogger);
-      FileScanner.mockImplementation(() => mockScanner);
-      mockScanner.scan.mockResolvedValue(mockFiles);
-      mockScanner.getCategorySummary.mockReturnValue(new Map([['document', 1]]));
+      mockConfigLoader.load.mockReturnValueOnce({ ...mockConfig });
+      mockScannerInstance.scan.mockResolvedValueOnce(mockFiles);
+      mockScannerInstance.getCategorySummary.mockReturnValueOnce(new Map([['document', 1]]));
 
       // Mock validateDirectory
       const validateDirectorySpy = jest.spyOn(cliService as any, 'validateDirectory');
-      validateDirectorySpy.mockReturnValue('/test/dir');
+      validateDirectorySpy.mockReturnValueOnce('/test/dir');
 
       // Mock displayScanResults
       const displayScanResultsSpy = jest.spyOn(cliService as any, 'displayScanResults');
-      displayScanResultsSpy.mockImplementation(() => {});
+      displayScanResultsSpy.mockImplementationOnce(() => {});
 
       // Call the private method directly
       await (cliService as any).handleScanCommand('.', {});
 
-      expect(ConfigLoader.load).toHaveBeenCalled();
-      expect(Logger).toHaveBeenCalledWith('info');
-      expect(FileScanner).toHaveBeenCalledWith(mockConfig, mockLogger);
-      expect(mockScanner.scan).toHaveBeenCalledWith('/test/dir');
+      expect(mockConfigLoader.load).toHaveBeenCalled();
+      expect(mockLoggerConstructor).toHaveBeenCalledWith('info');
+      expect(mockFileScanner).toHaveBeenCalledWith(expect.any(Object), mockLoggerInstance);
+      expect(mockScannerInstance.scan).toHaveBeenCalledWith('/test/dir');
       expect(displayScanResultsSpy).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Scan complete'));
     });
 
     it('should handle scan command with no files found', async () => {
       // Mock dependencies
-      const { ConfigLoader } = require('../config/config-loader');
-      const { Logger } = require('../logger/logger');
-      const { FileScanner } = require('../scanner/file-scanner');
 
-      const mockConfig = { dryRun: false, logLevel: 'info' };
-      const mockLogger = { info: jest.fn() };
-      const mockScanner = { scan: jest.fn() };
-
-      ConfigLoader.load.mockReturnValue(mockConfig);
-      Logger.mockImplementation(() => mockLogger);
-      FileScanner.mockImplementation(() => mockScanner);
-      mockScanner.scan.mockResolvedValue([]);
+      mockConfigLoader.load.mockReturnValueOnce({ ...mockConfig });
+      mockScannerInstance.scan.mockResolvedValueOnce([]);
 
       // Mock validateDirectory
       const validateDirectorySpy = jest.spyOn(cliService as any, 'validateDirectory');
-      validateDirectorySpy.mockReturnValue('/test/dir');
+      validateDirectorySpy.mockReturnValueOnce('/test/dir');
 
       // Call the private method directly
       await (cliService as any).handleScanCommand('.', {});
 
-      expect(mockLogger.info).toHaveBeenCalledWith('No files found');
+      expect(mockLoggerInstance.info).toHaveBeenCalledWith('No files found');
       // Should not call displayScanResults or log "Scan complete" when no files found
       expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('Scan complete'));
     });
 
     it('should handle organize command successfully', async () => {
       // Mock dependencies
-      const { FileScanner } = require('../scanner/file-scanner');
-      const { FileOrganizer } = require('../organizer/file-organizer');
-
-      const mockConfig = { dryRun: false, logLevel: 'info', generateManifest: false };
-      const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
-      const mockScanner = { scan: jest.fn(), getCategorySummary: jest.fn() };
-      const mockOrganizer = { planOperations: jest.fn(), executeOperations: jest.fn() };
       const mockFiles = [{ path: 'file1.txt' }];
       const mockOperations = [{ type: 'move', source: 'file1.txt', target: 'organized/file1.txt' }];
       const mockResult = { successful: 1, failed: 0, operations: mockOperations };
 
       // Mock private methods
       const loadConfigSpy = jest.spyOn(cliService as any, 'loadConfig');
-      loadConfigSpy.mockReturnValue(mockConfig);
+      loadConfigSpy.mockReturnValueOnce({ ...mockConfig });
       const createLoggerSpy = jest.spyOn(cliService as any, 'createLogger');
-      createLoggerSpy.mockReturnValue(mockLogger);
+      createLoggerSpy.mockReturnValueOnce(mockLoggerInstance);
       const validateDirectorySpy = jest.spyOn(cliService as any, 'validateDirectory');
-      validateDirectorySpy.mockReturnValue('/test/dir');
+      validateDirectorySpy.mockReturnValueOnce('/test/dir');
       const logConfigurationSpy = jest.spyOn(cliService as any, 'logConfiguration');
-      logConfigurationSpy.mockImplementation(() => {});
+      logConfigurationSpy.mockImplementationOnce(() => {});
       const logFileSummarySpy = jest.spyOn(cliService as any, 'logFileSummary');
-      logFileSummarySpy.mockImplementation(() => {});
+      logFileSummarySpy.mockImplementationOnce(() => {});
       const logResultsSpy = jest.spyOn(cliService as any, 'logResults');
-      logResultsSpy.mockImplementation(() => {});
+      logResultsSpy.mockImplementationOnce(() => {});
       const saveManifestsSpy = jest.spyOn(cliService as any, 'saveManifests');
-      saveManifestsSpy.mockImplementation(() => {});
+      saveManifestsSpy.mockImplementationOnce(() => {});
 
-      FileScanner.mockImplementation(() => mockScanner);
-      FileOrganizer.mockImplementation(() => mockOrganizer);
-      mockScanner.scan.mockResolvedValue(mockFiles);
-      mockScanner.getCategorySummary.mockReturnValue(new Map([['document', 1]]));
-      mockOrganizer.planOperations.mockReturnValue(mockOperations);
-      mockOrganizer.executeOperations.mockReturnValue(mockResult);
+      mockScannerInstance.scan.mockResolvedValue(mockFiles);
+      mockScannerInstance.getCategorySummary.mockReturnValue(new Map([['document', 1]]));
+      mockOrganizerInstance.planOperations.mockReturnValue(mockOperations);
+      mockOrganizerInstance.executeOperations.mockReturnValue(mockResult);
 
       // Call the private method directly
       await (cliService as any).handleOrganizeCommand('.', {});
 
       expect(loadConfigSpy).toHaveBeenCalledWith({});
       expect(createLoggerSpy).toHaveBeenCalledWith('info');
-      expect(validateDirectorySpy).toHaveBeenCalledWith('.', mockLogger);
-      expect(logConfigurationSpy).toHaveBeenCalledWith('/test/dir', false, mockLogger);
-      expect(mockScanner.scan).toHaveBeenCalledWith('/test/dir');
+      expect(validateDirectorySpy).toHaveBeenCalledWith('.', mockLoggerInstance);
+      expect(logConfigurationSpy).toHaveBeenCalledWith('/test/dir', false, mockLoggerInstance);
+      expect(mockScannerInstance.scan).toHaveBeenCalledWith('/test/dir');
       expect(logFileSummarySpy).toHaveBeenCalled();
-      expect(mockOrganizer.planOperations).toHaveBeenCalledWith(mockFiles);
-      expect(mockOrganizer.executeOperations).toHaveBeenCalledWith(mockOperations);
-      expect(logResultsSpy).toHaveBeenCalledWith(mockResult, mockLogger);
+      expect(mockOrganizerInstance.planOperations).toHaveBeenCalledWith(mockFiles);
+      expect(mockOrganizerInstance.executeOperations).toHaveBeenCalledWith(mockOperations);
+      expect(logResultsSpy).toHaveBeenCalledWith(mockResult, mockLoggerInstance);
       expect(saveManifestsSpy).not.toHaveBeenCalled(); // generateManifest is false
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Organization complete'));
     });
 
     it('should handle organize command with failed operations', async () => {
       // Mock dependencies
-      const { FileScanner } = require('../scanner/file-scanner');
-      const { FileOrganizer } = require('../organizer/file-organizer');
-
-      const mockConfig = { dryRun: false, logLevel: 'info', generateManifest: false };
-      const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
-      const mockScanner = { scan: jest.fn(), getCategorySummary: jest.fn() };
-      const mockOrganizer = { planOperations: jest.fn(), executeOperations: jest.fn() };
       const mockFiles = [{ path: 'file1.txt' }];
       const mockOperations = [{ type: 'move', source: 'file1.txt', target: 'organized/file1.txt' }];
       const mockResult = { successful: 1, failed: 2, operations: mockOperations }; // Has failures
 
       // Mock private methods
       const loadConfigSpy = jest.spyOn(cliService as any, 'loadConfig');
-      loadConfigSpy.mockReturnValue(mockConfig);
+      loadConfigSpy.mockReturnValue({ ...mockConfig });
       const createLoggerSpy = jest.spyOn(cliService as any, 'createLogger');
-      createLoggerSpy.mockReturnValue(mockLogger);
+      createLoggerSpy.mockReturnValue(mockLoggerInstance);
       const validateDirectorySpy = jest.spyOn(cliService as any, 'validateDirectory');
       validateDirectorySpy.mockReturnValue('/test/dir');
       const logConfigurationSpy = jest.spyOn(cliService as any, 'logConfiguration');
@@ -366,27 +391,25 @@ describe('CliService', () => {
       const logResultsSpy = jest.spyOn(cliService as any, 'logResults');
       logResultsSpy.mockImplementation(() => {});
       const saveManifestsSpy = jest.spyOn(cliService as any, 'saveManifests');
-      saveManifestsSpy.mockImplementation(() => {});
+      saveManifestsSpy.mockImplementationOnce(() => {});
 
-      FileScanner.mockImplementation(() => mockScanner);
-      FileOrganizer.mockImplementation(() => mockOrganizer);
-      mockScanner.scan.mockResolvedValue(mockFiles);
-      mockScanner.getCategorySummary.mockReturnValue(new Map([['document', 1]]));
-      mockOrganizer.planOperations.mockReturnValue(mockOperations);
-      mockOrganizer.executeOperations.mockReturnValue(mockResult);
+      mockScannerInstance.scan.mockResolvedValueOnce(mockFiles);
+      mockScannerInstance.getCategorySummary.mockReturnValueOnce(new Map([['document', 1]]));
+      mockOrganizerInstance.planOperations.mockReturnValueOnce(mockOperations);
+      mockOrganizerInstance.executeOperations.mockReturnValueOnce(mockResult);
 
       // Call the private method directly
       await (cliService as any).handleOrganizeCommand('.', {});
 
       expect(loadConfigSpy).toHaveBeenCalledWith({});
       expect(createLoggerSpy).toHaveBeenCalledWith('info');
-      expect(validateDirectorySpy).toHaveBeenCalledWith('.', mockLogger);
-      expect(logConfigurationSpy).toHaveBeenCalledWith('/test/dir', false, mockLogger);
-      expect(mockScanner.scan).toHaveBeenCalledWith('/test/dir');
+      expect(validateDirectorySpy).toHaveBeenCalledWith('.', mockLoggerInstance);
+      expect(logConfigurationSpy).toHaveBeenCalledWith('/test/dir', false, mockLoggerInstance);
+      expect(mockScannerInstance.scan).toHaveBeenCalledWith('/test/dir');
       expect(logFileSummarySpy).toHaveBeenCalled();
-      expect(mockOrganizer.planOperations).toHaveBeenCalledWith(mockFiles);
-      expect(mockOrganizer.executeOperations).toHaveBeenCalledWith(mockOperations);
-      expect(logResultsSpy).toHaveBeenCalledWith(mockResult, mockLogger);
+      expect(mockOrganizerInstance.planOperations).toHaveBeenCalledWith(mockFiles);
+      expect(mockOrganizerInstance.executeOperations).toHaveBeenCalledWith(mockOperations);
+      expect(logResultsSpy).toHaveBeenCalledWith(mockResult, mockLoggerInstance);
       expect(saveManifestsSpy).not.toHaveBeenCalled(); // generateManifest is false
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Organization complete'));
       expect(process.exit).toHaveBeenCalledWith(1); // Failures cause exit
@@ -394,27 +417,21 @@ describe('CliService', () => {
 
     it('should handle organize command with no files found', async () => {
       // Mock dependencies
-      const { FileScanner } = require('../scanner/file-scanner');
-
-      const mockConfig = { dryRun: false, logLevel: 'info' };
-      const mockLogger = { info: jest.fn() };
-      const mockScanner = { scan: jest.fn() };
 
       // Mock private methods
       const loadConfigSpy = jest.spyOn(cliService as any, 'loadConfig');
-      loadConfigSpy.mockReturnValue(mockConfig);
+      loadConfigSpy.mockReturnValue({ ...mockConfig });
       const createLoggerSpy = jest.spyOn(cliService as any, 'createLogger');
-      createLoggerSpy.mockReturnValue(mockLogger);
+      createLoggerSpy.mockReturnValue(mockLoggerInstance);
       const validateDirectorySpy = jest.spyOn(cliService as any, 'validateDirectory');
       validateDirectorySpy.mockReturnValue('/test/dir');
 
-      FileScanner.mockImplementation(() => mockScanner);
-      mockScanner.scan.mockResolvedValue([]);
+      mockScannerInstance.scan.mockResolvedValue([]);
 
       // Call the private method directly
       await (cliService as any).handleOrganizeCommand('.', {});
 
-      expect(mockLogger.info).toHaveBeenCalledWith('No files found to organize');
+      expect(mockLoggerInstance.info).toHaveBeenCalledWith('No files found to organize');
       expect(console.log).not.toHaveBeenCalledWith(
         expect.stringContaining('Organization complete')
       );
@@ -422,20 +439,13 @@ describe('CliService', () => {
 
     it('should handle organize command with no operations needed', async () => {
       // Mock dependencies
-      const { FileScanner } = require('../scanner/file-scanner');
-      const { FileOrganizer } = require('../organizer/file-organizer');
-
-      const mockConfig = { dryRun: false, logLevel: 'info' };
-      const mockLogger = { info: jest.fn() };
-      const mockScanner = { scan: jest.fn(), getCategorySummary: jest.fn() };
-      const mockOrganizer = { planOperations: jest.fn() };
       const mockFiles = [{ path: 'file1.txt' }];
 
       // Mock private methods
       const loadConfigSpy = jest.spyOn(cliService as any, 'loadConfig');
-      loadConfigSpy.mockReturnValue(mockConfig);
+      loadConfigSpy.mockReturnValue({ ...mockConfig });
       const createLoggerSpy = jest.spyOn(cliService as any, 'createLogger');
-      createLoggerSpy.mockReturnValue(mockLogger);
+      createLoggerSpy.mockReturnValue(mockLoggerInstance);
       const validateDirectorySpy = jest.spyOn(cliService as any, 'validateDirectory');
       validateDirectorySpy.mockReturnValue('/test/dir');
       const logConfigurationSpy = jest.spyOn(cliService as any, 'logConfiguration');
@@ -443,16 +453,14 @@ describe('CliService', () => {
       const logFileSummarySpy = jest.spyOn(cliService as any, 'logFileSummary');
       logFileSummarySpy.mockImplementation(() => {});
 
-      FileScanner.mockImplementation(() => mockScanner);
-      FileOrganizer.mockImplementation(() => mockOrganizer);
-      mockScanner.scan.mockResolvedValue(mockFiles);
-      mockScanner.getCategorySummary.mockReturnValue(new Map([['document', 1]]));
-      mockOrganizer.planOperations.mockReturnValue([]);
+      mockScannerInstance.scan.mockResolvedValue(mockFiles);
+      mockScannerInstance.getCategorySummary.mockReturnValue(new Map([['document', 1]]));
+      mockOrganizerInstance.planOperations.mockReturnValue([]);
 
       // Call the private method directly
       await (cliService as any).handleOrganizeCommand('.', {});
 
-      expect(mockLogger.info).toHaveBeenCalledWith('\n✓ All files are already organized!');
+      expect(mockLoggerInstance.info).toHaveBeenCalledWith('\n✓ All files are already organized!');
       expect(console.log).not.toHaveBeenCalledWith(
         expect.stringContaining('Organization complete')
       );
@@ -460,22 +468,16 @@ describe('CliService', () => {
 
     describe('loadConfig', () => {
       it('should load config with default values', () => {
-        const { ConfigLoader } = require('../config/config-loader');
-        ConfigLoader.load.mockReturnValue({ dryRun: false, logLevel: 'info' });
+        mockConfigLoader.load.mockReturnValue({ ...mockConfig });
 
         const result = (cliService as any).loadConfig({});
 
-        expect(ConfigLoader.load).toHaveBeenCalledWith(undefined);
-        expect(result).toEqual({ dryRun: false, logLevel: 'info' });
+        expect(mockConfigLoader.load).toHaveBeenCalledWith(undefined);
+        expect(result).toEqual(mockConfig);
       });
 
       it('should override config with options', () => {
-        const { ConfigLoader } = require('../config/config-loader');
-        ConfigLoader.load.mockReturnValue({
-          dryRun: false,
-          logLevel: 'info',
-          generateManifest: true
-        });
+        mockConfigLoader.load.mockReturnValue({ ...mockConfig });
 
         const result = (cliService as any).loadConfig({
           dryRun: true,
@@ -493,28 +495,22 @@ describe('CliService', () => {
 
     describe('createLogger', () => {
       it('should create logger with log file', () => {
-        const path = require('node:path');
-        const originalJoin = path.join;
-        path.join = jest.fn(() => '/mocked/path/.orderly/orderly.log');
-
-        const { Logger } = require('../logger/logger');
-        const mockLogger = { info: jest.fn() };
-        Logger.mockImplementation(() => mockLogger);
+        (path as any).join.mockReturnValue('/mocked/path/.orderly/orderly.log');
 
         const result = (cliService as any).createLogger('info');
 
-        expect(path.join).toHaveBeenCalledWith(process.cwd(), '.orderly', 'orderly.log');
-        expect(Logger).toHaveBeenCalledWith('info', '/mocked/path/.orderly/orderly.log');
-        expect(result).toBe(mockLogger);
-
-        path.join = originalJoin;
+        expect((path as any).join).toHaveBeenCalledWith(process.cwd(), '.orderly', 'orderly.log');
+        expect(mockLoggerConstructor).toHaveBeenCalledWith(
+          'info',
+          '/mocked/path/.orderly/orderly.log'
+        );
+        expect(result).toBe(mockLoggerInstance);
       });
     });
 
     describe('validateDirectory', () => {
       it('should return resolved path when directory exists', () => {
-        const { FileSystemUtils } = require('../utils/file-system-utils');
-        FileSystemUtils.existsSync.mockReturnValue(true);
+        mockFileSystemUtils.existsSync.mockReturnValue(true);
 
         const mockLogger = { error: jest.fn() };
         const result = (cliService as any).validateDirectory('./test', mockLogger);
@@ -526,8 +522,7 @@ describe('CliService', () => {
       });
 
       it('should exit when directory does not exist', () => {
-        const { FileSystemUtils } = require('../utils/file-system-utils');
-        FileSystemUtils.existsSync.mockReturnValue(false);
+        mockFileSystemUtils.existsSync.mockReturnValue(false);
 
         const mockLogger = { error: jest.fn() };
         (cliService as any).validateDirectory('./nonexistent', mockLogger);
@@ -610,21 +605,12 @@ describe('CliService', () => {
 
     describe('saveManifests', () => {
       it('should save manifest files', () => {
-        const path = require('node:path');
-        const originalJoin = path.join;
-        path.join = jest
-          .fn()
+        (path.join as jest.Mock)
           .mockReturnValueOnce(String.raw`C:\test\dir\.orderly`) // manifestDir
           .mockReturnValueOnce(String.raw`C:\test\dir\.orderly\manifest.json`) // json path
           .mockReturnValueOnce(String.raw`C:\test\dir\.orderly\manifest.md`); // md path
 
-        const { ManifestGenerator } = require('../organizer/manifest-generator');
-        const mockManifestGenerator = {
-          generate: jest.fn().mockReturnValue({}),
-          save: jest.fn(),
-          saveMarkdown: jest.fn()
-        };
-        ManifestGenerator.mockImplementation(() => mockManifestGenerator);
+        mockManifestGeneratorInstance.generate.mockReturnValue({});
 
         const mockLogger = { info: jest.fn() };
         const result = { successful: 5, failed: 0, errors: [] };
@@ -635,20 +621,18 @@ describe('CliService', () => {
         expect(path.join).toHaveBeenCalledWith(String.raw`C:\test\dir\.orderly`, 'manifest.json');
         expect(path.join).toHaveBeenCalledWith(String.raw`C:\test\dir\.orderly`, 'manifest.md');
         expect(ManifestGenerator).toHaveBeenCalledWith(mockLogger);
-        expect(mockManifestGenerator.generate).toHaveBeenCalledWith(result, []);
-        expect(mockManifestGenerator.save).toHaveBeenCalledWith(
+        expect(mockManifestGeneratorInstance.generate).toHaveBeenCalledWith(result, []);
+        expect(mockManifestGeneratorInstance.save).toHaveBeenCalledWith(
           {},
           String.raw`C:\test\dir\.orderly\manifest.json`
         );
-        expect(mockManifestGenerator.saveMarkdown).toHaveBeenCalledWith(
+        expect(mockManifestGeneratorInstance.saveMarkdown).toHaveBeenCalledWith(
           {},
           String.raw`C:\test\dir\.orderly\manifest.md`
         );
         expect(mockLogger.info).toHaveBeenCalledWith(
           expect.stringContaining('Manifest files created in:')
         );
-
-        path.join = originalJoin;
       });
     });
 
@@ -683,16 +667,14 @@ describe('CliService', () => {
 
     describe('displayScanResults', () => {
       it('should display scan results', () => {
-        const { FileOrganizer } = require('../organizer/file-organizer');
         const mockScanner = {
           getCategorySummary: jest.fn().mockReturnValue(new Map([['documents', 3]]))
         };
-        const mockOrganizer = {
-          planOperations: jest
-            .fn()
-            .mockReturnValue([{ type: 'move' }, { type: 'rename' }, { type: 'move-rename' }])
-        };
-        FileOrganizer.mockImplementation(() => mockOrganizer);
+        mockOrganizerInstance.planOperations.mockReturnValue([
+          { type: 'move' },
+          { type: 'rename' },
+          { type: 'move-rename' }
+        ]);
 
         const mockLogger = {};
         const config = {};
@@ -703,7 +685,7 @@ describe('CliService', () => {
 
         expect(mockScanner.getCategorySummary).toHaveBeenCalledWith(files);
         expect(FileOrganizer).toHaveBeenCalledWith(config, mockLogger, targetDir);
-        expect(mockOrganizer.planOperations).toHaveBeenCalledWith(files);
+        expect(mockOrganizerInstance.planOperations).toHaveBeenCalledWith(files);
       });
     });
 
