@@ -25,7 +25,8 @@ describe('ConfigService', () => {
         includeHidden: false,
         dryRun: false,
         generateManifest: false,
-        logLevel: LogLevel.INFO
+        logLevel: LogLevel.INFO,
+        targetDirectory: undefined
       };
 
       mockConfigLoader.load.mockReturnValue(mockConfig);
@@ -44,7 +45,8 @@ describe('ConfigService', () => {
         includeHidden: false,
         dryRun: false,
         generateManifest: false,
-        logLevel: LogLevel.INFO
+        logLevel: LogLevel.INFO,
+        targetDirectory: undefined
       };
 
       mockConfigLoader.load.mockReturnValue(mockConfig);

@@ -27,7 +27,7 @@ export class FileOrganizer implements IFileOrganizer {
     baseDirectory: string
   ) {
     this.planner = new OperationPlanner(config, baseDirectory);
-    this.executor = new OperationExecutor(logger, config.dryRun);
+    this.executor = new OperationExecutor(logger, config.dryRun, config);
   }
 
   /**

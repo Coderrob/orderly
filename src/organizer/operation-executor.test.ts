@@ -3,6 +3,8 @@ import { FileOperationType } from './types';
 import type { IFileOperation } from './types';
 import { Logger } from '../logger/logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
+import { DEFAULT_CONFIG, type OrderlyConfig } from '../config/types';
+import * as path from 'node:path';
 
 jest.mock('../logger/logger');
 jest.mock('../utils/file-system-utils');
@@ -18,6 +20,7 @@ describe('OperationExecutor', () => {
   beforeEach(() => {
     loggerInstance = {
       info: jest.fn(),
+      warn: jest.fn(),
       error: jest.fn()
     } as unknown as jest.Mocked<Logger>;
     testOperation = {
@@ -27,7 +30,7 @@ describe('OperationExecutor', () => {
       reason: 'Moving to target'
     };
     testOperations = [testOperation];
-    executor = new OperationExecutor(loggerInstance, false);
+    executor = new OperationExecutor(loggerInstance, false, undefined);
   });
 
   afterEach(() => {
@@ -36,7 +39,7 @@ describe('OperationExecutor', () => {
 
   describe('execute (dry run)', () => {
     it('should log operations without executing in dry run mode', () => {
-      const dryRunExecutor = new OperationExecutor(loggerInstance, true);
+      const dryRunExecutor = new OperationExecutor(loggerInstance, true, undefined);
 
       const result = dryRunExecutor.execute(testOperations);
 
@@ -49,7 +52,7 @@ describe('OperationExecutor', () => {
     });
 
     it('should log all operations in dry run mode', () => {
-      const dryRunExecutor = new OperationExecutor(loggerInstance, true);
+      const dryRunExecutor = new OperationExecutor(loggerInstance, true, undefined);
       const operations = [testOperation, { ...testOperation, originalPath: '/source/file2.txt' }];
 
       const result = dryRunExecutor.execute(operations);
@@ -88,14 +91,62 @@ describe('OperationExecutor', () => {
       expect(mockFileSystemUtils.mkdirSync).toHaveBeenNthCalledWith(1, '/target');
     });
 
-    it('should throw error when target file already exists', () => {
+    it('should handle collision when target file already exists', () => {
+      const config: OrderlyConfig = {
+        ...DEFAULT_CONFIG,
+        collisionResolution: { strategy: 'skip' }
+      };
+      const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
+
+      // Mock existsSync to return true for collision
       mockFileSystemUtils.existsSync.mockReturnValue(true);
 
-      const result = executor.execute(testOperations);
+      const result = executorWithConfig.execute(testOperations);
 
+      expect(mockFileSystemUtils.existsSync).toHaveBeenCalledWith('/target/file.txt');
       expect(result.successful).toBe(0);
-      expect(result.failed).toBe(1);
-      expect(result.errors[0].error).toContain('Target file already exists');
+      expect(result.failed).toBe(0);
+      expect(result.errors).toHaveLength(0);
+      expect(loggerInstance.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping /source/file.txt due to collision resolution strategy')
+      );
+      expect(mockFileSystemUtils.renameSync).not.toHaveBeenCalled();
+    });
+
+    it('should handle collision with keep-both strategy', () => {
+      const config = { ...DEFAULT_CONFIG, collisionResolution: { strategy: 'keep-both' as const } };
+      const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
+
+      // Mock existsSync to return true for collision, then false for suggested name
+      mockFileSystemUtils.existsSync.mockImplementation((path: string) => {
+        return path === '/target/file.txt'; // Collision exists
+      });
+
+      const result = executorWithConfig.execute(testOperations);
+
+      expect(result.successful).toBe(1);
+      expect(result.failed).toBe(0);
+      expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
+        '/source/file.txt',
+        '/target/file-1.txt'.replaceAll('/', path.sep)
+      );
+    });
+
+    it('should handle collision with replace strategy', () => {
+      const config = { ...DEFAULT_CONFIG, collisionResolution: { strategy: 'replace' as const } };
+      const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
+
+      // Mock existsSync to return true for collision
+      mockFileSystemUtils.existsSync.mockReturnValue(true);
+
+      const result = executorWithConfig.execute(testOperations);
+
+      expect(result.successful).toBe(1);
+      expect(result.failed).toBe(0);
+      expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
+        '/source/file.txt',
+        '/target/file.txt'
+      );
     });
 
     it('should handle multiple operations', () => {

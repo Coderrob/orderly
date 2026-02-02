@@ -32,6 +32,13 @@ export interface NamingConvention {
   lowercase?: boolean;
 }
 
+export interface CollisionResolutionConfig {
+  strategy: 'skip' | 'keep-both' | 'replace';
+  renamePattern?: string;
+  maxAttempts?: number;
+  interactive?: boolean;
+}
+
 export interface OrderlyConfig {
   categories: CategoryRule[];
   namingConvention: NamingConvention;
@@ -43,6 +50,7 @@ export interface OrderlyConfig {
   logFile?: string;
   targetDirectory?: string;
   dedupe?: IDedupeConfig;
+  collisionResolution?: CollisionResolutionConfig;
 }
 
 export const DEFAULT_CONFIG: OrderlyConfig = {

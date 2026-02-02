@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 
-import { FileExistsError } from '../errors';
+import type { OrderlyConfig } from '../config/types';
 import { Logger } from '../logger/logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
@@ -12,10 +12,12 @@ export class OperationExecutor implements IOperationExecutor {
    *
    * @param logger
    * @param dryRun
+   * @param config
    */
   constructor(
     private readonly logger: Logger,
-    private readonly dryRun: boolean
+    private readonly dryRun: boolean,
+    private readonly config?: OrderlyConfig
   ) {}
 
   /**
@@ -87,12 +89,15 @@ export class OperationExecutor implements IOperationExecutor {
    */
   private executeOperation(operation: IFileOperation, result: IOrganizationResult): void {
     try {
-      this.performOperation(operation);
-      result.successful++;
-      this.logger.info(`✓ ${operation.reason}`, {
-        from: operation.originalPath,
-        to: operation.newPath
-      });
+      const succeeded = this.performOperation(operation);
+      if (succeeded) {
+        result.successful++;
+        this.logger.info(`✓ ${operation.reason}`, {
+          from: operation.originalPath,
+          to: operation.newPath
+        });
+      }
+      // If not succeeded, operation was skipped - don't increment counters
     } catch (error) {
       this.handleOperationError(operation, error, result);
     }
@@ -102,18 +107,84 @@ export class OperationExecutor implements IOperationExecutor {
    *
    * @param operation
    */
-  private performOperation(operation: IFileOperation): void {
-    const targetDir = path.dirname(operation.newPath);
+  private performOperation(operation: IFileOperation): boolean {
+    let finalTargetPath = operation.newPath;
+
+    const targetDir = path.dirname(finalTargetPath);
     FileSystemUtils.mkdirSync(targetDir);
 
-    if (
-      FileSystemUtils.existsSync(operation.newPath) &&
-      operation.newPath !== operation.originalPath
-    ) {
-      throw new FileExistsError(operation.newPath);
+    // Check for file existence and handle collision resolution
+    if (FileSystemUtils.existsSync(finalTargetPath) && finalTargetPath !== operation.originalPath) {
+      const resolvedPath = this.resolveCollision(operation, finalTargetPath);
+      if (!resolvedPath) {
+        // Skip this operation based on strategy
+        this.logger.warn(`Skipping ${operation.originalPath} due to collision resolution strategy`);
+        return false; // Indicate operation was skipped
+      }
+      finalTargetPath = resolvedPath;
+      operation.newPath = finalTargetPath;
+      operation.reason = `${operation.reason} (collision resolved)`;
     }
 
-    FileSystemUtils.renameSync(operation.originalPath, operation.newPath);
+    FileSystemUtils.renameSync(operation.originalPath, finalTargetPath);
+    return true; // Indicate operation succeeded
+  }
+
+  /**
+   * Resolves a file collision based on the configured strategy
+   * @param operation
+   * @param targetPath
+   * @returns The resolved target path, or null to skip the operation
+   */
+  private resolveCollision(operation: IFileOperation, targetPath: string): string | null {
+    const strategy = this.config?.collisionResolution?.strategy || 'keep-both';
+
+    switch (strategy) {
+      case 'skip':
+        return null; // Skip this operation
+
+      case 'keep-both':
+        return this.generateSuggestedName(targetPath);
+
+      case 'replace':
+        return targetPath; // Use original target path
+
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Generates a suggested alternative filename to resolve collision
+   * @param targetPath
+   * @returns A suggested alternative filename
+   */
+  private generateSuggestedName(targetPath: string): string {
+    const dir = path.dirname(targetPath);
+    const filename = path.basename(targetPath);
+    const ext = path.extname(filename);
+    const nameWithoutExt = path.basename(filename, ext);
+
+    // Default pattern: {name}-{n}{ext}
+    const renamePattern = this.config?.collisionResolution?.renamePattern || '{name}-{n}{ext}';
+    const maxAttempts = this.config?.collisionResolution?.maxAttempts || 100;
+
+    for (let i = 1; i <= maxAttempts; i++) {
+      const suggestedName = renamePattern
+        .replace('{name}', nameWithoutExt)
+        .replace('{n}', i.toString())
+        .replace('{ext}', ext);
+
+      const suggestedPath = path.join(dir, suggestedName);
+
+      // Check if this suggested name is available
+      if (!FileSystemUtils.existsSync(suggestedPath)) {
+        return suggestedPath;
+      }
+    }
+
+    // Fallback: append timestamp
+    return path.join(dir, `${nameWithoutExt}-${Date.now()}${ext}`);
   }
 
   /**

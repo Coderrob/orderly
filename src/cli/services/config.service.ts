@@ -1,3 +1,5 @@
+import * as path from 'node:path';
+
 import { ConfigLoader } from '../../config/config-loader';
 import type { OrderlyConfig } from '../../config/types';
 import { DedupeAction, DedupeMode } from '../../dedupe/types';
@@ -41,7 +43,8 @@ export class ConfigService implements IConfigService {
     const result = {
       ...baseConfig,
       dryRun: options.dryRun ?? baseConfig.dryRun,
-      logLevel
+      logLevel,
+      targetDirectory: options.output ? path.resolve(options.output) : baseConfig.targetDirectory
     };
 
     if (options.dedupe !== undefined || options.dedupeAction !== undefined) {

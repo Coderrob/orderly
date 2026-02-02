@@ -158,8 +158,10 @@ describe('OrganizeHandler - Dedupe Integration', () => {
       expect(mockLogger.info).toHaveBeenCalledWith(
         "Dedupe action 'skip' applied: 1 files affected"
       );
-      expect(mockLogger.info).toHaveBeenCalledWith('Filtered out 2 duplicate files');
-      expect(result).toHaveLength(0); // All files were duplicates and filtered out
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Kept 1 primary files, filtered out 1 duplicate files'
+      );
+      expect(result).toHaveLength(1); // One primary file kept, one duplicate filtered out
     });
 
     it('should not filter files when action is REPORT', async () => {
