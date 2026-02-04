@@ -1,7 +1,6 @@
 import * as path from 'node:path';
 
-import type { OrderlyConfig } from '../config/types';
-import { CollisionResolutionStrategy } from '../config/types';
+import { type OrderlyConfig, CollisionResolutionStrategy } from '../config/types';
 import { Logger } from '../logger/logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
@@ -170,7 +169,7 @@ export class OperationExecutor implements IOperationExecutor {
 
       default:
         this.logger.warn(
-          `Unknown collision resolution strategy '${strategy}', falling back to '${DEFAULT_COLLISION_STRATEGY}'`,
+          `Unknown collision resolution strategy '${String(strategy)}', falling back to '${DEFAULT_COLLISION_STRATEGY}'`,
           {
             operation: operation.originalPath,
             target: targetPath,
