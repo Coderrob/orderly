@@ -7,6 +7,7 @@ import { ConfigService } from '../../src/cli/services/config.service';
 import { DirectoryValidator } from '../../src/cli/services/directory-validator.service';
 import { ManifestService } from '../../src/cli/services/manifest.service';
 import { ExitCode } from '../../src/cli/constants';
+import { DedupeAction } from '../../src/dedupe/types';
 import { TestEnvironmentSetup, TestAssertions, createTestConfig } from '../helpers';
 
 /**
@@ -56,7 +57,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -96,7 +97,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -107,7 +108,10 @@ describe('Dedupe Integration Tests', () => {
       testEnv.createFile(path.join(testDir, 'duplicate2.txt'), content);
 
       // Act
-      const result = await organizeHandler.execute(testDir, { dedupe: true, dedupeAction: 'skip' });
+      const result = await organizeHandler.execute(testDir, {
+        dedupe: true,
+        dedupeAction: DedupeAction.SKIP
+      });
 
       // Assert
       expect(result.success).toBe(true);
@@ -125,7 +129,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -158,7 +162,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -186,7 +190,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'metadata',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -211,7 +215,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'metadata',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -245,7 +249,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'combined',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -272,7 +276,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'report'
+          action: DedupeAction.REPORT
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -304,7 +308,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'report'
+          action: DedupeAction.REPORT
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -316,7 +320,7 @@ describe('Dedupe Integration Tests', () => {
       // Act
       const result = await organizeHandler.execute(testDir, {
         dedupe: true,
-        dedupeAction: 'report'
+        dedupeAction: DedupeAction.REPORT
       });
 
       // Assert
@@ -332,7 +336,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -344,7 +348,7 @@ describe('Dedupe Integration Tests', () => {
       // Act - Override action to 'report'
       const result = await organizeHandler.execute(testDir, {
         dedupe: true,
-        dedupeAction: 'report'
+        dedupeAction: DedupeAction.REPORT
       });
 
       // Assert
@@ -361,7 +365,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -395,7 +399,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -428,7 +432,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -465,7 +469,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -496,7 +500,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
@@ -521,7 +525,7 @@ describe('Dedupe Integration Tests', () => {
         dedupe: {
           enabled: true,
           strategy: 'hash',
-          action: 'skip'
+          action: DedupeAction.SKIP
         }
       });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));

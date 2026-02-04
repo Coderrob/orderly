@@ -8,6 +8,7 @@ export interface IFileSystemUtils {
   appendFileSync(filePath: string, content: string): void;
   mkdirSync(dirPath: string): void;
   renameSync(oldPath: string, newPath: string): void;
+  unlinkSync(filePath: string): void;
   statSync(filePath: string): fs.Stats;
 }
 
@@ -122,6 +123,22 @@ export class FileSystemUtils implements IFileSystemUtils {
    */
   renameSync(oldPath: string, newPath: string): void {
     FileSystemUtils.renameSync(oldPath, newPath);
+  }
+
+  /**
+   *
+   * @param filePath
+   */
+  static unlinkSync(filePath: string): void {
+    fs.unlinkSync(filePath);
+  }
+
+  /**
+   *
+   * @param filePath
+   */
+  unlinkSync(filePath: string): void {
+    FileSystemUtils.unlinkSync(filePath);
   }
 
   /**

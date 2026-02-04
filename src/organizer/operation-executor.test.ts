@@ -3,7 +3,7 @@ import { FileOperationType } from './types';
 import type { IFileOperation } from './types';
 import { Logger } from '../logger/logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
-import { DEFAULT_CONFIG, type OrderlyConfig } from '../config/types';
+import { DEFAULT_CONFIG, type OrderlyConfig, CollisionResolutionStrategy } from '../config/types';
 import * as path from 'node:path';
 
 jest.mock('../logger/logger');
@@ -94,7 +94,7 @@ describe('OperationExecutor', () => {
     it('should handle collision when target file already exists', () => {
       const config: OrderlyConfig = {
         ...DEFAULT_CONFIG,
-        collisionResolution: { strategy: 'skip' }
+        collisionResolution: { strategy: CollisionResolutionStrategy.SKIP }
       };
       const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
 
@@ -114,7 +114,10 @@ describe('OperationExecutor', () => {
     });
 
     it('should handle collision with keep-both strategy', () => {
-      const config = { ...DEFAULT_CONFIG, collisionResolution: { strategy: 'keep-both' as const } };
+      const config = {
+        ...DEFAULT_CONFIG,
+        collisionResolution: { strategy: CollisionResolutionStrategy.KEEP_BOTH }
+      };
       const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
 
       // Mock existsSync to return true for collision, then false for suggested name
@@ -133,7 +136,10 @@ describe('OperationExecutor', () => {
     });
 
     it('should handle collision with replace strategy', () => {
-      const config = { ...DEFAULT_CONFIG, collisionResolution: { strategy: 'replace' as const } };
+      const config = {
+        ...DEFAULT_CONFIG,
+        collisionResolution: { strategy: CollisionResolutionStrategy.REPLACE }
+      };
       const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
 
       // Mock existsSync to return true for collision
@@ -163,12 +169,12 @@ describe('OperationExecutor', () => {
       expect(result.successful).toBe(1);
       expect(result.failed).toBe(0);
       expect(loggerInstance.warn).toHaveBeenCalledWith(
-        "Unknown collision resolution strategy 'unknown', falling back to 'keep-both'",
+        `Unknown collision resolution strategy 'unknown', falling back to '${CollisionResolutionStrategy.KEEP_BOTH}'`,
         {
           operation: '/source/file.txt',
           target: '/target/file.txt',
           providedStrategy: 'unknown',
-          validStrategies: ['skip', 'keep-both', 'replace']
+          validStrategies: Object.values(CollisionResolutionStrategy)
         }
       );
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(

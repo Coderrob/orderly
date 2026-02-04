@@ -6,6 +6,7 @@ import { ConfigService } from '../../src/cli/services/config.service';
 import { DirectoryValidator } from '../../src/cli/services/directory-validator.service';
 import { ManifestService } from '../../src/cli/services/manifest.service';
 import { ExitCode } from '../../src/cli/constants';
+import { NamingConventionType } from '../../src/config/types';
 import {
   TestEnvironmentSetup,
   TestAssertions,

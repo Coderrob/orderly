@@ -27,13 +27,19 @@ export enum NamingConventionType {
   PASCAL_CASE = 'PascalCase'
 }
 
+export enum CollisionResolutionStrategy {
+  SKIP = 'skip',
+  KEEP_BOTH = 'keep-both',
+  REPLACE = 'replace'
+}
+
 export interface NamingConvention {
   type: NamingConventionType;
   lowercase?: boolean;
 }
 
 export interface CollisionResolutionConfig {
-  strategy: 'skip' | 'keep-both' | 'replace';
+  strategy: CollisionResolutionStrategy;
   renamePattern?: string;
   maxAttempts?: number;
   interactive?: boolean;

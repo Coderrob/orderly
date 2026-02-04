@@ -1,11 +1,22 @@
 import * as path from 'node:path';
 
 import type { OrderlyConfig } from '../config/types';
+import { CollisionResolutionStrategy } from '../config/types';
 import { Logger } from '../logger/logger';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
 import type { IOperationExecutor } from './interfaces';
 import type { IFileOperation, IOrganizationResult } from './types';
+
+// Constants for collision resolution
+const DEFAULT_COLLISION_STRATEGY = CollisionResolutionStrategy.KEEP_BOTH;
+const DEFAULT_RENAME_PATTERN = '{name}-{n}{ext}';
+const DEFAULT_MAX_ATTEMPTS = 100;
+
+// Placeholders for rename pattern
+const NAME_PLACEHOLDER = '{name}';
+const NUMBER_PLACEHOLDER = '{n}';
+const EXT_PLACEHOLDER = '{ext}';
 
 export class OperationExecutor implements IOperationExecutor {
   /**
@@ -126,6 +137,14 @@ export class OperationExecutor implements IOperationExecutor {
       operation.reason = `${operation.reason} (collision resolved)`;
     }
 
+    // For 'replace' strategy, delete the existing file before renaming
+    if (
+      this.config?.collisionResolution?.strategy === CollisionResolutionStrategy.REPLACE &&
+      FileSystemUtils.existsSync(finalTargetPath)
+    ) {
+      FileSystemUtils.unlinkSync(finalTargetPath);
+    }
+
     FileSystemUtils.renameSync(operation.originalPath, finalTargetPath);
     return true; // Indicate operation succeeded
   }
@@ -137,26 +156,26 @@ export class OperationExecutor implements IOperationExecutor {
    * @returns The resolved target path, or null to skip the operation
    */
   private resolveCollision(operation: IFileOperation, targetPath: string): string | null {
-    const strategy = this.config?.collisionResolution?.strategy || 'keep-both';
+    const strategy = this.config?.collisionResolution?.strategy || DEFAULT_COLLISION_STRATEGY;
 
     switch (strategy) {
-      case 'skip':
+      case CollisionResolutionStrategy.SKIP:
         return null; // Skip this operation
 
-      case 'keep-both':
+      case CollisionResolutionStrategy.KEEP_BOTH:
         return this.generateSuggestedName(targetPath);
 
-      case 'replace':
+      case CollisionResolutionStrategy.REPLACE:
         return targetPath; // Use original target path
 
       default:
         this.logger.warn(
-          `Unknown collision resolution strategy '${strategy}', falling back to 'keep-both'`,
+          `Unknown collision resolution strategy '${strategy}', falling back to '${DEFAULT_COLLISION_STRATEGY}'`,
           {
             operation: operation.originalPath,
             target: targetPath,
             providedStrategy: strategy,
-            validStrategies: ['skip', 'keep-both', 'replace']
+            validStrategies: Object.values(CollisionResolutionStrategy)
           }
         );
         return this.generateSuggestedName(targetPath);
@@ -175,14 +194,14 @@ export class OperationExecutor implements IOperationExecutor {
     const nameWithoutExt = path.basename(filename, ext);
 
     // Default pattern: {name}-{n}{ext}
-    const renamePattern = this.config?.collisionResolution?.renamePattern || '{name}-{n}{ext}';
-    const maxAttempts = this.config?.collisionResolution?.maxAttempts || 100;
+    const renamePattern = this.config?.collisionResolution?.renamePattern || DEFAULT_RENAME_PATTERN;
+    const maxAttempts = this.config?.collisionResolution?.maxAttempts || DEFAULT_MAX_ATTEMPTS;
 
     for (let i = 1; i <= maxAttempts; i++) {
       const suggestedName = renamePattern
-        .replace('{name}', nameWithoutExt)
-        .replace('{n}', i.toString())
-        .replace('{ext}', ext);
+        .replace(NAME_PLACEHOLDER, nameWithoutExt)
+        .replace(NUMBER_PLACEHOLDER, i.toString())
+        .replace(EXT_PLACEHOLDER, ext);
 
       const suggestedPath = path.join(dir, suggestedName);
 
