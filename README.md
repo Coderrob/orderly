@@ -111,6 +111,9 @@ Organize files in the specified directory (defaults to current directory).
 - `--no-manifest` - Skip manifest generation
 - `-l, --log-level <level>` - Set log level (debug, info, warn, error)
 - `-o, --output <path>` - Output directory for organized files
+- `--no-auto-config` - Disable auto-discovery of config files in target directory
+
+> **Note:** By default, Orderly will automatically use a config file (`.orderly.config.json`, `.orderly.config.yaml`, or `.orderly.config.yml`) if found in the target directory. Use `--no-auto-config` to disable this behavior and use only the default configuration or an explicitly specified config file.
 
 **Examples:**
 
@@ -133,6 +136,9 @@ Scan a directory and display what would be organized without making changes.
 
 - `-c, --config <path>` - Path to config file
 - `-l, --log-level <level>` - Set log level
+- `--no-auto-config` - Disable auto-discovery of config files in target directory
+
+> **Note:** By default, Orderly will automatically use a config file if found in the target directory. A message will be displayed when an auto-discovered config is used.
 
 **Example:**
 

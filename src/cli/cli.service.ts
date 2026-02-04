@@ -53,6 +53,7 @@ export class CliService {
       .option('--no-manifest', 'Skip manifest generation')
       .option('-l, --log-level <level>', 'Log level (debug, info, warn, error)', 'info')
       .option('-o, --output <path>', 'Output directory for organized files')
+      .option('--no-auto-config', 'Disable auto-discovery of config files in target directory')
       .action(async (directory: string, options: IOrganizeOptions) => {
         try {
           await this.handleOrganizeCommand(directory, options);
@@ -93,6 +94,7 @@ export class CliService {
       .argument('[directory]', 'Directory to scan', '.')
       .option('-c, --config <path>', 'Path to config file')
       .option('-l, --log-level <level>', 'Log level (debug, info, warn, error)', 'info')
+      .option('--no-auto-config', 'Disable auto-discovery of config files in target directory')
       .action(async (directory: string, options: IScanOptions) => {
         try {
           await this.handleScanCommand(directory, options);

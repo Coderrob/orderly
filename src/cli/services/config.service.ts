@@ -2,7 +2,7 @@ import * as path from 'node:path';
 
 import { ConfigLoader } from '../../config/config-loader';
 import type { OrderlyConfig } from '../../config/types';
-import { DedupeAction, DedupeMode } from '../../dedupe/types';
+import { DedupeAction, DedupeMode, IDedupeConfig } from '../../dedupe/types';
 import { LogLevel } from '../../types/logging';
 import type { IOrganizeOptions, IConfigService } from '../interfaces';
 
@@ -61,10 +61,10 @@ export class ConfigService implements IConfigService {
    * @param action
    */
   private createDedupeConfig(
-    baseDedupe: OrderlyConfig['dedupe'],
+    baseDedupe: IDedupeConfig | undefined,
     enabled: boolean | undefined,
     action: DedupeAction | undefined
-  ): OrderlyConfig['dedupe'] {
+  ): IDedupeConfig {
     const defaultConfig = {
       enabled: true,
       recursive: false,

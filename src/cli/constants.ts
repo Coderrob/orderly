@@ -51,6 +51,7 @@ export const CLI_CONSTANTS = {
 export const COMMAND_MESSAGES = {
   CONFIG_EXISTS: 'Configuration file already exists: ',
   CONFIG_CREATED: 'Created configuration file: ',
+  CONFIG_AUTO_DISCOVERED: 'Using config file found in target directory: ',
   INIT_FAILED: 'Init failed: ',
   FILES_FOUND: 'Found {0} files to process',
   OPERATIONS_PLANNED: 'Planned {0} operations',
@@ -61,4 +62,7 @@ export const COMMAND_MESSAGES = {
   SCAN_FAILED: 'Scan failed: '
 } as const;
 
-export type ConfigFormat = (typeof CLI_CONSTANTS.VALID_FORMATS)[number];
+/**
+ * Type representing valid configuration file formats
+ */
+export type ConfigFormat = ConfigFileFormat;

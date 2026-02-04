@@ -6,7 +6,6 @@ import { ConfigService } from '../../src/cli/services/config.service';
 import { DirectoryValidator } from '../../src/cli/services/directory-validator.service';
 import { ManifestService } from '../../src/cli/services/manifest.service';
 import { ExitCode } from '../../src/cli/constants';
-import { NamingConventionType } from '../../src/config/types';
 import {
   TestEnvironmentSetup,
   TestAssertions,
@@ -47,16 +46,7 @@ describe('Organize Command Integration Tests', () => {
     it('should organize files by type', async () => {
       // Arrange - Create config
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       // Create test files
@@ -94,16 +84,7 @@ describe('Organize Command Integration Tests', () => {
     it('should preserve file content during organization', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const testContent = 'Important test content that must be preserved';
@@ -123,16 +104,7 @@ describe('Organize Command Integration Tests', () => {
     it('should handle empty directory', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       // Act
@@ -148,16 +120,7 @@ describe('Organize Command Integration Tests', () => {
     it('should not modify files in dry-run mode', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        dryRun: true,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({ dryRun: true });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       testEnv.createFile(path.join(testDir, 'test.txt'), 'content');
@@ -198,16 +161,7 @@ describe('Organize Command Integration Tests', () => {
     it('should generate manifest when requested', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       testEnv.createFile(path.join(testDir, 'test.txt'), 'content');
@@ -232,16 +186,7 @@ describe('Organize Command Integration Tests', () => {
     it('should not generate manifest when not requested', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       testEnv.createFile(path.join(testDir, 'test.txt'), 'content');
@@ -262,16 +207,7 @@ describe('Organize Command Integration Tests', () => {
     it('should apply kebab-case naming convention', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       testEnv.createFile(path.join(testDir, 'My Important Document.txt'), 'content');
@@ -319,16 +255,7 @@ describe('Organize Command Integration Tests', () => {
     it('should handle nested directories when recursive is true', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: true,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const structure: ITestDirectoryStructure = {
@@ -396,16 +323,7 @@ describe('Organize Command Integration Tests', () => {
       // This test is platform-specific and may need adjustment
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       testEnv.createFile(path.join(testDir, 'test.txt'), 'content');
@@ -457,16 +375,10 @@ describe('Organize Command Integration Tests', () => {
     it('should exclude files by pattern', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
+      const config = createTestConfig({
         dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
         excludePatterns: ['*.tmp', '*.bak']
-      };
+      });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       testEnv.createFile(path.join(testDir, 'keep.txt'), 'keep');
@@ -491,16 +403,7 @@ describe('Organize Command Integration Tests', () => {
     it('should maintain file count after organization', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       testEnv.createFile(path.join(testDir, 'file1.txt'), 'content1');
@@ -522,16 +425,7 @@ describe('Organize Command Integration Tests', () => {
     it('should maintain total file size after organization', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        dryRun: false,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        recursive: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const content1 = 'x'.repeat(100);

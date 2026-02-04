@@ -39,15 +39,6 @@ describe('Dedupe Integration Tests', () => {
     jest.restoreAllMocks();
   });
 
-  /**
-   * Helper to create a file with specific hash
-   */
-  function createFileWithHash(filePath: string, content: string): string {
-    testEnv.createFile(filePath, content);
-    const hash = crypto.createHash('sha256').update(content).digest('hex');
-    return hash;
-  }
-
   describe('Hash-based deduplication', () => {
     it('should detect duplicate files with identical content', async () => {
       // Arrange

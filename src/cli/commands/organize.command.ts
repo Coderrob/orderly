@@ -46,12 +46,14 @@ export class OrganizeHandler implements IOrganizeHandler {
       // Validate and resolve directory first
       const targetDir = this.directoryValidator.validate(directory);
 
-      // If no config specified, check target directory for config file
+      // If no config specified and auto-discovery not disabled, check target directory for config file
       const configOptions = { ...options };
-      if (!configOptions.config) {
+      if (!configOptions.config && !options.noAutoConfig) {
         const targetConfig = this.findConfigInDirectory(targetDir);
         if (targetConfig) {
           configOptions.config = targetConfig;
+          // Log that we're using an auto-discovered config
+          console.log(`ℹ️  ${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${targetConfig}\n`);
         }
       }
 

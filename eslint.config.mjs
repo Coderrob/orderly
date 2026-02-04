@@ -104,5 +104,33 @@ export default tseslint.config(
       'require-await': 'off',
       '@typescript-eslint/require-await': 'error'
     }
+  },
+  // Rule: Prevent index access types (e.g., Type['property'])
+  {
+    files: ['src/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'TSIndexedAccessType',
+          message:
+            'Avoid index access types (Type["property"]). Use explicit type references or create separate type aliases instead.'
+        }
+      ]
+    }
+  },
+  // Rule: Prevent re-exports from index.ts files with parent path prefix
+  {
+    files: ['**/index.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: String.raw`ExportAllDeclaration[source.value=/^\.\.\//], ExportNamedDeclaration[source.value=/^\.\.\//]`,
+          message:
+            'Do not re-export from parent directories in index.ts files. Only export from sibling or child paths (./).'
+        }
+      ]
+    }
   }
 );

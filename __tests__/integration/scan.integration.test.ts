@@ -100,16 +100,7 @@ describe('Scan Command Integration Tests', () => {
     it('should scan all nested files when recursive is true in config', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        recursive: true,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        dryRun: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({});
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       const structure: ITestDirectoryStructure = {
@@ -137,16 +128,7 @@ describe('Scan Command Integration Tests', () => {
     it('should handle deeply nested directory structures', async () => {
       // Arrange
       const configPath = path.join(testDir, '.orderly.config.json');
-      const config = {
-        logLevel: 'info',
-        recursive: true,
-        organizeBy: ['type'],
-        namingConvention: 'kebab',
-        dryRun: false,
-        includeExtensions: [],
-        excludeExtensions: [],
-        excludePatterns: []
-      };
+      const config = createTestConfig({});
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
       // Create 10 levels deep

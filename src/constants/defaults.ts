@@ -3,7 +3,10 @@
  */
 export const CONFIG_FILE_NAMES = ['.orderly.yml', '.orderly.yaml', 'orderly.config.json'] as const;
 
-export type ConfigFileName = (typeof CONFIG_FILE_NAMES)[number];
+/**
+ * Valid configuration file name type
+ */
+export type ConfigFileName = '.orderly.yml' | '.orderly.yaml' | 'orderly.config.json';
 
 /**
  * Default file paths.

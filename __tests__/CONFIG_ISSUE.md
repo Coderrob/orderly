@@ -55,9 +55,9 @@ The test configurations use properties that don't exist in the actual `OrderlyCo
 The following test files need config structure updates:
 
 1. ✅ `__tests__/integration/init.integration.test.ts` - **FIXED**
-2. ⚠️  `__tests__/integration/scan.integration.test.ts` - Needs fixing
-3. ⚠️  `__tests__/integration/organize.integration.test.ts` - Needs fixing
-4. ⚠️  `__tests__/integration/dedupe.integration.test.ts` - Needs fixing
+2. ✅ `__tests__/integration/scan.integration.test.ts` - **FIXED**
+3. ✅ `__tests__/integration/organize.integration.test.ts` - **FIXED**
+4. ✅ `__tests__/integration/dedupe.integration.test.ts` - **FIXED**
 
 ## Helper Created
 
