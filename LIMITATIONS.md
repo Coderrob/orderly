@@ -8,194 +8,95 @@ Orderly is a functional file organization tool, but several features are either 
 
 ---
 
-## Current Limitations
+## Recently Implemented Features ✅
 
-### 1. File Name Collision Handling ⚠️ **High Priority**
+### File Name Collision Handling
 
-**Current Behavior:**
-When organizing files from different source directories with identical names to the same target folder, the second file operation fails with a `FileExistsError`. Only the first file is successfully organized, subsequent files with the same name are skipped with errors.
+**Status:** ✅ **Implemented**
 
-**Impact:**
+File collision resolution has been implemented with three configurable strategies:
 
-- Users cannot organize directory structures with duplicate file names
-- Silent failures occur when batch processing files
-- Data loss risk if users don't check error logs
+1. **Skip Strategy** - Skips files with duplicate names (first file wins)
+2. **Keep Both Strategy** (Default) - Renames duplicate files by appending a numeric suffix (e.g., `file.txt`, `file-1.txt`, `file-2.txt`)
+3. **Replace Strategy** - Replaces existing files with newer versions
 
-**Example:**
-
-```
-folder1/readme.txt  →  documents/readme.txt ✓
-folder2/readme.txt  →  documents/readme.txt ✗ (FileExistsError)
-```
-
-**Implementation Plan:**
-
-#### Phase 1: Detection & Reporting
-
-1. **Add collision detection to `OperationPlanner`**
-   - Before planning operations, scan for potential name collisions
-   - Track all target paths in a `Map<string, IFileOperation[]>`
-   - Identify collisions early in the planning phase
-
-2. **Update `IFileOperation` interface**
-
-   ```typescript
-   interface IFileOperation {
-     // ... existing fields
-     hasCollision?: boolean;
-     collisionGroup?: number;
-     suggestedName?: string;
-   }
-   ```
-
-#### Phase 2: Resolution Strategies
-
-Implement configurable collision resolution strategies:
-
-1. **Skip Strategy** (Default - Current Behavior)
-   - Skip subsequent files with same name
-   - Log warning with file paths
-   - Maintain first-wins behavior
-
-2. **Rename Strategy** (Recommended)
-   - Append suffix to duplicate files: `readme.txt`, `readme-1.txt`, `readme-2.txt`
-   - Preserve all files with unique names
-   - Configuration option for suffix pattern: `{name}-{n}.{ext}` or `{name} ({n}).{ext}`
-
-3. **Overwrite Strategy**
-   - Replace existing file with newer version
-   - Requires confirmation in interactive mode
-   - Log warning about overwritten files
-
-4. **Ask Strategy** (Interactive Mode)
-   - Prompt user for each collision
-   - Options: Skip, Rename, Overwrite, Skip All, Rename All
-
-#### Phase 3: Configuration
+**Configuration:**
 
 ```typescript
 interface OrderlyConfig {
-  // ... existing fields
   collisionResolution?: {
-    strategy: 'skip' | 'rename' | 'overwrite' | 'ask';
+    strategy: 'skip' | 'keep-both' | 'replace';
     renamePattern?: string; // Default: '{name}-{n}{ext}'
     maxAttempts?: number;   // Default: 100
-    interactive?: boolean;  // Default: false
   };
 }
 ```
 
-#### Phase 4: Testing
+**Example Usage:**
 
-- Unit tests for each resolution strategy
-- Integration tests with multiple collision scenarios
-- Edge cases: very long file names, special characters, hundreds of duplicates
+```yaml
+# .orderly.yml
+collisionResolution:
+  strategy: keep-both
+  renamePattern: '{name}-{n}{ext}'
+  maxAttempts: 100
+```
 
-**Complexity:** Medium
-**Dependencies:** None
+See the implementation in:
+- `src/config/types.ts` - Type definitions
+- `src/organizer/operation-executor.ts` - Strategy implementation
+- `__tests__/organizer/operation-executor.test.ts` - Test coverage
 
 ---
 
-### 2. Custom Output Directory ⚠️ **Medium Priority**
+### Custom Output Directory
 
-**Current Behavior:**
-Files are always organized in subdirectories relative to the source directory. There's no option to specify a different output location.
+**Status:** ✅ **Implemented**
 
-**Current Structure:**
+Custom output directory support has been added, allowing files to be organized to a different location than the source directory.
 
-```
-/source/
-  file.txt      →  /source/documents/file.txt
-  photo.jpg     →  /source/images/photo.jpg
-```
+**Configuration:**
 
-**Desired Structure:**
-
-```
-/source/
-  file.txt      →  /output/documents/file.txt
-  photo.jpg     →  /output/images/photo.jpg
+```typescript
+interface OrderlyConfig {
+  targetDirectory?: string; // Absolute or relative path
+}
 ```
 
-**Impact:**
+**CLI Usage:**
 
-- Cannot organize files to network drives or different volumes
-- Cannot separate source and organized files for backup purposes
-- Limits use cases for archival and migration workflows
+```bash
+orderly organize --output /path/to/output
+orderly organize -o /custom/directory
+```
 
-**Implementation Plan:**
+**Example Usage:**
 
-#### Phase 1: Configuration Support
+```yaml
+# .orderly.yml
+targetDirectory: /output
+```
 
-1. **Add to `OrderlyConfig`**
+```bash
+# Before (default behavior)
+/source/file.txt      →  /source/documents/file.txt
+/source/photo.jpg     →  /source/images/photo.jpg
 
-   ```typescript
-   interface OrderlyConfig {
-     // ... existing fields
-     targetDirectory?: string; // Absolute or relative path
-   }
-   ```
+# After (with --output /organized)
+/source/file.txt      →  /organized/documents/file.txt
+/source/photo.jpg     →  /organized/images/photo.jpg
+```
 
-2. **Add CLI option**
-
-   ```typescript
-   organize
-     .option('-o, --output <directory>', 'Output directory for organized files')
-   ```
-
-#### Phase 2: Update OperationPlanner
-
-1. **Modify `calculateTargets` method**
-   - Check if `config.targetDirectory` is set
-   - Resolve absolute path if relative
-   - Build target paths relative to output directory instead of source
-
-2. **Path Resolution**
-
-   ```typescript
-   private calculateTargets(file: IScannedFile): TargetPaths {
-     const baseDir = this.config.targetDirectory 
-       ? path.resolve(this.config.targetDirectory)
-       : this.baseDirectory;
-     
-     let targetDir = baseDir;
-     if (file.targetFolder) {
-       targetDir = path.join(baseDir, file.targetFolder);
-     }
-     // ... rest of logic
-   }
-   ```
-
-#### Phase 3: Validation & Safety
-
-1. **Pre-flight checks**
-   - Validate output directory exists or can be created
-   - Check write permissions
-   - Verify sufficient disk space
-   - Warn if output directory is not empty
-
-2. **Error handling**
-   - Handle cross-device moves (requires copy + delete)
-   - Graceful fallback if output directory becomes unavailable
-   - Atomic operations where possible
-
-#### Phase 4: Enhanced Features
-
-1. **Relative path preservation option**
-   - Maintain source directory structure in output
-   - Option: `preserveStructure: boolean`
-
-2. **Source cleanup option**
-   - Remove original files after successful organization
-   - Option: `cleanupSource: boolean`
-   - Requires confirmation in interactive mode
-
-**Complexity:** Medium
-**Dependencies:** File collision handling (recommended)
+See the implementation in:
+- `src/config/types.ts` - Type definitions
+- `src/organizer/operation-planner.ts` - Path resolution logic
+- `src/cli/cli.service.ts` - CLI option handling
 
 ---
 
-### 3. Non-Recursive Scanning ℹ️ **Low Priority**
+## Current Limitations
+
+### 1. Non-Recursive Scanning ℹ️ **Low Priority**
 
 **Current Behavior:**
 The file scanner always scans recursively using the glob pattern `**/*`, finding all files in all subdirectories. There's no option to scan only the root level.
@@ -279,7 +180,7 @@ The file scanner always scans recursively using the glob pattern `**/*`, finding
 
 ---
 
-### 4. Extension-Based Filtering During Scan 📊 **Low Priority**
+### 2. Extension-Based Filtering During Scan 📊 **Low Priority**
 
 **Current Behavior:**
 The scanner finds all files regardless of extension. Filtering happens during organization through category definitions. This means:
@@ -395,21 +296,9 @@ private buildIgnorePatterns(): string[] {
 
 ## Implementation Priority & Roadmap
 
-### High Priority (Next Release)
-
-1. **File Name Collision Handling**
-   - Critical for data integrity
-   - High user impact
-
-### Medium Priority (Future Release)
-
-2. **Custom Output Directory**
-   - Enables important use cases
-   - Good UX improvement
-
 ### Low Priority (As Needed)
 
-3. **Non-Recursive Scanning**
+1. **Non-Recursive Scanning**
    - Nice to have
    - Workaround available (use excludePatterns)
 
