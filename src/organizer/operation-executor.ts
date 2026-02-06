@@ -158,7 +158,10 @@ export class OperationExecutor implements IOperationExecutor {
 
       case CollisionResolutionStrategy.REPLACE:
         // Delete the existing file before we proceed with the rename
-        FileSystemUtils.unlinkSync(targetPath);
+        // Safety check in case file was deleted between collision detection and resolution
+        if (FileSystemUtils.existsSync(targetPath)) {
+          FileSystemUtils.unlinkSync(targetPath);
+        }
         return targetPath; // Use original target path
 
       default:
