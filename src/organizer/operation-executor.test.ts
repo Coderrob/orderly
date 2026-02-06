@@ -142,9 +142,9 @@ describe('OperationExecutor', () => {
       };
       const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
 
-      // Mock existsSync to return true for collision (existing file at target)
-      // First call: checks if target exists (collision detected)
-      // Second call: checks again before unlinking (in performOperation)
+      // Mock existsSync to return true to simulate an existing file at the target path
+      // This mock will be called twice: once to detect the collision (line 127 in operation-executor.ts)
+      // and once before unlinking the file (line 142)
       mockFileSystemUtils.existsSync.mockReturnValue(true);
 
       const result = executorWithConfig.execute(testOperations);
