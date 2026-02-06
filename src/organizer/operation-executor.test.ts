@@ -142,17 +142,30 @@ describe('OperationExecutor', () => {
       };
       const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
 
-      // Mock existsSync to return true for collision
+      // Mock existsSync to return true for collision (existing file at target)
+      // First call: checks if target exists (collision detected)
+      // Second call: checks again before unlinking (in performOperation)
       mockFileSystemUtils.existsSync.mockReturnValue(true);
 
       const result = executorWithConfig.execute(testOperations);
 
       expect(result.successful).toBe(1);
       expect(result.failed).toBe(0);
+      
+      // Verify that the existing file is deleted before replacement
+      expect(mockFileSystemUtils.unlinkSync).toHaveBeenCalledWith('/target/file.txt');
+      expect(mockFileSystemUtils.unlinkSync).toHaveBeenCalledTimes(1);
+      
+      // Verify that the source file is renamed to the target location
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         '/source/file.txt',
         '/target/file.txt'
       );
+      
+      // Ensure unlinkSync is called before renameSync
+      const unlinkCall = mockFileSystemUtils.unlinkSync.mock.invocationCallOrder[0];
+      const renameCall = mockFileSystemUtils.renameSync.mock.invocationCallOrder[0];
+      expect(unlinkCall).toBeLessThan(renameCall);
     });
 
     it('should warn and fallback to keep-both for unknown collision strategy', () => {
