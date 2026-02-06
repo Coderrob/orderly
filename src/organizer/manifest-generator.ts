@@ -50,8 +50,8 @@ export class ManifestGenerator implements IManifestGenerator {
    */
   generate(result: IOrganizationResult, errors: IFileError[]): Manifest {
     const manifest = this.builder.build(result, errors);
-    // Add operations property for backward compatibility
-    manifest.operations = manifest.entries;
+    // Add operations property for backward compatibility (shallow copy of entries)
+    manifest.operations = [...manifest.entries];
     return manifest;
   }
 
