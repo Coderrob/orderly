@@ -141,7 +141,17 @@ export class OperationExecutor implements IOperationExecutor {
       this.config?.collisionResolution?.strategy === CollisionResolutionStrategy.REPLACE &&
       FileSystemUtils.existsSync(finalTargetPath)
     ) {
-      FileSystemUtils.unlinkSync(finalTargetPath);
+      try {
+        FileSystemUtils.unlinkSync(finalTargetPath);
+      } catch (error) {
+        this.logger.error('Failed to delete existing file before replace operation', {
+          targetPath: finalTargetPath,
+          originalPath: operation.originalPath,
+          error
+        });
+        // Rethrow so executeOperation/handleOperationError can treat this as a failed operation
+        throw error;
+      }
     }
 
     FileSystemUtils.renameSync(operation.originalPath, finalTargetPath);
