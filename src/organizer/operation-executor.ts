@@ -210,8 +210,9 @@ export class OperationExecutor implements IOperationExecutor {
       }
     }
 
-    // Fallback: append timestamp
-    return path.join(dir, `${nameWithoutExt}-${Date.now()}${ext}`);
+    // Fallback: append timestamp and random suffix to reduce collision risk
+    const randomSuffix = Math.random().toString(36).slice(2, 8);
+    return path.join(dir, `${nameWithoutExt}-${Date.now()}-${randomSuffix}${ext}`);
   }
 
   /**
