@@ -42,7 +42,7 @@ export class ScanHandler implements IScanHandler {
       // If no config specified and auto-discovery not disabled, check target directory for config file
       const configOptions = { ...options };
       if (!configOptions.config && !options.noAutoConfig) {
-        const targetConfig = this.findConfigInDirectory(targetDir);
+        const targetConfig = this.configService.findConfigInDirectory(targetDir);
         if (targetConfig) {
           configOptions.config = targetConfig;
           // Log that we're using an auto-discovered config
