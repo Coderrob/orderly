@@ -120,7 +120,7 @@ export class ScanHandler implements IScanHandler {
    * @returns Path to config file if found, null otherwise
    */
   private findConfigInDirectory(directory: string): string | null {
-    const configNames = ['.orderly.config.json', '.orderly.config.yaml', '.orderly.config.yml'];
+    const configNames = ['.orderly.yml', '.orderly.yaml', 'orderly.config.json'];
 
     for (const configName of configNames) {
       const configPath = path.join(directory, configName);
