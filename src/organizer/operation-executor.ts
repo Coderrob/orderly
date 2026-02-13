@@ -19,10 +19,10 @@ const EXT_PLACEHOLDER = '{ext}';
 
 export class OperationExecutor implements IOperationExecutor {
   /**
-   *
-   * @param logger
-   * @param dryRun
-   * @param config
+   * Creates a new OperationExecutor instance
+   * @param logger - Logger instance for recording operation details
+   * @param dryRun - If true, simulates operations without making actual changes
+   * @param config - Optional configuration containing collision resolution and other settings
    */
   constructor(
     private readonly logger: Logger,
@@ -31,8 +31,9 @@ export class OperationExecutor implements IOperationExecutor {
   ) {}
 
   /**
-   *
-   * @param operations
+   * Executes a list of file operations, either as a dry run or actual execution
+   * @param operations - Array of file operations to execute
+   * @returns Organization result containing success/failure counts and any errors
    */
   execute(operations: IFileOperation[]): IOrganizationResult {
     const result = this.createEmptyResult(operations);
@@ -45,8 +46,9 @@ export class OperationExecutor implements IOperationExecutor {
   }
 
   /**
-   *
-   * @param operations
+   * Creates an empty organization result initialized with the operations
+   * @param operations - Array of file operations to include in the result
+   * @returns Empty organization result with zero counts and no errors
    */
   private createEmptyResult(operations: IFileOperation[]): IOrganizationResult {
     return {
@@ -58,9 +60,10 @@ export class OperationExecutor implements IOperationExecutor {
   }
 
   /**
-   *
-   * @param operations
-   * @param result
+   * Simulates execution of operations without making actual file system changes
+   * @param operations - Array of file operations to simulate
+   * @param result - Organization result to populate with simulation results
+   * @returns Updated organization result with all operations marked as successful
    */
   private executeDryRun(
     operations: IFileOperation[],
@@ -78,9 +81,10 @@ export class OperationExecutor implements IOperationExecutor {
   }
 
   /**
-   *
-   * @param operations
-   * @param result
+   * Executes operations with actual file system changes
+   * @param operations - Array of file operations to execute
+   * @param result - Organization result to populate with execution results
+   * @returns Updated organization result with success/failure counts and any errors
    */
   private executeReal(
     operations: IFileOperation[],
@@ -93,9 +97,9 @@ export class OperationExecutor implements IOperationExecutor {
   }
 
   /**
-   *
-   * @param operation
-   * @param result
+   * Executes a single file operation and updates the result accordingly
+   * @param operation - File operation to execute
+   * @param result - Organization result to update with execution outcome
    */
   private executeOperation(operation: IFileOperation, result: IOrganizationResult): void {
     try {
@@ -114,8 +118,9 @@ export class OperationExecutor implements IOperationExecutor {
   }
 
   /**
-   *
-   * @param operation
+   * Performs the actual file system operation (move/rename)
+   * @param operation - File operation to perform
+   * @returns True if operation succeeded, false if it was skipped
    */
   private performOperation(operation: IFileOperation): boolean {
     let finalTargetPath = operation.newPath;
@@ -160,8 +165,8 @@ export class OperationExecutor implements IOperationExecutor {
 
   /**
    * Resolves a file collision based on the configured strategy
-   * @param operation
-   * @param targetPath
+   * @param operation - The file operation that encountered a collision
+   * @param targetPath - The target path where the collision occurred
    * @returns The resolved target path, or null to skip the operation
    */
   private resolveCollision(operation: IFileOperation, targetPath: string): string | null {
@@ -193,8 +198,8 @@ export class OperationExecutor implements IOperationExecutor {
 
   /**
    * Generates a suggested alternative filename to resolve collision
-   * @param targetPath
-   * @returns A suggested alternative filename
+   * @param targetPath - The original target path that has a collision
+   * @returns A suggested alternative filename that doesn't conflict with existing files
    */
   private generateSuggestedName(targetPath: string): string {
     const dir = path.dirname(targetPath);
@@ -226,10 +231,10 @@ export class OperationExecutor implements IOperationExecutor {
   }
 
   /**
-   *
-   * @param operation
-   * @param error
-   * @param result
+   * Handles errors that occur during operation execution
+   * @param operation - The file operation that encountered an error
+   * @param error - The error that occurred
+   * @param result - Organization result to update with error information
    */
   private handleOperationError(
     operation: IFileOperation,
