@@ -99,12 +99,15 @@ export class OperationExecutor implements IOperationExecutor {
    */
   private executeOperation(operation: IFileOperation, result: IOrganizationResult): void {
     try {
-      const succeeded = this.performOperation(operation);
-      if (succeeded) {
+      const executionResult = this.performOperation(operation);
+      if (executionResult.succeeded) {
         result.successful++;
-        this.logger.info(`✓ ${operation.reason}`, {
+        const reason = executionResult.collisionResolved
+          ? `${operation.reason} (collision resolved)`
+          : operation.reason;
+        this.logger.info(`✓ ${reason}`, {
           from: operation.originalPath,
-          to: operation.newPath
+          to: executionResult.finalPath
         });
       }
       // If not succeeded, operation was skipped - don't increment counters
@@ -114,11 +117,17 @@ export class OperationExecutor implements IOperationExecutor {
   }
 
   /**
-   *
-   * @param operation
+   * Performs the file operation without mutating the original operation object
+   * @param operation The operation to perform
+   * @returns An object indicating success and the final path used
    */
-  private performOperation(operation: IFileOperation): boolean {
+  private performOperation(operation: IFileOperation): {
+    succeeded: boolean;
+    finalPath: string;
+    collisionResolved: boolean;
+  } {
     let finalTargetPath = operation.newPath;
+    let collisionResolved = false;
 
     const targetDir = path.dirname(finalTargetPath);
     FileSystemUtils.mkdirSync(targetDir);
@@ -129,15 +138,14 @@ export class OperationExecutor implements IOperationExecutor {
       if (!resolvedPath) {
         // Skip this operation based on strategy
         this.logger.warn(`Skipping ${operation.originalPath} due to collision resolution strategy`);
-        return false; // Indicate operation was skipped
+        return { succeeded: false, finalPath: operation.newPath, collisionResolved: false };
       }
       finalTargetPath = resolvedPath;
-      operation.newPath = finalTargetPath;
-      operation.reason = `${operation.reason} (collision resolved)`;
+      collisionResolved = true;
     }
 
     FileSystemUtils.renameSync(operation.originalPath, finalTargetPath);
-    return true; // Indicate operation succeeded
+    return { succeeded: true, finalPath: finalTargetPath, collisionResolved };
   }
 
   /**
