@@ -1,6 +1,3 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-
 import { Logger } from '../../logger/logger';
 import { FileScanner } from '../../scanner/file-scanner';
 import type { IScannedFile } from '../../scanner/interfaces';
@@ -41,7 +38,7 @@ export class ScanHandler implements IScanHandler {
       // If no config specified and auto-discovery not disabled, check target directory for config file
       const configOptions = { ...options };
       if (!configOptions.config && !options.noAutoConfig) {
-        const targetConfig = this.findConfigInDirectory(targetDir);
+        const targetConfig = this.configService.findConfigInDirectory(targetDir);
         if (targetConfig) {
           configOptions.config = targetConfig;
           // Log that we're using an auto-discovered config
@@ -112,23 +109,5 @@ export class ScanHandler implements IScanHandler {
     if (files.length > 5) {
       console.log(`  ... and ${files.length - 5} more files`);
     }
-  }
-
-  /**
-   * Searches for a config file in the target directory.
-   * @param directory - Directory to search in
-   * @returns Path to config file if found, null otherwise
-   */
-  private findConfigInDirectory(directory: string): string | null {
-    const configNames = ['.orderly.config.json', '.orderly.config.yaml', '.orderly.config.yml'];
-
-    for (const configName of configNames) {
-      const configPath = path.join(directory, configName);
-      if (fs.existsSync(configPath)) {
-        return configPath;
-      }
-    }
-
-    return null;
   }
 }

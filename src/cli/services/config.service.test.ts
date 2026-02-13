@@ -3,8 +3,11 @@ import { ConfigLoader } from '../../config/config-loader';
 import { LogLevel } from '../../types';
 import { DedupeAction, DedupeMode } from '../../dedupe/types';
 import { NamingConventionType } from '../../config/types';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 jest.mock('../../config/config-loader');
+jest.mock('node:fs');
 
 describe('ConfigService', () => {
   let configService: ConfigService;
@@ -180,6 +183,65 @@ describe('ConfigService', () => {
       const result = configService.loadWithOverrides({ dedupeAction: 'invalid' });
 
       expect(result.dedupe?.action).toBe(DedupeAction.SKIP);
+    });
+  });
+
+  describe('findConfigInDirectory', () => {
+    const mockExistsSync = fs.existsSync as jest.MockedFunction<typeof fs.existsSync>;
+
+    beforeEach(() => {
+      mockExistsSync.mockReset();
+    });
+
+    it('should find .orderly.config.json', () => {
+      mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
+        return filePath === path.join('/test/dir', '.orderly.config.json');
+      });
+
+      const result = configService.findConfigInDirectory('/test/dir');
+
+      expect(result).toBe(path.join('/test/dir', '.orderly.config.json'));
+      expect(mockExistsSync).toHaveBeenCalledWith(path.join('/test/dir', '.orderly.config.json'));
+    });
+
+    it('should find .orderly.config.yaml', () => {
+      mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
+        return filePath === path.join('/test/dir', '.orderly.config.yaml');
+      });
+
+      const result = configService.findConfigInDirectory('/test/dir');
+
+      expect(result).toBe(path.join('/test/dir', '.orderly.config.yaml'));
+    });
+
+    it('should find .orderly.config.yml', () => {
+      mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
+        return filePath === path.join('/test/dir', '.orderly.config.yml');
+      });
+
+      const result = configService.findConfigInDirectory('/test/dir');
+
+      expect(result).toBe(path.join('/test/dir', '.orderly.config.yml'));
+    });
+
+    it('should prioritize .orderly.config.json over yaml', () => {
+      mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
+        const pathStr = filePath.toString();
+        return pathStr.includes('.orderly.config.json') || pathStr.includes('.orderly.config.yaml');
+      });
+
+      const result = configService.findConfigInDirectory('/test/dir');
+
+      expect(result).toBe(path.join('/test/dir', '.orderly.config.json'));
+    });
+
+    it('should return null if no config file found', () => {
+      mockExistsSync.mockReturnValue(false);
+
+      const result = configService.findConfigInDirectory('/test/dir');
+
+      expect(result).toBeNull();
+      expect(mockExistsSync).toHaveBeenCalledTimes(3);
     });
   });
 });

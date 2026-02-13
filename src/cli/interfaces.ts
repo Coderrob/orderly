@@ -117,6 +117,13 @@ export interface IConfigService {
    * @returns Loaded and merged configuration
    */
   loadWithOverrides(options: IOrganizeOptions): OrderlyConfig;
+
+  /**
+   * Searches for a config file in the target directory.
+   * @param directory - Directory to search in
+   * @returns Path to config file if found, null otherwise
+   */
+  findConfigInDirectory(directory: string): string | null;
 }
 
 /**
