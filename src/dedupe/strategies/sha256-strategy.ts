@@ -10,14 +10,15 @@ export class Sha256Strategy implements IDedupeStrategy {
   readonly priority = 100; // Run last (expensive)
 
   /**
-   *
-   * @param hasher
+   * Creates a new Sha256Strategy instance with a hasher implementation
+   * @param hasher - Hasher implementation for computing SHA-256 hashes
    */
   constructor(private readonly hasher: IDedupeHasher) {}
 
   /**
    * All files can be hashed, so this strategy supports all files.
-   * @param _file
+   * @param _file - Scanned file to check support (unused as all files are supported)
+   * @returns True, indicating all files are supported by this strategy
    */
   supports(_file: IScannedFile): boolean {
     return true;
@@ -25,8 +26,10 @@ export class Sha256Strategy implements IDedupeStrategy {
 
   /**
    * Computes SHA-256 hash of file contents.
+   * Most accurate but slowest duplicate detection method - compares actual file contents.
    * Returns null if hashing fails to treat as non-duplicate.
-   * @param file
+   * @param file - Scanned file to compute hash for
+   * @returns SHA-256 hash of file contents, or null if hashing fails
    */
   async getKey(file: IScannedFile): Promise<string | null> {
     try {

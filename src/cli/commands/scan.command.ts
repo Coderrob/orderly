@@ -18,9 +18,9 @@ import type {
  */
 export class ScanHandler implements IScanHandler {
   /**
-   *
-   * @param configService
-   * @param directoryValidator
+   * Creates a new ScanHandler instance
+   * @param configService - Service for loading and managing configuration
+   * @param directoryValidator - Service for validating directory paths
    */
   constructor(
     private readonly configService: IConfigService,

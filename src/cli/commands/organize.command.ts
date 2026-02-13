@@ -24,10 +24,10 @@ import type {
  */
 export class OrganizeHandler implements IOrganizeHandler {
   /**
-   *
-   * @param configService
-   * @param directoryValidator
-   * @param manifestService
+   * Creates a new OrganizeHandler instance
+   * @param configService - Service for loading and managing configuration
+   * @param directoryValidator - Service for validating directory paths
+   * @param manifestService - Service for generating and saving manifests
    */
   constructor(
     private readonly configService: IConfigService,

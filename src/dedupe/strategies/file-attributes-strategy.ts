@@ -11,14 +11,15 @@ export class FileAttributesStrategy implements IDedupeStrategy {
   readonly priority = 35; // Lower priority than content-based strategies
 
   /**
-   *
-   * @param metadataExtractor
+   * Creates a new FileAttributesStrategy instance with optional metadata extractor
+   * @param metadataExtractor - Metadata extractor instance for attribute extraction (default: new MetadataExtractor())
    */
   constructor(private readonly metadataExtractor: IMetadataExtractor = new MetadataExtractor()) {}
 
   /**
    * Supports all files for attribute-based comparison.
-   * @param _file
+   * @param _file - Scanned file to check support (unused as all files are supported)
+   * @returns True, indicating all files are supported by this strategy
    */
   supports(_file: IScannedFile): boolean {
     return true;
@@ -27,7 +28,8 @@ export class FileAttributesStrategy implements IDedupeStrategy {
   /**
    * Generates a key based on file system attributes.
    * Key format: "hidden:{bool}|readonly:{bool}|system:{bool}"
-   * @param file
+   * @param file - Scanned file to extract attributes from
+   * @returns Attributes key in format "hidden:X|readonly:Y|system:Z", or null if attributes cannot be determined
    */
   async getKey(file: IScannedFile): Promise<string | null> {
     try {
