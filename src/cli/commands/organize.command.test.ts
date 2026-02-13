@@ -335,7 +335,8 @@ describe('OrganizeHandler - Execute', () => {
 
   beforeEach(() => {
     mockConfigService = {
-      loadWithOverrides: jest.fn()
+      loadWithOverrides: jest.fn(),
+      findConfigInDirectory: jest.fn()
     };
     mockDirectoryValidator = {
       validate: jest.fn()

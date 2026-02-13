@@ -113,7 +113,7 @@ Organize files in the specified directory (defaults to current directory).
 - `-o, --output <path>` - Output directory for organized files
 - `--no-auto-config` - Disable auto-discovery of config files in target directory
 
-> **Note:** By default, Orderly will automatically use a config file (`.orderly.config.json`, `.orderly.config.yaml`, or `.orderly.config.yml`) if found in the target directory. Use `--no-auto-config` to disable this behavior and use only the default configuration or an explicitly specified config file.
+> **Note:** By default, Orderly will automatically use a config file (`.orderly.yml`, `.orderly.yaml`, or `orderly.config.json`) if found in the target directory. Use `--no-auto-config` to disable this behavior and use only the default configuration or an explicitly specified config file.
 
 **Examples:**
 
