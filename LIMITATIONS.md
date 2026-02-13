@@ -8,95 +8,74 @@ Orderly is a functional file organization tool, but several features are either 
 
 ---
 
-## Current Limitations
+## Recently Implemented Features ✅
 
-### 1. File Name Collision Handling ⚠️ **High Priority**
+### File Name Collision Handling
 
-**Current Behavior:**
-When organizing files from different source directories with identical names to the same target folder, the second file operation fails with a `FileExistsError`. Only the first file is successfully organized, subsequent files with the same name are skipped with errors.
+**Status:** ✅ **Implemented** (as of PR #11)
 
-**Impact:**
+**Feature Description:**
+Orderly now includes configurable collision resolution strategies to handle files with identical names being organized to the same target folder.
 
-- Users cannot organize directory structures with duplicate file names
-- Silent failures occur when batch processing files
-- Data loss risk if users don't check error logs
+**Available Strategies:**
 
-**Example:**
+1. **Skip Strategy** (`skip`)
+   - Skips files that would collide with existing files
+   - Logs warnings for skipped operations
+   - First file wins, subsequent files are not moved
 
-```
-folder1/readme.txt  →  documents/readme.txt ✓
-folder2/readme.txt  →  documents/readme.txt ✗ (FileExistsError)
-```
+2. **Keep Both Strategy** (`keep-both`) - Default
+   - Renames colliding files using a configurable pattern
+   - Default pattern: `{name}-{n}{ext}` (e.g., `readme.txt`, `readme-1.txt`, `readme-2.txt`)
+   - Preserves all files with unique names
+   - Supports up to 100 rename attempts by default (configurable)
 
-**Implementation Plan:**
+3. **Replace Strategy** (`replace`)
+   - Replaces existing file with the new one
+   - Deletes the existing file before moving the new one
+   - Use with caution as data may be lost
 
-#### Phase 1: Detection & Reporting
-
-1. **Add collision detection to `OperationPlanner`**
-   - Before planning operations, scan for potential name collisions
-   - Track all target paths in a `Map<string, IFileOperation[]>`
-   - Identify collisions early in the planning phase
-
-2. **Update `IFileOperation` interface**
-
-   ```typescript
-   interface IFileOperation {
-     // ... existing fields
-     hasCollision?: boolean;
-     collisionGroup?: number;
-     suggestedName?: string;
-   }
-   ```
-
-#### Phase 2: Resolution Strategies
-
-Implement configurable collision resolution strategies:
-
-1. **Skip Strategy** (Default - Current Behavior)
-   - Skip subsequent files with same name
-   - Log warning with file paths
-   - Maintain first-wins behavior
-
-2. **Rename Strategy** (Recommended)
-   - Append suffix to duplicate files: `readme.txt`, `readme-1.txt`, `readme-2.txt`
-   - Preserve all files with unique names
-   - Configuration option for suffix pattern: `{name}-{n}.{ext}` or `{name} ({n}).{ext}`
-
-3. **Overwrite Strategy**
-   - Replace existing file with newer version
-   - Requires confirmation in interactive mode
-   - Log warning about overwritten files
-
-4. **Ask Strategy** (Interactive Mode)
-   - Prompt user for each collision
-   - Options: Skip, Rename, Overwrite, Skip All, Rename All
-
-#### Phase 3: Configuration
+**Configuration:**
 
 ```typescript
 interface OrderlyConfig {
-  // ... existing fields
+  // ... other fields
   collisionResolution?: {
-    strategy: 'skip' | 'rename' | 'overwrite' | 'ask';
+    strategy: 'skip' | 'keep-both' | 'replace';
     renamePattern?: string; // Default: '{name}-{n}{ext}'
     maxAttempts?: number;   // Default: 100
-    interactive?: boolean;  // Default: false
   };
 }
 ```
 
-#### Phase 4: Testing
+**Example Usage:**
 
-- Unit tests for each resolution strategy
-- Integration tests with multiple collision scenarios
-- Edge cases: very long file names, special characters, hundreds of duplicates
+```yaml
+# .orderly.yml
+collisionResolution:
+  strategy: keep-both
+  renamePattern: '{name} ({n}){ext}'  # Optional custom pattern
+  maxAttempts: 50                     # Optional max rename attempts
+```
 
-**Complexity:** Medium
-**Dependencies:** None
+**Implementation Details:**
+- Collision detection happens during operation execution in `OperationExecutor`
+- Rename pattern supports placeholders: `{name}`, `{n}`, `{ext}`
+- Falls back to timestamp-based naming if max attempts exceeded
+- Proper logging for all collision scenarios
+
+**Future Enhancements:**
+
+Potential improvements for future releases:
+- Interactive mode (`ask` strategy) to prompt user for each collision
+- Early collision detection in `OperationPlanner` phase
+- Collision preview before execution
 
 ---
 
-### 2. Custom Output Directory ⚠️ **Medium Priority**
+## Current Limitations
+
+### 1. Custom Output Directory ⚠️ **Medium Priority**
 
 **Current Behavior:**
 Files are always organized in subdirectories relative to the source directory. There's no option to specify a different output location.
@@ -195,7 +174,7 @@ Files are always organized in subdirectories relative to the source directory. T
 
 ---
 
-### 3. Non-Recursive Scanning ℹ️ **Low Priority**
+### 2. Non-Recursive Scanning ℹ️ **Low Priority**
 
 **Current Behavior:**
 The file scanner always scans recursively using the glob pattern `**/*`, finding all files in all subdirectories. There's no option to scan only the root level.
@@ -279,7 +258,7 @@ The file scanner always scans recursively using the glob pattern `**/*`, finding
 
 ---
 
-### 4. Extension-Based Filtering During Scan 📊 **Low Priority**
+### 3. Extension-Based Filtering During Scan 📊 **Low Priority**
 
 **Current Behavior:**
 The scanner finds all files regardless of extension. Filtering happens during organization through category definitions. This means:
@@ -395,25 +374,19 @@ private buildIgnorePatterns(): string[] {
 
 ## Implementation Priority & Roadmap
 
-### High Priority (Next Release)
-
-1. **File Name Collision Handling**
-   - Critical for data integrity
-   - High user impact
-
 ### Medium Priority (Future Release)
 
-2. **Custom Output Directory**
+1. **Custom Output Directory**
    - Enables important use cases
    - Good UX improvement
 
 ### Low Priority (As Needed)
 
-3. **Non-Recursive Scanning**
+2. **Non-Recursive Scanning**
    - Nice to have
    - Workaround available (use excludePatterns)
 
-2. **Extension-Based Filtering**
+3. **Extension-Based Filtering**
    - Performance optimization
    - Categories provide similar functionality
 

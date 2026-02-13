@@ -8,7 +8,8 @@ jest.mock('../../scanner/file-scanner');
 
 describe('ScanHandler', () => {
   const mockConfigService = {
-    loadWithOverrides: jest.fn()
+    loadWithOverrides: jest.fn(),
+    findConfigInDirectory: jest.fn()
   };
   const mockDirectoryValidator = {
     validate: jest.fn()
