@@ -12,18 +12,34 @@ Orderly is a functional file organization tool, but several features are either 
 
 ### File Name Collision Handling
 
-**Status:** ✅ **Implemented**
+**Status:** ✅ **Implemented** (as of PR #11)
 
-File collision resolution has been implemented with three configurable strategies:
+**Feature Description:**
+Orderly now includes configurable collision resolution strategies to handle files with identical names being organized to the same target folder.
 
-1. **Skip Strategy** - Skips files with duplicate names (first file wins)
-2. **Keep Both Strategy** (Default) - Renames duplicate files by appending a numeric suffix (e.g., `file.txt`, `file-1.txt`, `file-2.txt`)
-3. **Replace Strategy** - Replaces existing files with newer versions
+**Available Strategies:**
+
+1. **Skip Strategy** (`skip`)
+   - Skips files that would collide with existing files
+   - Logs warnings for skipped operations
+   - First file wins, subsequent files are not moved
+
+2. **Keep Both Strategy** (`keep-both`) - Default
+   - Renames colliding files using a configurable pattern
+   - Default pattern: `{name}-{n}{ext}` (e.g., `readme.txt`, `readme-1.txt`, `readme-2.txt`)
+   - Preserves all files with unique names
+   - Supports up to 100 rename attempts by default (configurable)
+
+3. **Replace Strategy** (`replace`)
+   - Replaces existing file with the new one
+   - Deletes the existing file before moving the new one
+   - Use with caution as data may be lost
 
 **Configuration:**
 
 ```typescript
 interface OrderlyConfig {
+  // ... other fields
   collisionResolution?: {
     strategy: 'skip' | 'keep-both' | 'replace';
     renamePattern?: string; // Default: '{name}-{n}{ext}'
@@ -38,18 +54,28 @@ interface OrderlyConfig {
 # .orderly.yml
 collisionResolution:
   strategy: keep-both
-  renamePattern: '{name}-{n}{ext}'
-  maxAttempts: 100
+  renamePattern: '{name} ({n}){ext}'  # Optional custom pattern
+  maxAttempts: 50                     # Optional max rename attempts
 ```
 
-See the implementation in:
-- `src/config/types.ts` - Type definitions
-- `src/organizer/operation-executor.ts` - Strategy implementation
-- `__tests__/organizer/operation-executor.test.ts` - Test coverage
+**Implementation Details:**
+- Collision detection happens during operation execution in `OperationExecutor`
+- Rename pattern supports placeholders: `{name}`, `{n}`, `{ext}`
+- Falls back to timestamp-based naming if max attempts exceeded
+- Proper logging for all collision scenarios
+
+**Future Enhancements:**
+
+Potential improvements for future releases:
+- Interactive mode (`ask` strategy) to prompt user for each collision
+- Early collision detection in `OperationPlanner` phase
+- Collision preview before execution
 
 ---
 
-### Custom Output Directory
+## Current Limitations
+
+### 1. Custom Output Directory ⚠️ **Medium Priority**
 
 **Status:** ✅ **Implemented**
 
@@ -94,9 +120,7 @@ See the implementation in:
 
 ---
 
-## Current Limitations
-
-### 1. Non-Recursive Scanning ℹ️ **Low Priority**
+### 2. Non-Recursive Scanning ℹ️ **Low Priority**
 
 **Current Behavior:**
 The file scanner always scans recursively using the glob pattern `**/*`, finding all files in all subdirectories. There's no option to scan only the root level.
@@ -180,7 +204,7 @@ The file scanner always scans recursively using the glob pattern `**/*`, finding
 
 ---
 
-### 2. Extension-Based Filtering During Scan 📊 **Low Priority**
+### 3. Extension-Based Filtering During Scan 📊 **Low Priority**
 
 **Current Behavior:**
 The scanner finds all files regardless of extension. Filtering happens during organization through category definitions. This means:
@@ -296,13 +320,19 @@ private buildIgnorePatterns(): string[] {
 
 ## Implementation Priority & Roadmap
 
+### Medium Priority (Future Release)
+
+1. **Custom Output Directory**
+   - Enables important use cases
+   - Good UX improvement
+
 ### Low Priority (As Needed)
 
-1. **Non-Recursive Scanning**
+2. **Non-Recursive Scanning**
    - Nice to have
    - Workaround available (use excludePatterns)
 
-2. **Extension-Based Filtering**
+3. **Extension-Based Filtering**
    - Performance optimization
    - Categories provide similar functionality
 

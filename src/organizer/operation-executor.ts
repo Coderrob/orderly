@@ -99,12 +99,15 @@ export class OperationExecutor implements IOperationExecutor {
    */
   private executeOperation(operation: IFileOperation, result: IOrganizationResult): void {
     try {
-      const succeeded = this.performOperation(operation);
-      if (succeeded) {
+      const executionResult = this.performOperation(operation);
+      if (executionResult.succeeded) {
         result.successful++;
-        this.logger.info(`✓ ${operation.reason}`, {
+        const reason = executionResult.collisionResolved
+          ? `${operation.reason} (collision resolved)`
+          : operation.reason;
+        this.logger.info(`✓ ${reason}`, {
           from: operation.originalPath,
-          to: operation.newPath
+          to: executionResult.finalPath
         });
       }
       // If not succeeded, operation was skipped - don't increment counters
@@ -114,11 +117,17 @@ export class OperationExecutor implements IOperationExecutor {
   }
 
   /**
-   *
-   * @param operation
+   * Performs the file operation without mutating the original operation object
+   * @param operation The operation to perform
+   * @returns An object indicating success and the final path used
    */
-  private performOperation(operation: IFileOperation): boolean {
+  private performOperation(operation: IFileOperation): {
+    succeeded: boolean;
+    finalPath: string;
+    collisionResolved: boolean;
+  } {
     let finalTargetPath = operation.newPath;
+    let collisionResolved = false;
 
     const targetDir = path.dirname(finalTargetPath);
     FileSystemUtils.mkdirSync(targetDir);
@@ -129,33 +138,14 @@ export class OperationExecutor implements IOperationExecutor {
       if (!resolvedPath) {
         // Skip this operation based on strategy
         this.logger.warn(`Skipping ${operation.originalPath} due to collision resolution strategy`);
-        return false; // Indicate operation was skipped
+        return { succeeded: false, finalPath: operation.newPath, collisionResolved: false };
       }
       finalTargetPath = resolvedPath;
-      operation.newPath = finalTargetPath;
-      operation.reason = `${operation.reason} (collision resolved)`;
-    }
-
-    // For 'replace' strategy, delete the existing file before renaming
-    if (
-      this.config?.collisionResolution?.strategy === CollisionResolutionStrategy.REPLACE &&
-      FileSystemUtils.existsSync(finalTargetPath)
-    ) {
-      try {
-        FileSystemUtils.unlinkSync(finalTargetPath);
-      } catch (error) {
-        this.logger.error('Failed to delete existing file before replace operation', {
-          targetPath: finalTargetPath,
-          originalPath: operation.originalPath,
-          error
-        });
-        // Rethrow so executeOperation/handleOperationError can treat this as a failed operation
-        throw error;
-      }
+      collisionResolved = true;
     }
 
     FileSystemUtils.renameSync(operation.originalPath, finalTargetPath);
-    return true; // Indicate operation succeeded
+    return { succeeded: true, finalPath: finalTargetPath, collisionResolved };
   }
 
   /**
@@ -175,6 +165,11 @@ export class OperationExecutor implements IOperationExecutor {
         return this.generateSuggestedName(targetPath);
 
       case CollisionResolutionStrategy.REPLACE:
+        // Delete the existing file before we proceed with the rename
+        // Safety check in case file was deleted between collision detection and resolution
+        if (FileSystemUtils.existsSync(targetPath)) {
+          FileSystemUtils.unlinkSync(targetPath);
+        }
         return targetPath; // Use original target path
 
       default:
