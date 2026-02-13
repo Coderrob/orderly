@@ -38,15 +38,16 @@ export class ManifestGenerator implements IManifestGenerator {
   private readonly formatter = new ManifestFormatter();
 
   /**
-   *
-   * @param logger
+   * Creates a new ManifestGenerator instance
+   * @param logger - Logger instance for recording manifest operations
    */
   constructor(private readonly logger: Logger) {}
 
   /**
-   *
-   * @param result
-   * @param errors
+   * Generates a manifest from organization results and errors
+   * @param result - The organization result containing operations and counts
+   * @param errors - Array of file errors that occurred during organization
+   * @returns A complete manifest with all operation entries and backward-compatible operations property
    */
   generate(result: IOrganizationResult, errors: IFileError[]): Manifest {
     const manifest = this.builder.build(result, errors);
@@ -56,9 +57,9 @@ export class ManifestGenerator implements IManifestGenerator {
   }
 
   /**
-   *
-   * @param manifest
-   * @param outputPath
+   * Saves a manifest to a file in JSON format
+   * @param manifest - The manifest to save
+   * @param outputPath - The file path where the manifest should be saved
    */
   save(manifest: Manifest, outputPath: string): void {
     const content = JSON.stringify(manifest, null, 2);
@@ -67,9 +68,9 @@ export class ManifestGenerator implements IManifestGenerator {
   }
 
   /**
-   *
-   * @param manifest
-   * @param outputPath
+   * Saves a manifest to a file in Markdown format
+   * @param manifest - The manifest to save
+   * @param outputPath - The file path where the markdown manifest should be saved
    */
   saveMarkdown(manifest: Manifest, outputPath: string): void {
     const content = this.formatter.format(manifest);

@@ -16,10 +16,10 @@ export class FileOrganizer implements IFileOrganizer {
   private readonly executor: OperationExecutor;
 
   /**
-   *
-   * @param config
-   * @param logger
-   * @param baseDirectory
+   * Creates a new FileOrganizer instance
+   * @param config - Configuration containing naming convention, target directory, and execution settings
+   * @param logger - Logger instance for recording organization operations
+   * @param baseDirectory - Base directory for relative path calculations
    */
   constructor(
     private readonly config: OrderlyConfig,
@@ -31,8 +31,9 @@ export class FileOrganizer implements IFileOrganizer {
   }
 
   /**
-   *
-   * @param files
+   * Plans file operations for a list of scanned files
+   * @param files - Array of scanned files to plan operations for
+   * @returns Array of planned file operations (move, rename, or move-rename)
    */
   planOperations(files: IScannedFile[]): IFileOperation[] {
     const operations = this.planner.plan(files);
@@ -41,8 +42,9 @@ export class FileOrganizer implements IFileOrganizer {
   }
 
   /**
-   *
-   * @param operations
+   * Executes a list of file operations
+   * @param operations - Array of file operations to execute
+   * @returns Organization result containing success/failure counts and any errors
    */
   executeOperations(operations: IFileOperation[]): IOrganizationResult {
     return this.executor.execute(operations);

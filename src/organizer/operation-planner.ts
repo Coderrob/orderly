@@ -14,9 +14,9 @@ interface TargetPaths {
 
 export class OperationPlanner implements IOperationPlanner {
   /**
-   *
-   * @param config
-   * @param baseDirectory
+   * Creates a new OperationPlanner instance
+   * @param config - Configuration containing naming convention and target directory settings
+   * @param baseDirectory - Base directory for relative path calculations
    */
   constructor(
     private readonly config: OrderlyConfig,
@@ -24,8 +24,9 @@ export class OperationPlanner implements IOperationPlanner {
   ) {}
 
   /**
-   *
-   * @param files
+   * Plans file operations for a list of scanned files
+   * @param files - Array of scanned files to plan operations for
+   * @returns Array of planned file operations (move, rename, or move-rename)
    */
   plan(files: IScannedFile[]): IFileOperation[] {
     const operations: IFileOperation[] = [];
@@ -41,8 +42,9 @@ export class OperationPlanner implements IOperationPlanner {
   }
 
   /**
-   *
-   * @param file
+   * Plans a file operation for a single scanned file
+   * @param file - Scanned file to plan operation for
+   * @returns File operation if changes are needed, or null if file is already in correct location with correct name
    */
   private planFileOperation(file: IScannedFile): IFileOperation | null {
     const { targetDir, targetFilename } = this.calculateTargets(file);
@@ -57,8 +59,9 @@ export class OperationPlanner implements IOperationPlanner {
   }
 
   /**
-   *
-   * @param file
+   * Calculates target directory and filename for a scanned file
+   * @param file - Scanned file to calculate targets for
+   * @returns Object containing target directory and target filename
    */
   private calculateTargets(file: IScannedFile): TargetPaths {
     const originalDir = path.dirname(file.originalPath);
@@ -82,10 +85,11 @@ export class OperationPlanner implements IOperationPlanner {
   }
 
   /**
-   *
-   * @param file
-   * @param targetFilename
-   * @param newPath
+   * Creates a file operation based on the file and its targets
+   * @param file - Scanned file to create operation for
+   * @param targetFilename - Target filename after applying naming convention
+   * @param newPath - Complete new path for the file
+   * @returns File operation with appropriate type and reason
    */
   private createOperation(
     file: IScannedFile,
