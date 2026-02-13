@@ -283,6 +283,42 @@ describe('OperationExecutor', () => {
         '/same/file.txt'
       );
     });
+
+    it('should not mutate operation object when resolving collisions', () => {
+      const config = {
+        ...DEFAULT_CONFIG,
+        collisionResolution: { strategy: CollisionResolutionStrategy.KEEP_BOTH }
+      };
+      const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
+
+      const operation = {
+        type: FileOperationType.MOVE,
+        originalPath: '/source/file.txt',
+        newPath: '/target/file.txt',
+        reason: 'Moving to target'
+      };
+
+      // Store original values
+      const originalNewPath = operation.newPath;
+      const originalReason = operation.reason;
+
+      // Mock existsSync to return true for collision, then false for suggested name
+      mockFileSystemUtils.existsSync.mockImplementation((path: string) => {
+        return path === '/target/file.txt'; // Collision exists
+      });
+
+      executorWithConfig.execute([operation]);
+
+      // Verify operation object was not mutated
+      expect(operation.newPath).toBe(originalNewPath);
+      expect(operation.reason).toBe(originalReason);
+
+      // Verify the actual file operation used the resolved path
+      expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
+        '/source/file.txt',
+        '/target/file-1.txt'.replaceAll('/', path.sep)
+      );
+    });
   });
 
   describe('generateSuggestedName edge cases', () => {
