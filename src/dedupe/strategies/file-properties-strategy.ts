@@ -27,7 +27,8 @@ export class FilePropertiesStrategy implements IDedupeStrategy {
 
   /**
    * Generates a key based on file system properties.
-   * Key format: "created:{timestamp}|modified:{timestamp}|mime:{type}|size:{bytes}"
+   * Key format combines available properties: "created:{timestamp}|modified:{timestamp}|mime:{type}|size:{bytes}"
+   * Note: created, modified, and mime parts are optional; only included if available
    * @param file - Scanned file to extract properties from
    * @returns Properties key with timestamps, mime type, and file size, or null if properties cannot be determined
    */
