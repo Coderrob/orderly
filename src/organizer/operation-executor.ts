@@ -144,24 +144,6 @@ export class OperationExecutor implements IOperationExecutor {
       collisionResolved = true;
     }
 
-    // For 'replace' strategy, delete the existing file before renaming
-    if (
-      this.config?.collisionResolution?.strategy === CollisionResolutionStrategy.REPLACE &&
-      FileSystemUtils.existsSync(finalTargetPath)
-    ) {
-      try {
-        FileSystemUtils.unlinkSync(finalTargetPath);
-      } catch (error) {
-        this.logger.error('Failed to delete existing file before replace operation', {
-          targetPath: finalTargetPath,
-          originalPath: operation.originalPath,
-          error
-        });
-        // Rethrow so executeOperation/handleOperationError can treat this as a failed operation
-        throw error;
-      }
-    }
-
     FileSystemUtils.renameSync(operation.originalPath, finalTargetPath);
     return { succeeded: true, finalPath: finalTargetPath, collisionResolved };
   }
@@ -183,6 +165,11 @@ export class OperationExecutor implements IOperationExecutor {
         return this.generateSuggestedName(targetPath);
 
       case CollisionResolutionStrategy.REPLACE:
+        // Delete the existing file before we proceed with the rename
+        // Safety check in case file was deleted between collision detection and resolution
+        if (FileSystemUtils.existsSync(targetPath)) {
+          FileSystemUtils.unlinkSync(targetPath);
+        }
         return targetPath; // Use original target path
 
       default:

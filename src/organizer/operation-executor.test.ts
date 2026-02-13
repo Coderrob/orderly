@@ -149,6 +149,8 @@ describe('OperationExecutor', () => {
 
       expect(result.successful).toBe(1);
       expect(result.failed).toBe(0);
+      // Verify that unlinkSync is called to delete the existing file
+      expect(mockFileSystemUtils.unlinkSync).toHaveBeenCalledWith('/target/file.txt');
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         '/source/file.txt',
         '/target/file.txt'
