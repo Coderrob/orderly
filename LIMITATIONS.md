@@ -44,6 +44,7 @@ interface OrderlyConfig {
     strategy: 'skip' | 'keep-both' | 'replace';
     renamePattern?: string; // Default: '{name}-{n}{ext}'
     maxAttempts?: number;   // Default: 100
+    interactive?: boolean;  // Default: false (planned feature)
   };
 }
 ```
