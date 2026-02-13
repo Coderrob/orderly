@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import type { OrderlyConfig } from '../../config/types';
+import { CONFIG_FILE_NAMES } from '../../constants';
 import { DedupeAction } from '../../dedupe';
 import { DedupeStrategyFactory } from '../../dedupe/dedupe-factory';
 import { Logger } from '../../logger/logger';
@@ -175,9 +176,7 @@ export class OrganizeHandler implements IOrganizeHandler {
    * @returns Path to config file if found, null otherwise
    */
   private findConfigInDirectory(directory: string): string | null {
-    const configNames = ['.orderly.config.json', '.orderly.config.yaml', '.orderly.config.yml'];
-
-    for (const configName of configNames) {
+    for (const configName of CONFIG_FILE_NAMES) {
       const configPath = path.join(directory, configName);
       if (fs.existsSync(configPath)) {
         return configPath;
