@@ -15,8 +15,10 @@ export interface IConfigParser {
 
 export class ConfigParser implements IConfigParser {
   /**
-   *
-   * @param filePath
+   * Parses a configuration file and returns the parsed configuration object
+   * @param filePath - Path to the configuration file (must be .json, .yml, or .yaml)
+   * @returns Partial configuration object parsed from the file
+   * @throws UnsupportedConfigFormatError if file extension is not supported
    */
   static parse(filePath: string): Partial<OrderlyConfig> {
     const ext = path.extname(filePath).toLowerCase();
@@ -34,17 +36,20 @@ export class ConfigParser implements IConfigParser {
   }
 
   /**
-   *
-   * @param filePath
+   * Instance method that parses a configuration file
+   * @param filePath - Path to the configuration file (must be .json, .yml, or .yaml)
+   * @returns Partial configuration object parsed from the file
    */
   parse(filePath: string): Partial<OrderlyConfig> {
     return ConfigParser.parse(filePath);
   }
 
   /**
-   *
-   * @param config
-   * @param format
+   * Serializes an OrderlyConfig object to a string in the specified format
+   * @param config - The configuration object to serialize
+   * @param format - The output format (JSON or YAML)
+   * @returns Serialized configuration string in the requested format
+   * @throws InvalidFormatError if format is not JSON or YAML
    */
   static stringify(config: OrderlyConfig, format: ConfigFormat): string {
     if (format === ConfigFormat.JSON) {
@@ -59,9 +64,10 @@ export class ConfigParser implements IConfigParser {
   }
 
   /**
-   *
-   * @param config
-   * @param format
+   * Instance method that serializes a configuration object to string
+   * @param config - The configuration object to serialize
+   * @param format - The output format (JSON or YAML)
+   * @returns Serialized configuration string in the requested format
    */
   stringify(config: OrderlyConfig, format: ConfigFormat): string {
     return ConfigParser.stringify(config, format);

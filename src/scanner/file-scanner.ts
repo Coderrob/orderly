@@ -16,9 +16,9 @@ export class FileScanner implements IFileScanner {
   private readonly logger: Logger;
 
   /**
-   *
-   * @param config
-   * @param logger
+   * Creates a new FileScanner instance
+   * @param config - Orderly configuration containing file categories and include/exclude patterns
+   * @param logger - Logger instance for recording scan operations and debug information
    */
   constructor(config: OrderlyConfig, logger: Logger) {
     this.config = config;
@@ -26,8 +26,9 @@ export class FileScanner implements IFileScanner {
   }
 
   /**
-   *
-   * @param directory
+   * Scans a directory and categorizes all files according to configured rules
+   * @param directory - The directory path to scan for files
+   * @returns Promise resolving to an array of scanned files with categorization information
    */
   async scan(directory: string): Promise<IScannedFile[]> {
     this.logger.info(`Scanning directory: ${directory}`);
@@ -42,8 +43,9 @@ export class FileScanner implements IFileScanner {
   }
 
   /**
-   *
-   * @param directory
+   * Finds all files in a directory matching configured patterns
+   * @param directory - The directory path to search for files
+   * @returns Promise resolving to an array of file paths relative to the directory
    */
   private async findFiles(directory: string): Promise<string[]> {
     const pattern = this.config.includeHidden ? '**/*' : '**/[!.]*';
@@ -56,9 +58,10 @@ export class FileScanner implements IFileScanner {
   }
 
   /**
-   *
-   * @param directory
-   * @param files
+   * Processes multiple files and categorizes each one
+   * @param directory - The base directory path for resolving full file paths
+   * @param files - Array of relative file paths to process
+   * @returns Array of processed and categorized scanned files
    */
   private processFiles(directory: string, files: string[]): IScannedFile[] {
     const scannedFiles: IScannedFile[] = [];
@@ -74,9 +77,10 @@ export class FileScanner implements IFileScanner {
   }
 
   /**
-   *
-   * @param directory
-   * @param file
+   * Processes a single file by extracting metadata and determining its category
+   * @param directory - The base directory path for resolving the full file path
+   * @param file - The relative file path to process
+   * @returns Scanned file object with metadata and categorization, or null if not a file
    */
   private processFile(directory: string, file: string): IScannedFile | null {
     const fullPath = join(directory, file);
@@ -101,8 +105,9 @@ export class FileScanner implements IFileScanner {
   }
 
   /**
-   *
-   * @param files
+   * Creates a summary of file counts grouped by category
+   * @param files - Array of scanned files to summarize
+   * @returns Map with category names as keys and file counts as values
    */
   getCategorySummary(files: IScannedFile[]): Map<string, number> {
     const summary = new Map<string, number>();

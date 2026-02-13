@@ -6,8 +6,8 @@ export class ConfigNotFoundError extends OrderlyError {
   readonly category = ErrorCategory.CONFIG;
 
   /**
-   *
-   * @param path
+   * Creates an error for when a configuration file cannot be found
+   * @param path - The file path of the missing configuration file
    */
   constructor(path: string) {
     super(`Config file not found: ${path}`, { path });
@@ -19,8 +19,8 @@ export class UnsupportedConfigFormatError extends OrderlyError {
   readonly category = ErrorCategory.CONFIG;
 
   /**
-   *
-   * @param format
+   * Creates an error for unsupported configuration file formats
+   * @param format - The configuration file format that is not supported
    */
   constructor(format: string) {
     super(`Unsupported config file format: ${format}`, { format });
@@ -32,9 +32,9 @@ export class ConfigParseError extends OrderlyError {
   readonly category = ErrorCategory.CONFIG;
 
   /**
-   *
-   * @param path
-   * @param cause
+   * Creates an error for when configuration file parsing fails
+   * @param path - The file path of the configuration file that failed to parse
+   * @param cause - The reason or error message describing why parsing failed
    */
   constructor(path: string, cause: string) {
     super(`Failed to parse config file: ${path}`, { path, cause });
