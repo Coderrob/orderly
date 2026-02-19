@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { ConfigLoader } from '../../config/config-loader';
@@ -20,6 +21,24 @@ export class ConfigService implements IConfigService {
     const baseConfig = configPath ? ConfigLoader.load(configPath) : ConfigLoader.load();
 
     return this.applyOverrides(baseConfig, options);
+  }
+
+  /**
+   * Searches for a config file in the target directory.
+   * @param directory - Directory to search in
+   * @returns Path to config file if found, null otherwise
+   */
+  findConfigInDirectory(directory: string): string | null {
+    const configNames = ['.orderly.config.json', '.orderly.config.yaml', '.orderly.config.yml'];
+
+    for (const configName of configNames) {
+      const configPath = path.join(directory, configName);
+      if (fs.existsSync(configPath)) {
+        return configPath;
+      }
+    }
+
+    return null;
   }
 
   /**
