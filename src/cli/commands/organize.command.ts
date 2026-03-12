@@ -1,5 +1,4 @@
 import type { OrderlyConfig } from '../../config/types';
-import { CONFIG_FILE_NAMES } from '../../constants';
 import { DedupeAction } from '../../dedupe';
 import { DedupeStrategyFactory } from '../../dedupe/dedupe-factory';
 import { Logger } from '../../logger/logger';
