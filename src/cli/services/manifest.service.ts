@@ -13,7 +13,7 @@ export class ManifestService implements IManifestService {
   private readonly manifestGenerator: ManifestGenerator;
 
   /**
-   *
+   * Creates a new ManifestService instance with a logger
    */
   constructor() {
     const logger = new Logger(LogLevel.INFO); // Use default log level for manifests

@@ -6,8 +6,9 @@ export interface IManifestFormatter {
 
 export class ManifestFormatter implements IManifestFormatter {
   /**
-   *
-   * @param manifest
+   * Formats a manifest into Markdown format
+   * @param manifest - The manifest to format
+   * @returns Markdown-formatted string representation of the manifest
    */
   format(manifest: Manifest): string {
     const lines: string[] = [
@@ -26,8 +27,9 @@ export class ManifestFormatter implements IManifestFormatter {
   }
 
   /**
-   *
-   * @param entries
+   * Formats manifest entries into Markdown list items
+   * @param entries - Array of manifest entries to format
+   * @returns Array of formatted Markdown strings for each entry
    */
   private formatEntries(entries: ManifestEntry[]): string[] {
     const lines: string[] = [];

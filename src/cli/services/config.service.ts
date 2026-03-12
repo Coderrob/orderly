@@ -74,10 +74,11 @@ export class ConfigService implements IConfigService {
   }
 
   /**
-   *
-   * @param baseDedupe
-   * @param enabled
-   * @param action
+   * Creates a dedupe configuration by merging base config with overrides
+   * @param baseDedupe - Base dedupe configuration from loaded config
+   * @param enabled - Optional override for enabled flag
+   * @param action - Optional override for dedupe action
+   * @returns Merged dedupe configuration
    */
   private createDedupeConfig(
     baseDedupe: IDedupeConfig | undefined,

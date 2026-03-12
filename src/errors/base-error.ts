@@ -10,9 +10,9 @@ export abstract class OrderlyError extends Error implements IOrderlyError {
   readonly context?: Record<string, unknown>;
 
   /**
-   *
-   * @param message
-   * @param context
+   * Initializes a new OrderlyError with a message and optional context
+   * @param message - The error message describing what went wrong
+   * @param context - Optional contextual information about the error for logging and debugging
    */
   constructor(message: string, context?: Record<string, unknown>) {
     super(message);

@@ -6,9 +6,9 @@ export class InvalidPathError extends OrderlyError {
   readonly category = ErrorCategory.VALIDATION;
 
   /**
-   *
-   * @param path
-   * @param reason
+   * Creates an error for when a file path is invalid or malformed
+   * @param path - The invalid file path
+   * @param reason - Optional explanation of why the path is invalid
    */
   constructor(path: string, reason?: string) {
     const message = reason ? `Invalid path: ${path} (${reason})` : `Invalid path: ${path}`;
@@ -21,9 +21,9 @@ export class InvalidFormatError extends OrderlyError {
   readonly category = ErrorCategory.VALIDATION;
 
   /**
-   *
-   * @param format
-   * @param expected
+   * Creates an error for when a file or data format does not match expectations
+   * @param format - The invalid format that was provided
+   * @param expected - The expected format that should have been used
    */
   constructor(format: string, expected: string) {
     super(`Invalid format: ${format}, expected: ${expected}`, { format, expected });
@@ -35,10 +35,10 @@ export class InvalidConfigError extends OrderlyError {
   readonly category = ErrorCategory.VALIDATION;
 
   /**
-   *
-   * @param field
-   * @param value
-   * @param reason
+   * Creates an error for when a configuration value is invalid
+   * @param field - The configuration field that has an invalid value
+   * @param value - The invalid value that was provided for the field
+   * @param reason - The explanation of why this value is invalid for the field
    */
   constructor(field: string, value: unknown, reason: string) {
     super(`Invalid configuration: ${field} = ${String(value)} (${reason})`, {

@@ -25,14 +25,16 @@ export class ImageDimensionsStrategy implements IDedupeStrategy {
   ]);
 
   /**
-   *
-   * @param metadataExtractor
+   * Creates a new ImageDimensionsStrategy instance with optional metadata extractor
+   * @param metadataExtractor - Metadata extractor instance for dimension extraction (default: new MetadataExtractor())
    */
   constructor(private readonly metadataExtractor: IMetadataExtractor = new MetadataExtractor()) {}
 
   /**
    * Supports image files based on extension.
-   * @param file
+   * Checks file extension against a predefined set of common image formats.
+   * @param file - Scanned file to check support
+   * @returns True if file is an image format, false otherwise
    */
   supports(file: IScannedFile): boolean {
     const ext = path.extname(file.filename).toLowerCase();
@@ -42,7 +44,8 @@ export class ImageDimensionsStrategy implements IDedupeStrategy {
   /**
    * Generates a key based on image dimensions.
    * Key format: "width:{width}|height:{height}"
-   * @param file
+   * @param file - Scanned image file to extract dimensions from
+   * @returns Dimension key in format "width:X|height:Y", or null if dimensions cannot be determined
    */
   async getKey(file: IScannedFile): Promise<string | null> {
     try {

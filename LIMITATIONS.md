@@ -57,6 +57,7 @@ collisionResolution:
   strategy: keep-both
   renamePattern: '{name} ({n}){ext}'  # Optional custom pattern
   maxAttempts: 50                     # Optional max rename attempts
+  interactive: false                  # Default: false (planned feature)
 ```
 
 **Implementation Details:**

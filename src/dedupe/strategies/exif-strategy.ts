@@ -24,14 +24,16 @@ export class ExifStrategy implements IDedupeStrategy {
   ]);
 
   /**
-   *
-   * @param metadataExtractor
+   * Creates a new ExifStrategy instance with optional metadata extractor
+   * @param metadataExtractor - Metadata extractor instance for EXIF data extraction (default: new MetadataExtractor())
    */
   constructor(private readonly metadataExtractor: IMetadataExtractor = new MetadataExtractor()) {}
 
   /**
    * Supports image files that typically contain EXIF data.
-   * @param file
+   * Checks file extension against a predefined set of image formats.
+   * @param file - Scanned file to check support
+   * @returns True if file is an image format that may contain EXIF data, false otherwise
    */
   supports(file: IScannedFile): boolean {
     const ext = path.extname(file.filename).toLowerCase();
@@ -40,8 +42,9 @@ export class ExifStrategy implements IDedupeStrategy {
 
   /**
    * Generates a key based on EXIF metadata.
-   * Creates a hash of sorted EXIF key-value pairs.
-   * @param file
+   * Creates a hash of sorted EXIF key-value pairs for consistent comparison.
+   * @param file - Scanned file to extract EXIF data from
+   * @returns Serialized EXIF key (pipe-separated key:value pairs), or null if no EXIF data found
    */
   async getKey(file: IScannedFile): Promise<string | null> {
     try {

@@ -16,8 +16,9 @@ export class ConfigLoader implements IConfigLoader {
   private static readonly CONFIG_FILES = CONFIG_FILE_NAMES;
 
   /**
-   *
-   * @param configPath
+   * Loads configuration from a specified path or from default locations
+   * @param configPath - Optional path to a configuration file. If not provided, searches for default config files
+   * @returns Loaded configuration merged with default configuration
    */
   static load(configPath?: string): OrderlyConfig {
     let config = { ...DEFAULT_CONFIG };
@@ -32,17 +33,19 @@ export class ConfigLoader implements IConfigLoader {
   }
 
   /**
-   *
-   * @param configPath
+   * Instance method that loads configuration by delegating to the static load method
+   * @param configPath - Optional path to a configuration file
+   * @returns Loaded configuration merged with default configuration
    */
   load(configPath?: string): OrderlyConfig {
     return ConfigLoader.load(configPath);
   }
 
   /**
-   *
-   * @param configPath
-   * @param baseConfig
+   * Loads configuration from a specific file path and merges with base configuration
+   * @param configPath - Path to the configuration file to load
+   * @param baseConfig - Base configuration to merge with the loaded configuration
+   * @returns Merged configuration with loaded values overriding base configuration
    */
   private static loadFromPath(configPath: string, baseConfig: OrderlyConfig): OrderlyConfig {
     if (!FileSystemUtils.existsSync(configPath)) {
@@ -53,8 +56,9 @@ export class ConfigLoader implements IConfigLoader {
   }
 
   /**
-   *
-   * @param baseConfig
+   * Loads configuration from default locations in the current working directory
+   * @param baseConfig - Base configuration to merge with the found configuration
+   * @returns Merged configuration if a default config file is found, otherwise the base configuration
    */
   private static loadFromDefault(baseConfig: OrderlyConfig): OrderlyConfig {
     const foundConfig = this.findConfig();
@@ -65,7 +69,8 @@ export class ConfigLoader implements IConfigLoader {
   }
 
   /**
-   *
+   * Searches for a configuration file in the current working directory
+   * @returns Path to the first found configuration file, or null if none found
    */
   private static findConfig(): string | null {
     const cwd = process.cwd();
@@ -79,9 +84,10 @@ export class ConfigLoader implements IConfigLoader {
   }
 
   /**
-   *
-   * @param base
-   * @param override
+   * Merges base configuration with override configuration, preserving nested structures
+   * @param base - Base configuration to start with
+   * @param override - Override configuration with values to merge in
+   * @returns Merged configuration with override values taking precedence for nested objects
    */
   private static mergeConfig(base: OrderlyConfig, override: Partial<OrderlyConfig>): OrderlyConfig {
     return {
@@ -96,9 +102,9 @@ export class ConfigLoader implements IConfigLoader {
   }
 
   /**
-   *
-   * @param config
-   * @param filePath
+   * Saves configuration to a file in JSON or YAML format based on file extension
+   * @param config - Configuration object to save
+   * @param filePath - Path where the configuration file will be saved
    */
   static save(config: OrderlyConfig, filePath: string): void {
     const ext = path.extname(filePath).toLowerCase();
@@ -108,9 +114,9 @@ export class ConfigLoader implements IConfigLoader {
   }
 
   /**
-   *
-   * @param config
-   * @param filePath
+   * Instance method that saves configuration by delegating to the static save method
+   * @param config - Configuration object to save
+   * @param filePath - Path where the configuration file will be saved
    */
   save(config: OrderlyConfig, filePath: string): void {
     ConfigLoader.save(config, filePath);

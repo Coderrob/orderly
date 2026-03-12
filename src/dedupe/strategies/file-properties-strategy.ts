@@ -11,14 +11,15 @@ export class FilePropertiesStrategy implements IDedupeStrategy {
   readonly priority = 30; // Lower priority than content-based strategies
 
   /**
-   *
-   * @param metadataExtractor
+   * Creates a new FilePropertiesStrategy instance with optional metadata extractor
+   * @param metadataExtractor - Metadata extractor instance for property extraction (default: new MetadataExtractor())
    */
   constructor(private readonly metadataExtractor: IMetadataExtractor = new MetadataExtractor()) {}
 
   /**
    * Supports all files for property-based comparison.
-   * @param _file
+   * @param _file - Scanned file to check support (unused as all files are supported)
+   * @returns True, indicating all files are supported by this strategy
    */
   supports(_file: IScannedFile): boolean {
     return true;
@@ -26,8 +27,10 @@ export class FilePropertiesStrategy implements IDedupeStrategy {
 
   /**
    * Generates a key based on file system properties.
-   * Key format: "created:{timestamp}|modified:{timestamp}|mime:{type}"
-   * @param file
+   * Key format combines available properties: "created:{timestamp}|modified:{timestamp}|mime:{type}|size:{bytes}"
+   * Note: created, modified, and mime parts are optional; only included if available
+   * @param file - Scanned file to extract properties from
+   * @returns Properties key with timestamps, mime type, and file size, or null if properties cannot be determined
    */
   async getKey(file: IScannedFile): Promise<string | null> {
     try {
