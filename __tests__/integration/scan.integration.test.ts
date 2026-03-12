@@ -75,7 +75,7 @@ describe('Scan Command Integration Tests', () => {
   describe('Nested directory scanning', () => {
     it('should scan only root level files when recursive is false in config', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({});
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -99,7 +99,7 @@ describe('Scan Command Integration Tests', () => {
 
     it('should scan all nested files when recursive is true in config', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({});
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -127,7 +127,7 @@ describe('Scan Command Integration Tests', () => {
 
     it('should handle deeply nested directory structures', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({});
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -150,7 +150,7 @@ describe('Scan Command Integration Tests', () => {
   describe('File type filtering', () => {
     it('should scan files with specific extensions when includeExtensions is set', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({});
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -170,7 +170,7 @@ describe('Scan Command Integration Tests', () => {
 
     it('should exclude files with specific extensions when excludeExtensions is set', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({});
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -190,7 +190,7 @@ describe('Scan Command Integration Tests', () => {
 
     it('should handle multiple file types', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({});
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -212,7 +212,7 @@ describe('Scan Command Integration Tests', () => {
   describe('Pattern exclusion', () => {
     it('should exclude files matching excludePatterns', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({
         excludePatterns: ['**/*.tmp', '**/*.bak']
       });
@@ -233,7 +233,7 @@ describe('Scan Command Integration Tests', () => {
 
     it('should exclude directories matching patterns', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({
         excludePatterns: ['**/node_modules/**', '**/.git/**']
       });
@@ -338,7 +338,7 @@ describe('Scan Command Integration Tests', () => {
   describe('Configuration file integration', () => {
     it('should use configuration file when present', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({});
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -359,7 +359,7 @@ describe('Scan Command Integration Tests', () => {
 
     it('should use logLevel from command-line to override config', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({
         logLevel: 'error'
       });

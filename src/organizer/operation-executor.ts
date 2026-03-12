@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto';
 import * as path from 'node:path';
 
 import { type OrderlyConfig, CollisionResolutionStrategy } from '../config/types';
@@ -169,10 +170,24 @@ export class OperationExecutor implements IOperationExecutor {
         return this.generateSuggestedName(targetPath);
 
       case CollisionResolutionStrategy.REPLACE:
+        // Warn the user that the existing file will be deleted
+        this.logger.warn(
+          `REPLACE strategy: deleting existing file to allow replacement`,
+          { target: targetPath, source: operation.originalPath }
+        );
         // Delete the existing file before we proceed with the rename
         // Safety check in case file was deleted between collision detection and resolution
         if (FileSystemUtils.existsSync(targetPath)) {
-          FileSystemUtils.unlinkSync(targetPath);
+          try {
+            FileSystemUtils.unlinkSync(targetPath);
+          } catch (unlinkError) {
+            // If deletion fails (e.g., due to race condition), fall back to keep-both
+            this.logger.warn(
+              `REPLACE strategy: failed to delete existing file, falling back to keep-both`,
+              { target: targetPath, error: unlinkError instanceof Error ? unlinkError.message : String(unlinkError) }
+            );
+            return this.generateSuggestedName(targetPath);
+          }
         }
         return targetPath; // Use original target path
 
@@ -219,8 +234,8 @@ export class OperationExecutor implements IOperationExecutor {
       }
     }
 
-    // Fallback: append timestamp and random suffix to reduce collision risk
-    const randomSuffix = Math.random().toString(36).slice(2, 8);
+    // Fallback: append timestamp and crypto-generated random suffix to reduce collision risk
+    const randomSuffix = crypto.randomBytes(3).toString('hex');
     return path.join(dir, `${nameWithoutExt}-${Date.now()}-${randomSuffix}${ext}`);
   }
 

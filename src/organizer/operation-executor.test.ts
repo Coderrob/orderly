@@ -131,7 +131,7 @@ describe('OperationExecutor', () => {
       expect(result.failed).toBe(0);
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         '/source/file.txt',
-        '/target/file-1.txt'.replaceAll('/', path.sep)
+        path.join('/target', 'file-1.txt')
       );
     });
 
@@ -191,7 +191,7 @@ describe('OperationExecutor', () => {
       );
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         '/source/file.txt',
-        '/target/file-1.txt'.replaceAll('/', path.sep)
+        path.join('/target', 'file-1.txt')
       );
     });
 
@@ -328,7 +328,7 @@ describe('OperationExecutor', () => {
       // Verify the actual file operation used the resolved path
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         '/source/file.txt',
-        '/target/file-1.txt'.replaceAll('/', path.sep)
+        path.join('/target', 'file-1.txt')
       );
     });
   });
@@ -363,7 +363,7 @@ describe('OperationExecutor', () => {
       expect(result.successful).toBe(1);
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         '/source/README',
-        '/target/README-1'.replaceAll('/', path.sep)
+        path.join('/target', 'README-1')
       );
     });
 
@@ -386,7 +386,7 @@ describe('OperationExecutor', () => {
       // Should preserve only the last extension
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         '/source/file.test.ts',
-        '/target/file.test-1.ts'.replaceAll('/', path.sep)
+        path.join('/target', 'file.test-1.ts')
       );
     });
 
@@ -409,7 +409,7 @@ describe('OperationExecutor', () => {
       expect(result.successful).toBe(1);
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         `/source/${longName}.txt`,
-        `/target/${longName}-1.txt`.replaceAll('/', path.sep)
+        path.join('/target', `${longName}-1.txt`)
       );
     });
 
@@ -432,7 +432,7 @@ describe('OperationExecutor', () => {
       expect(result.successful).toBe(1);
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         `/source/${specialName}.txt`,
-        `/target/${specialName}-1.txt`.replaceAll('/', path.sep)
+        path.join('/target', `${specialName}-1.txt`)
       );
     });
 
@@ -462,9 +462,9 @@ describe('OperationExecutor', () => {
         // All regular numbered attempts will collide, fallback will succeed
         return (
           filePath === '/target/file.txt' ||
-          filePath === '/target/file-1.txt'.replaceAll('/', path.sep) ||
-          filePath === '/target/file-2.txt'.replaceAll('/', path.sep) ||
-          filePath === '/target/file-3.txt'.replaceAll('/', path.sep)
+          filePath === path.join('/target', 'file-1.txt') ||
+          filePath === path.join('/target', 'file-2.txt') ||
+          filePath === path.join('/target', 'file-3.txt')
         );
       });
 
@@ -508,7 +508,7 @@ describe('OperationExecutor', () => {
       expect(result.successful).toBe(1);
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         '/source/file.txt',
-        '/target/file_1.txt'.replaceAll('/', path.sep)
+        path.join('/target', 'file_1.txt')
       );
     });
 
@@ -524,10 +524,10 @@ describe('OperationExecutor', () => {
       mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
         return (
           filePath === '/target/file.txt' ||
-          filePath === '/target/file-1.txt'.replaceAll('/', path.sep) ||
-          filePath === '/target/file-2.txt'.replaceAll('/', path.sep) ||
-          filePath === '/target/file-3.txt'.replaceAll('/', path.sep) ||
-          filePath === '/target/file-4.txt'.replaceAll('/', path.sep)
+          filePath === path.join('/target', 'file-1.txt') ||
+          filePath === path.join('/target', 'file-2.txt') ||
+          filePath === path.join('/target', 'file-3.txt') ||
+          filePath === path.join('/target', 'file-4.txt')
         );
       });
 
@@ -537,7 +537,7 @@ describe('OperationExecutor', () => {
       // Should succeed on the 5th attempt
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         '/source/file.txt',
-        '/target/file-5.txt'.replaceAll('/', path.sep)
+        path.join('/target', 'file-5.txt')
       );
     });
 
@@ -559,7 +559,7 @@ describe('OperationExecutor', () => {
       expect(result.successful).toBe(1);
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         '/source/.gitignore',
-        '/target/.gitignore-1'.replaceAll('/', path.sep)
+        path.join('/target', '.gitignore-1')
       );
     });
   });

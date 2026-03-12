@@ -3,6 +3,7 @@ import { ConfigLoader } from '../../config/config-loader';
 import { LogLevel } from '../../types';
 import { DedupeAction, DedupeMode } from '../../dedupe/types';
 import { NamingConventionType } from '../../config/types';
+import { CONFIG_FILE_NAMES } from '../../constants';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -224,14 +225,10 @@ describe('ConfigService', () => {
       expect(result).toBe(path.join('/test/dir', 'orderly.config.json'));
     });
 
-    it('should prioritize .orderly.yml over yaml and json', () => {
+    it('should prioritize .orderly.yml over other config files', () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
         const pathStr = filePath.toString();
-        return (
-          pathStr.includes('.orderly.yml') ||
-          pathStr.includes('.orderly.yaml') ||
-          pathStr.includes('orderly.config.json')
-        );
+        return pathStr.includes('.orderly.yml') || pathStr.includes('orderly.config.json');
       });
 
       const result = configService.findConfigInDirectory('/test/dir');
