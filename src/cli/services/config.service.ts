@@ -3,6 +3,7 @@ import * as path from 'node:path';
 
 import { ConfigLoader } from '../../config/config-loader';
 import type { OrderlyConfig } from '../../config/types';
+import { CONFIG_FILE_NAMES } from '../../constants';
 import { DedupeAction, DedupeMode, IDedupeConfig } from '../../dedupe/types';
 import { LogLevel } from '../../types/logging';
 import type { IOrganizeOptions, IConfigService } from '../interfaces';
@@ -29,9 +30,7 @@ export class ConfigService implements IConfigService {
    * @returns Path to config file if found, null otherwise
    */
   findConfigInDirectory(directory: string): string | null {
-    const configNames = ['.orderly.config.json', '.orderly.config.yaml', '.orderly.config.yml'];
-
-    for (const configName of configNames) {
+    for (const configName of CONFIG_FILE_NAMES) {
       const configPath = path.join(directory, configName);
       if (fs.existsSync(configPath)) {
         return configPath;

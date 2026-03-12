@@ -45,7 +45,7 @@ describe('Organize Command Integration Tests', () => {
   describe('Basic file organization', () => {
     it('should organize files by type', async () => {
       // Arrange - Create config
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -83,7 +83,7 @@ describe('Organize Command Integration Tests', () => {
 
     it('should preserve file content during organization', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -103,7 +103,7 @@ describe('Organize Command Integration Tests', () => {
 
     it('should handle empty directory', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -119,7 +119,7 @@ describe('Organize Command Integration Tests', () => {
   describe('Dry-run mode', () => {
     it('should not modify files in dry-run mode', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: true });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -160,7 +160,7 @@ describe('Organize Command Integration Tests', () => {
   describe('Manifest generation', () => {
     it('should generate manifest when requested', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -185,7 +185,7 @@ describe('Organize Command Integration Tests', () => {
 
     it('should not generate manifest when not requested', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -206,7 +206,7 @@ describe('Organize Command Integration Tests', () => {
   describe('Naming conventions', () => {
     it('should apply kebab-case naming convention', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -226,7 +226,7 @@ describe('Organize Command Integration Tests', () => {
 
     it('should apply snake_case naming convention', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({
         dryRun: false,
         namingConvention: {
@@ -254,7 +254,7 @@ describe('Organize Command Integration Tests', () => {
   describe('Complex directory structures', () => {
     it('should handle nested directories when recursive is true', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -283,7 +283,7 @@ describe('Organize Command Integration Tests', () => {
 
     it('should handle files with same names from different directories', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -322,7 +322,7 @@ describe('Organize Command Integration Tests', () => {
     it('should handle permission errors gracefully', async () => {
       // This test is platform-specific and may need adjustment
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -354,7 +354,7 @@ describe('Organize Command Integration Tests', () => {
 
     it('should filter by included extensions', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -374,7 +374,7 @@ describe('Organize Command Integration Tests', () => {
 
     it('should exclude files by pattern', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({
         dryRun: false,
         excludePatterns: ['*.tmp', '*.bak']
@@ -402,7 +402,7 @@ describe('Organize Command Integration Tests', () => {
   describe('Before and after validation', () => {
     it('should maintain file count after organization', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
@@ -424,7 +424,7 @@ describe('Organize Command Integration Tests', () => {
 
     it('should maintain total file size after organization', async () => {
       // Arrange
-      const configPath = path.join(testDir, '.orderly.config.json');
+      const configPath = path.join(testDir, '.orderly.yml');
       const config = createTestConfig({ dryRun: false });
       testEnv.createFile(configPath, JSON.stringify(config, null, 2));
 
