@@ -126,7 +126,7 @@ export default tseslint.config(
       'no-restricted-syntax': [
         'error',
         {
-          selector: String.raw`ExportAllDeclaration[source.value=/^\.\.\//], ExportNamedDeclaration[source.value=/^\.\.\//]`,
+          selector: String.raw`ExportAllDeclaration[source.value=/^(\.\.\/)+/], ExportNamedDeclaration[source.value=/^(\.\.\/)+/]`,
           message:
             'Do not re-export from parent directories in index.ts files. Only export from sibling or child paths (./).'
         }

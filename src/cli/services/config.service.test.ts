@@ -3,6 +3,7 @@ import { ConfigLoader } from '../../config/config-loader';
 import { LogLevel } from '../../types';
 import { DedupeAction, DedupeMode } from '../../dedupe/types';
 import { NamingConventionType } from '../../config/types';
+import { CONFIG_FILE_NAMES } from '../../constants';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -193,46 +194,46 @@ describe('ConfigService', () => {
       mockExistsSync.mockReset();
     });
 
-    it('should find .orderly.config.json', () => {
+    it('should find .orderly.yml', () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
-        return filePath === path.join('/test/dir', '.orderly.config.json');
+        return filePath === path.join('/test/dir', '.orderly.yml');
       });
 
       const result = configService.findConfigInDirectory('/test/dir');
 
-      expect(result).toBe(path.join('/test/dir', '.orderly.config.json'));
-      expect(mockExistsSync).toHaveBeenCalledWith(path.join('/test/dir', '.orderly.config.json'));
+      expect(result).toBe(path.join('/test/dir', '.orderly.yml'));
+      expect(mockExistsSync).toHaveBeenCalledWith(path.join('/test/dir', '.orderly.yml'));
     });
 
-    it('should find .orderly.config.yaml', () => {
+    it('should find .orderly.yaml', () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
-        return filePath === path.join('/test/dir', '.orderly.config.yaml');
+        return filePath === path.join('/test/dir', '.orderly.yaml');
       });
 
       const result = configService.findConfigInDirectory('/test/dir');
 
-      expect(result).toBe(path.join('/test/dir', '.orderly.config.yaml'));
+      expect(result).toBe(path.join('/test/dir', '.orderly.yaml'));
     });
 
-    it('should find .orderly.config.yml', () => {
+    it('should find orderly.config.json', () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
-        return filePath === path.join('/test/dir', '.orderly.config.yml');
+        return filePath === path.join('/test/dir', 'orderly.config.json');
       });
 
       const result = configService.findConfigInDirectory('/test/dir');
 
-      expect(result).toBe(path.join('/test/dir', '.orderly.config.yml'));
+      expect(result).toBe(path.join('/test/dir', 'orderly.config.json'));
     });
 
-    it('should prioritize .orderly.config.json over yaml', () => {
+    it('should prioritize .orderly.yml over other config files', () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
         const pathStr = filePath.toString();
-        return pathStr.includes('.orderly.config.json') || pathStr.includes('.orderly.config.yaml');
+        return pathStr.includes('.orderly.yml') || pathStr.includes('orderly.config.json');
       });
 
       const result = configService.findConfigInDirectory('/test/dir');
 
-      expect(result).toBe(path.join('/test/dir', '.orderly.config.json'));
+      expect(result).toBe(path.join('/test/dir', '.orderly.yml'));
     });
 
     it('should return null if no config file found', () => {
