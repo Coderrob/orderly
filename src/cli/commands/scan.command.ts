@@ -110,5 +110,4 @@ export class ScanHandler implements IScanHandler {
       console.log(`  ... and ${files.length - 5} more files`);
     }
   }
-
 }

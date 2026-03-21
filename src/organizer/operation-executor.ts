@@ -171,10 +171,10 @@ export class OperationExecutor implements IOperationExecutor {
 
       case CollisionResolutionStrategy.REPLACE:
         // Warn the user that the existing file will be deleted
-        this.logger.warn(
-          `REPLACE strategy: deleting existing file to allow replacement`,
-          { target: targetPath, source: operation.originalPath }
-        );
+        this.logger.warn(`REPLACE strategy: deleting existing file to allow replacement`, {
+          target: targetPath,
+          source: operation.originalPath
+        });
         // Delete the existing file before we proceed with the rename
         // Safety check in case file was deleted between collision detection and resolution
         if (FileSystemUtils.existsSync(targetPath)) {
@@ -184,7 +184,10 @@ export class OperationExecutor implements IOperationExecutor {
             // If deletion fails (e.g., due to race condition), fall back to keep-both
             this.logger.warn(
               `REPLACE strategy: failed to delete existing file, falling back to keep-both`,
-              { target: targetPath, error: unlinkError instanceof Error ? unlinkError.message : String(unlinkError) }
+              {
+                target: targetPath,
+                error: unlinkError instanceof Error ? unlinkError.message : String(unlinkError)
+              }
             );
             return this.generateSuggestedName(targetPath);
           }
