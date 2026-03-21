@@ -474,7 +474,7 @@ describe('OperationExecutor', () => {
       // Should use fallback pattern with timestamp and random suffix
       const callArgs = mockFileSystemUtils.renameSync.mock.calls[0];
       expect(callArgs[0]).toBe('/source/file.txt');
-      expect(callArgs[1]).toMatch(/\/target\/file-\d+-[a-z0-9]{6}\.txt/);
+      expect(callArgs[1]).toMatch(/[\\/]target[\\/]file-\d+-[a-z0-9]{6}\.txt/);
     });
 
     it('should handle custom rename patterns', () => {
