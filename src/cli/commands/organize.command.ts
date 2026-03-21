@@ -45,12 +45,12 @@ export class OrganizeHandler implements IOrganizeHandler {
 
       // If no config specified and auto-discovery not disabled, check target directory for config file
       const configOptions = { ...options };
+      let autoDiscoveredConfig: string | undefined;
       if (!configOptions.config && !options.noAutoConfig) {
         const targetConfig = this.configService.findConfigInDirectory(targetDir);
         if (targetConfig) {
           configOptions.config = targetConfig;
-          // Log that we're using an auto-discovered config
-          console.log(`ℹ️  ${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${targetConfig}\n`);
+          autoDiscoveredConfig = targetConfig;
         }
       }
 
@@ -59,6 +59,11 @@ export class OrganizeHandler implements IOrganizeHandler {
 
       // Create logger
       const logger = new Logger(config.logLevel);
+
+      // Log auto-discovered config through the logger so log-level and log-file output are respected
+      if (autoDiscoveredConfig) {
+        logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
+      }
 
       // Create services
       const scanner = new FileScanner(config, logger);

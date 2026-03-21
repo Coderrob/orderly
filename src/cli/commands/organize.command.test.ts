@@ -332,8 +332,19 @@ describe('OrganizeHandler - Execute', () => {
   let mockDirectoryValidator: any;
   let mockManifestService: any;
   let handler: OrganizeHandler;
+  let mockLoggerInstance: any;
 
   beforeEach(() => {
+    mockLoggerInstance = {
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+      getLogs: jest.fn(),
+      clearLogs: jest.fn()
+    };
+    (Logger as jest.Mock).mockImplementation(() => mockLoggerInstance);
+
     mockConfigService = {
       loadWithOverrides: jest.fn(),
       findConfigInDirectory: jest.fn()
@@ -372,6 +383,63 @@ describe('OrganizeHandler - Execute', () => {
     expect(cmdResult.success).toBe(true);
     expect(cmdResult.exitCode).toBe(0);
     expect(cmdResult.message).toContain('Successfully organized 1 files');
+  });
+
+  it('should log auto-discovered config via logger instead of console.log', async () => {
+    const config = { logLevel: 'info' as any, dedupe: { enabled: false } };
+    const targetDir = '/test/dir';
+    const discoveredConfig = '/test/dir/.orderly.yml';
+    const files = [{ filename: 'file1.txt' } as IScannedFile];
+    const operations = [{ type: 'move' as any }];
+    const result = { operations, successful: 1, failed: 0, errors: [] };
+
+    mockConfigService.loadWithOverrides.mockReturnValue(config);
+    mockDirectoryValidator.validate.mockReturnValue(targetDir);
+    mockConfigService.findConfigInDirectory.mockReturnValue(discoveredConfig);
+
+    (FileScanner as jest.Mock).mockImplementation(() => ({
+      scan: jest.fn().mockResolvedValue(files),
+      getCategorySummary: jest.fn()
+    }));
+
+    (FileOrganizer as jest.Mock).mockImplementation(() => ({
+      planOperations: jest.fn().mockReturnValue(operations),
+      executeOperations: jest.fn().mockReturnValue(result)
+    }));
+
+    await handler.execute(targetDir, {});
+
+    expect(mockLoggerInstance.info).toHaveBeenCalledWith(
+      `Using config file found in target directory: ${discoveredConfig}`
+    );
+  });
+
+  it('should not log auto-discovery message when config is explicitly provided', async () => {
+    const config = { logLevel: 'info' as any, dedupe: { enabled: false } };
+    const targetDir = '/test/dir';
+    const files = [{ filename: 'file1.txt' } as IScannedFile];
+    const operations = [{ type: 'move' as any }];
+    const result = { operations, successful: 1, failed: 0, errors: [] };
+
+    mockConfigService.loadWithOverrides.mockReturnValue(config);
+    mockDirectoryValidator.validate.mockReturnValue(targetDir);
+
+    (FileScanner as jest.Mock).mockImplementation(() => ({
+      scan: jest.fn().mockResolvedValue(files),
+      getCategorySummary: jest.fn()
+    }));
+
+    (FileOrganizer as jest.Mock).mockImplementation(() => ({
+      planOperations: jest.fn().mockReturnValue(operations),
+      executeOperations: jest.fn().mockReturnValue(result)
+    }));
+
+    await handler.execute(targetDir, { config: '/explicit/config.yml', manifest: false });
+
+    expect(mockConfigService.findConfigInDirectory).not.toHaveBeenCalled();
+    expect(mockLoggerInstance.info).not.toHaveBeenCalledWith(
+      expect.stringContaining('Using config file found in target directory:')
+    );
   });
 
   it('should handle error', async () => {

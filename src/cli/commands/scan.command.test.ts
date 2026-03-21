@@ -170,6 +170,51 @@ describe('ScanHandler', () => {
       expect(mockConsoleLog).not.toHaveBeenCalledWith('\nSample files:');
     });
 
+    it('should log auto-discovered config via logger instead of console.log', async () => {
+      const config = { logLevel: 'info' as any };
+      const targetDir = '/test/dir';
+      const discoveredConfig = '/test/dir/.orderly.yml';
+      const files: any[] = [];
+      const summary = new Map();
+
+      mockConfigService.loadWithOverrides.mockReturnValue(config);
+      mockDirectoryValidator.validate.mockReturnValue(targetDir);
+      mockConfigService.findConfigInDirectory.mockReturnValue(discoveredConfig);
+      mockFileScanner.prototype.scan.mockResolvedValue(files);
+      mockFileScanner.prototype.getCategorySummary.mockReturnValue(summary);
+
+      await handler.execute(targetDir, {});
+
+      const loggerInstance = mockLogger.mock.instances[0];
+      expect(loggerInstance.info).toHaveBeenCalledWith(
+        `Using config file found in target directory: ${discoveredConfig}`
+      );
+      // Ensure the auto-discovery message did not go through console.log directly
+      expect(mockConsoleLog).not.toHaveBeenCalledWith(
+        expect.stringContaining('Using config file found in target directory:')
+      );
+    });
+
+    it('should not log auto-discovery message when config is explicitly provided', async () => {
+      const config = { logLevel: 'info' as any };
+      const targetDir = '/test/dir';
+      const files: any[] = [];
+      const summary = new Map();
+
+      mockConfigService.loadWithOverrides.mockReturnValue(config);
+      mockDirectoryValidator.validate.mockReturnValue(targetDir);
+      mockFileScanner.prototype.scan.mockResolvedValue(files);
+      mockFileScanner.prototype.getCategorySummary.mockReturnValue(summary);
+
+      await handler.execute(targetDir, { config: '/explicit/config.yml' });
+
+      expect(mockConfigService.findConfigInDirectory).not.toHaveBeenCalled();
+      const loggerInstance = mockLogger.mock.instances[0];
+      expect(loggerInstance.info).not.toHaveBeenCalledWith(
+        expect.stringContaining('Using config file found in target directory:')
+      );
+    });
+
     it('should handle config load error', async () => {
       mockConfigService.loadWithOverrides.mockImplementation(() => {
         throw new Error('Config error');
