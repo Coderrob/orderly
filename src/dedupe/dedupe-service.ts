@@ -3,11 +3,22 @@ import { IScannedFile } from '../scanner/interfaces';
 import { IDedupeService, IDedupeStrategy } from './interfaces';
 import {
   DedupeAction,
+  DedupeMode,
   IDedupeResult,
   IDedupeOutcome,
   IDuplicateGroup,
   IDedupeCandidate
 } from './types';
+
+interface IStrategyExecution {
+  readonly strategy: string;
+  readonly keysByPath: ReadonlyMap<string, string>;
+}
+
+interface IStrategyMatch {
+  readonly strategy: string;
+  readonly key: string;
+}
 
 /**
  * Main dedupe orchestration service.
@@ -17,30 +28,39 @@ export class DedupeService implements IDedupeService {
   /**
    * Creates a new DedupeService instance
    * @param strategies - Array of deduplication strategies to use for finding duplicates
+   * @param mode - Composition mode for combining strategy matches
    */
-  constructor(private readonly strategies: readonly IDedupeStrategy[]) {}
+  constructor(
+    private readonly strategies: readonly IDedupeStrategy[],
+    private readonly mode: DedupeMode = DedupeMode.ANY
+  ) {}
 
   /**
    * Finds duplicate files using all configured strategies.
-   * Groups files by strategy-generated keys and returns duplicate groups.
+   * Compares files pairwise so strategy composition mode is honored consistently.
    * @param files - Array of scanned files to analyze for duplicates
    * @returns Dedupe result containing groups of duplicates and metadata about the analysis
    */
   async findDuplicates(files: IScannedFile[]): Promise<IDedupeResult> {
-    const allCandidates: IDedupeCandidate[] = [];
+    const strategyExecutions: IStrategyExecution[] = [];
     const strategiesUsed: string[] = [];
 
-    // Execute all strategies and collect candidates
     for (const strategy of this.strategies) {
       const candidates = await this.executeStrategy(strategy, files);
-      allCandidates.push(...candidates);
-      if (candidates.length > 0) {
-        strategiesUsed.push(strategy.name);
+      if (candidates.length === 0) {
+        continue;
       }
+
+      strategiesUsed.push(strategy.name);
+      strategyExecutions.push({
+        strategy: strategy.name,
+        keysByPath: new Map(
+          candidates.map(candidate => [candidate.file.originalPath, candidate.key])
+        )
+      });
     }
 
-    // Group candidates by key and strategy
-    const groups = this.groupCandidates(allCandidates);
+    const groups = this.groupCandidates(files, strategyExecutions);
 
     return {
       groups,
@@ -104,37 +124,201 @@ export class DedupeService implements IDedupeService {
   }
 
   /**
-   * Groups candidates by key and strategy, creating duplicate groups.
-   * Only returns groups that contain multiple files (actual duplicates).
-   * @param candidates - Array of dedupe candidates to group
+   * Groups files by pairwise duplicate relationships derived from configured strategies.
+   * @param files - Files being analyzed for duplicates
+   * @param strategyExecutions - Strategy outputs keyed by file path
    * @returns Array of duplicate groups with multiple files per group
    */
-  private groupCandidates(candidates: IDedupeCandidate[]): IDuplicateGroup[] {
-    const groupsMap = new Map<string, IDedupeCandidate[]>();
-
-    // Group by composite key (strategy + key)
-    for (const candidate of candidates) {
-      const compositeKey = `${candidate.strategy}:${candidate.key}`;
-      const group = groupsMap.get(compositeKey) || [];
-      group.push(candidate);
-      groupsMap.set(compositeKey, group);
+  private groupCandidates(
+    files: IScannedFile[],
+    strategyExecutions: readonly IStrategyExecution[]
+  ): IDuplicateGroup[] {
+    if (files.length < 2 || strategyExecutions.length === 0) {
+      return [];
     }
 
-    // Convert to IDuplicateGroup, keeping only groups with multiple files
-    const groups: IDuplicateGroup[] = [];
-    for (const [compositeKey, groupCandidates] of groupsMap) {
-      if (groupCandidates.length > 1) {
-        const [strategy, key] = compositeKey.split(':', 2);
-        groups.push({
-          key,
-          strategy,
-          files: groupCandidates.map(c => c.file),
-          primary: groupCandidates[0].file // First file as primary
-        });
+    const parents = files.map((_, index) => index);
+    const pairMatches = new Map<string, readonly IStrategyMatch[]>();
+
+    for (let leftIndex = 0; leftIndex < files.length - 1; leftIndex++) {
+      for (let rightIndex = leftIndex + 1; rightIndex < files.length; rightIndex++) {
+        const matches = this.findPairMatches(
+          files[leftIndex].originalPath,
+          files[rightIndex].originalPath,
+          strategyExecutions
+        );
+
+        if (!this.isDuplicatePair(matches.matched, matches.applicableStrategies)) {
+          continue;
+        }
+
+        this.union(parents, leftIndex, rightIndex);
+        pairMatches.set(this.getPairId(leftIndex, rightIndex), matches.matched);
       }
     }
 
+    return this.buildGroups(files, parents, pairMatches);
+  }
+
+  /**
+   * Finds matching strategy keys for a pair of files.
+   * @param leftPath - First file path
+   * @param rightPath - Second file path
+   * @param strategyExecutions - Strategy outputs keyed by file path
+   * @returns Applicable strategy count and matching strategies
+   */
+  private findPairMatches(
+    leftPath: string,
+    rightPath: string,
+    strategyExecutions: readonly IStrategyExecution[]
+  ): {
+    applicableStrategies: number;
+    matched: readonly IStrategyMatch[];
+  } {
+    const matched: IStrategyMatch[] = [];
+    let applicableStrategies = 0;
+
+    for (const execution of strategyExecutions) {
+      const leftKey = execution.keysByPath.get(leftPath);
+      const rightKey = execution.keysByPath.get(rightPath);
+
+      if (leftKey === undefined || rightKey === undefined) {
+        continue;
+      }
+
+      applicableStrategies += 1;
+      if (leftKey === rightKey) {
+        matched.push({ strategy: execution.strategy, key: leftKey });
+      }
+    }
+
+    return { applicableStrategies, matched };
+  }
+
+  /**
+   * Determines whether a pair is duplicate under the configured composition mode.
+   * @param matchedStrategies - Strategies whose keys matched for the pair
+   * @param applicableStrategies - Enabled strategies that produced keys for both files
+   * @returns True when the pair should be treated as duplicate
+   */
+  private isDuplicatePair(
+    matchedStrategies: readonly IStrategyMatch[],
+    applicableStrategies: number
+  ): boolean {
+    if (this.mode === DedupeMode.ALL) {
+      return applicableStrategies > 0 && matchedStrategies.length === applicableStrategies;
+    }
+
+    return matchedStrategies.length > 0;
+  }
+
+  /**
+   * Builds duplicate groups from the connected duplicate pairs.
+   * @param files - Files being analyzed for duplicates
+   * @param parents - Disjoint-set parent indices for each file
+   * @param pairMatches - Matching strategies for each duplicate pair
+   * @returns Array of duplicate groups
+   */
+  private buildGroups(
+    files: IScannedFile[],
+    parents: number[],
+    pairMatches: ReadonlyMap<string, readonly IStrategyMatch[]>
+  ): IDuplicateGroup[] {
+    const groupedIndexes = new Map<number, number[]>();
+
+    files.forEach((_, index) => {
+      const root = this.find(parents, index);
+      const group = groupedIndexes.get(root) ?? [];
+      group.push(index);
+      groupedIndexes.set(root, group);
+    });
+
+    const groups: IDuplicateGroup[] = [];
+    for (const indexes of groupedIndexes.values()) {
+      if (indexes.length < 2) {
+        continue;
+      }
+
+      const groupFiles = indexes.map(index => files[index]);
+      const matchMetadata = this.collectGroupMatches(indexes, pairMatches);
+      const firstMatch = matchMetadata[0];
+      const strategies = [...new Set(matchMetadata.map(match => match.strategy))];
+
+      groups.push({
+        key: firstMatch?.key ?? groupFiles[0].originalPath,
+        strategy: strategies.join(','),
+        strategies,
+        files: groupFiles,
+        primary: groupFiles[0]
+      });
+    }
+
     return groups;
+  }
+
+  /**
+   * Collects all matching strategies contributing to a duplicate group.
+   * @param indexes - File indexes in the duplicate group
+   * @param pairMatches - Matching strategies for each duplicate pair
+   * @returns Strategy match metadata for the group
+   */
+  private collectGroupMatches(
+    indexes: readonly number[],
+    pairMatches: ReadonlyMap<string, readonly IStrategyMatch[]>
+  ): IStrategyMatch[] {
+    const matches: IStrategyMatch[] = [];
+
+    for (let leftIndex = 0; leftIndex < indexes.length - 1; leftIndex++) {
+      for (let rightIndex = leftIndex + 1; rightIndex < indexes.length; rightIndex++) {
+        const pair = pairMatches.get(this.getPairId(indexes[leftIndex], indexes[rightIndex]));
+        if (pair) {
+          matches.push(...pair);
+        }
+      }
+    }
+
+    return matches;
+  }
+
+  /**
+   * Finds the representative index for the disjoint-set structure.
+   * @param parents - Parent pointers for each file index
+   * @param index - Index to resolve
+   * @returns Representative index for the set
+   */
+  private find(parents: number[], index: number): number {
+    if (parents[index] !== index) {
+      parents[index] = this.find(parents, parents[index]);
+    }
+
+    return parents[index];
+  }
+
+  /**
+   * Merges two duplicate sets in the disjoint-set structure.
+   * @param parents - Parent pointers for each file index
+   * @param leftIndex - First file index
+   * @param rightIndex - Second file index
+   */
+  private union(parents: number[], leftIndex: number, rightIndex: number): void {
+    const leftRoot = this.find(parents, leftIndex);
+    const rightRoot = this.find(parents, rightIndex);
+
+    if (leftRoot === rightRoot) {
+      return;
+    }
+
+    parents[rightRoot] = leftRoot;
+  }
+
+  /**
+   * Creates a stable map key for a pair of file indexes.
+   * @param leftIndex - First file index
+   * @param rightIndex - Second file index
+   * @returns Stable pair identifier
+   */
+  private getPairId(leftIndex: number, rightIndex: number): string {
+    return `${Math.min(leftIndex, rightIndex)}:${Math.max(leftIndex, rightIndex)}`;
   }
 
   /**
@@ -146,7 +330,6 @@ export class DedupeService implements IDedupeService {
   private applySkipAction(result: IDedupeResult): IDedupeOutcome {
     const skipped: IScannedFile[] = [];
     for (const group of result.groups) {
-      // Skip primary, remove duplicates
       for (let i = 1; i < group.files.length; i++) {
         skipped.push(group.files[i]);
       }
@@ -178,16 +361,14 @@ export class DedupeService implements IDedupeService {
   }
 
   /**
-   * Applies REPLACE action - schedules duplicates for deletion.
-   * Marks all duplicate files (except primary) for replacement.
-   * Note: Actual deletion would be handled by operation executor.
+   * Applies REPLACE action - marks duplicates that should be removed before organization.
+   * Keeps the primary file in each group and returns all remaining files as replacements.
    * @param result - Dedupe result containing duplicate groups to process
    * @returns Dedupe outcome with duplicate files marked for replacement
    */
   private applyReplaceAction(result: IDedupeResult): IDedupeOutcome {
     const replaced: IScannedFile[] = [];
     for (const group of result.groups) {
-      // All except primary
       for (let i = 1; i < group.files.length; i++) {
         replaced.push(group.files[i]);
       }

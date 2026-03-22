@@ -1,5 +1,5 @@
 import { Manifest, ManifestEntry, OperationStatus } from './manifest-generator';
-import type { IFileOperation, IOrganizationResult, IFileError } from './types';
+import type { IFileOperation, IOrganizationResult, IFileError, IFileSkip } from './types';
 
 export interface IManifestBuilder {
   build(result: IOrganizationResult, errors: IFileError[]): Manifest;
@@ -14,13 +14,19 @@ export class ManifestBuilder implements IManifestBuilder {
    */
   build(result: IOrganizationResult, errors: IFileError[]): Manifest {
     const timestamp = new Date().toISOString();
-    const entries = this.buildEntries(result.operations, errors, timestamp);
+    const entries = this.buildEntries(
+      result.operations,
+      errors,
+      result.skippedOperations ?? [],
+      timestamp
+    );
 
     return {
       generatedAt: timestamp,
       totalOperations: result.operations.length,
       successful: result.successful,
       failed: result.failed,
+      skipped: result.skipped ?? 0,
       entries
     };
   }
@@ -35,9 +41,20 @@ export class ManifestBuilder implements IManifestBuilder {
   private buildEntries(
     operations: IFileOperation[],
     errors: IFileError[],
+    skippedOperations: IFileSkip[],
     timestamp: string
   ): ManifestEntry[] {
     return operations.map(operation => {
+      const skipped = skippedOperations.find(entry => entry.file === operation.originalPath);
+      if (skipped) {
+        return {
+          timestamp,
+          operation,
+          status: OperationStatus.SKIPPED,
+          error: skipped.reason
+        };
+      }
+
       const error = errors.find(e => e.file === operation.originalPath);
       return {
         timestamp,

@@ -1,12 +1,10 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import * as crypto from 'node:crypto';
 
 import { OrganizeHandler } from '../../src/cli/commands/organize.command';
 import { ConfigService } from '../../src/cli/services/config.service';
 import { DirectoryValidator } from '../../src/cli/services/directory-validator.service';
 import { ManifestService } from '../../src/cli/services/manifest.service';
-import { ExitCode } from '../../src/cli/constants';
 import { DedupeAction } from '../../src/dedupe/types';
 import { TestEnvironmentSetup, TestAssertions, createTestConfig } from '../helpers';
 
@@ -344,6 +342,38 @@ describe('Dedupe Integration Tests', () => {
 
       // Assert
       expect(result.success).toBe(true);
+    });
+
+    it('should remove duplicate source files when action is replace', async () => {
+      // Arrange
+      const configPath = path.join(testDir, '.orderly.config.json');
+      const config = createTestConfig({
+        dryRun: false,
+        dedupe: {
+          enabled: true,
+          strategy: 'hash',
+          action: DedupeAction.REPLACE
+        }
+      });
+      testEnv.createFile(configPath, JSON.stringify(config, null, 2));
+
+      const content = 'duplicate-content';
+      testEnv.createFile(path.join(testDir, 'primary.txt'), content);
+      testEnv.createFile(path.join(testDir, 'duplicate.txt'), content);
+
+      // Act
+      const result = await organizeHandler.execute(testDir, {
+        dedupe: true,
+        dedupeAction: DedupeAction.REPLACE
+      });
+
+      // Assert
+      expect(result.success).toBe(true);
+      TestAssertions.assertDirExists(path.join(testDir, 'documents'));
+      const organizedFiles = fs.readdirSync(path.join(testDir, 'documents'));
+      expect(organizedFiles).toHaveLength(1);
+      TestAssertions.assertFileExists(path.join(testDir, 'documents', 'primary.txt'));
+      TestAssertions.assertFileNotExists(path.join(testDir, 'duplicate.txt'));
     });
   });
 

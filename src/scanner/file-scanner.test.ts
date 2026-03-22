@@ -76,7 +76,8 @@ describe('FileScanner', () => {
         expect.objectContaining({
           cwd: testDirectory,
           nodir: true,
-          absolute: false
+          absolute: false,
+          dot: false
         })
       );
     });
@@ -90,7 +91,7 @@ describe('FileScanner', () => {
 
       expect(mockGlob).toHaveBeenCalledWith(
         '**/*',
-        expect.objectContaining({ cwd: testDirectory })
+        expect.objectContaining({ cwd: testDirectory, dot: true })
       );
     });
 

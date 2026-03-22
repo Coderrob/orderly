@@ -4,6 +4,9 @@ import { basename, extname, normalize } from 'node:path';
 import { IMetadataExtractor } from '../interfaces';
 import { IImageDimensions, IFileProperties, IFileAttributes } from '../types';
 
+import { extractImageDimensions } from './image-parsers';
+import { extractExifFromJpeg } from './jpeg-exif-parser';
+
 /**
  * Metadata extraction service.
  * Provides file metadata extraction capabilities for dedupe strategies.
@@ -11,22 +14,30 @@ import { IImageDimensions, IFileProperties, IFileAttributes } from '../types';
 export class MetadataExtractor implements IMetadataExtractor {
   /**
    * Extracts image dimensions from supported formats.
-   * Basic implementation - returns null for now.
-   * @param _filePath
+   * Supports PNG, JPEG, GIF, and BMP.
+   * @param filePath
    */
-  extractDimensions(_filePath: string): Promise<IImageDimensions | null> {
-    // Basic implementation - could be enhanced with sharp/jimp
-    return Promise.resolve(null);
+  async extractDimensions(filePath: string): Promise<IImageDimensions | null> {
+    try {
+      const data = await fs.readFile(filePath);
+      return extractImageDimensions(data);
+    } catch {
+      return null;
+    }
   }
 
   /**
    * Extracts EXIF data from images.
-   * Basic implementation - returns null for now.
-   * @param _filePath
+   * Supports JPEG APP1 EXIF blocks.
+   * @param filePath
    */
-  extractExif(_filePath: string): Promise<Record<string, string> | null> {
-    // Basic implementation - could be enhanced with exif-parser/exifr
-    return Promise.resolve(null);
+  async extractExif(filePath: string): Promise<Record<string, string> | null> {
+    try {
+      const data = await fs.readFile(filePath);
+      return extractExifFromJpeg(data);
+    } catch {
+      return null;
+    }
   }
 
   /**

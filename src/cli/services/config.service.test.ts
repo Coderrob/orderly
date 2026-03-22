@@ -225,6 +225,26 @@ describe('ConfigService', () => {
       expect(result).toBe(path.join('/test/dir', 'orderly.config.json'));
     });
 
+    it('should find .orderly.config.yaml', () => {
+      mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
+        return filePath === path.join('/test/dir', '.orderly.config.yaml');
+      });
+
+      const result = configService.findConfigInDirectory('/test/dir');
+
+      expect(result).toBe(path.join('/test/dir', '.orderly.config.yaml'));
+    });
+
+    it('should find .orderly.config.json', () => {
+      mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
+        return filePath === path.join('/test/dir', '.orderly.config.json');
+      });
+
+      const result = configService.findConfigInDirectory('/test/dir');
+
+      expect(result).toBe(path.join('/test/dir', '.orderly.config.json'));
+    });
+
     it('should prioritize .orderly.yml over other config files', () => {
       mockExistsSync.mockImplementation((filePath: fs.PathLike) => {
         const pathStr = filePath.toString();
@@ -242,7 +262,7 @@ describe('ConfigService', () => {
       const result = configService.findConfigInDirectory('/test/dir');
 
       expect(result).toBeNull();
-      expect(mockExistsSync).toHaveBeenCalledTimes(3);
+      expect(mockExistsSync).toHaveBeenCalledTimes(CONFIG_FILE_NAMES.length);
     });
   });
 });

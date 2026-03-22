@@ -6,6 +6,7 @@ import { FileOrganizer } from '../../organizer/file-organizer';
 import type { IOrganizationResult } from '../../organizer/types';
 import { FileScanner } from '../../scanner/file-scanner';
 import type { IScannedFile } from '../../scanner/interfaces';
+import { FileSystemUtils } from '../../utils/file-system-utils';
 import { ExitCode, COMMAND_MESSAGES } from '../constants';
 import type {
   IOrganizeOptions,
@@ -46,7 +47,7 @@ export class OrganizeHandler implements IOrganizeHandler {
       // If no config specified and auto-discovery not disabled, check target directory for config file
       const configOptions = { ...options };
       let autoDiscoveredConfig: string | undefined;
-      if (!configOptions.config && !options.noAutoConfig) {
+      if (!configOptions.config && options.autoConfig !== false) {
         const targetConfig = this.configService.findConfigInDirectory(targetDir);
         if (targetConfig) {
           configOptions.config = targetConfig;
@@ -115,7 +116,9 @@ export class OrganizeHandler implements IOrganizeHandler {
    * @param logger - Logger instance
    */
   private logResults(result: IOrganizationResult, logger: Logger): void {
-    logger.info(`Operations completed: ${result.successful} successful, ${result.failed} failed`);
+    logger.info(
+      `Operations completed: ${result.successful} successful, ${result.failed} failed, ${result.skipped ?? 0} skipped`
+    );
 
     if (result.errors.length === 0) return;
 
@@ -138,7 +141,7 @@ export class OrganizeHandler implements IOrganizeHandler {
     logger: Logger
   ): Promise<IScannedFile[]> {
     logger.info('Running duplicate detection...');
-    const dedupeService = DedupeStrategyFactory.createDedupeService();
+    const dedupeService = DedupeStrategyFactory.createDedupeService(config.dedupe);
 
     const dedupeResult = await dedupeService.findDuplicates(files);
     logger.info(
@@ -155,19 +158,53 @@ export class OrganizeHandler implements IOrganizeHandler {
       `Dedupe action '${config.dedupe!.action}' applied: ${affectedFiles} files affected`
     );
 
-    // Filter out duplicates based on action
+    const filteredFiles = this.filterDuplicateFiles(
+      files,
+      dedupeOutcome.skipped,
+      dedupeOutcome.replaced
+    );
+
     if (config.dedupe!.action === DedupeAction.SKIP) {
-      // Keep only primary files from duplicate groups, remove all duplicates
-      const duplicatePaths = new Set(
-        dedupeResult.groups.flatMap(group => group.files.slice(1).map(f => f.originalPath))
-      );
-      const filteredFiles = files.filter(file => !duplicatePaths.has(file.originalPath));
       logger.info(
-        `Kept ${dedupeResult.groups.length} primary files, filtered out ${duplicatePaths.size} duplicate files`
+        `Kept ${dedupeResult.groups.length} primary files, filtered out ${dedupeOutcome.skipped.length} duplicate files`
+      );
+      return filteredFiles;
+    }
+
+    if (config.dedupe!.action === DedupeAction.REPLACE) {
+      if (!config.dryRun) {
+        for (const file of dedupeOutcome.replaced) {
+          FileSystemUtils.unlinkSync(file.originalPath);
+        }
+      }
+
+      logger.info(
+        `${config.dryRun ? 'Would remove' : 'Removed'} ${dedupeOutcome.replaced.length} duplicate files before organization`
       );
       return filteredFiles;
     }
 
     return files;
+  }
+
+  /**
+   * Removes duplicate files from the operation set based on dedupe outcome.
+   * @param files - All scanned files
+   * @param skipped - Files skipped by dedupe
+   * @param replaced - Files marked for replacement by dedupe
+   * @returns Files that should continue through organization planning
+   */
+  private filterDuplicateFiles(
+    files: IScannedFile[],
+    skipped: readonly IScannedFile[],
+    replaced: readonly IScannedFile[]
+  ): IScannedFile[] {
+    const duplicatePaths = new Set([...skipped, ...replaced].map(file => file.originalPath));
+
+    if (duplicatePaths.size === 0) {
+      return files;
+    }
+
+    return files.filter(file => !duplicatePaths.has(file.originalPath));
   }
 }

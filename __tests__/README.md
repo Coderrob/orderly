@@ -110,7 +110,7 @@ Tests the deduplication feature:
 - ✅ Hash-based duplicate detection
 - ✅ Metadata-based duplicate detection
 - ✅ Combined strategy deduplication
-- ✅ Duplicate actions (skip, report)
+- ✅ Duplicate actions (skip, report, replace)
 - ✅ Dedupe with dry-run
 - ✅ Dedupe with organization
 - ✅ Manifest with dedupe info
@@ -212,11 +212,11 @@ Create realistic file structures:
 
 ```typescript
 const structure: ITestDirectoryStructure = {
-  'documents': {
+  documents: {
     'report.pdf': { path: 'report.pdf', content: 'PDF content' },
     'notes.txt': { path: 'notes.txt', content: 'Text content' }
   },
-  'images': {
+  images: {
     'photo.jpg': { path: 'photo.jpg', content: 'Image data' }
   }
 };

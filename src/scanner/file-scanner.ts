@@ -53,6 +53,7 @@ export class FileScanner implements IFileScanner {
       cwd: directory,
       nodir: true,
       absolute: false,
+      dot: this.config.includeHidden,
       ignore: this.config.excludePatterns
     });
   }

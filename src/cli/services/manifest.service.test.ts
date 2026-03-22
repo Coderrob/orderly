@@ -35,8 +35,10 @@ describe('ManifestService', () => {
       const result: IOrganizationResult = {
         successful: 5,
         failed: 0,
+        skipped: 0,
         errors: [],
-        operations: []
+        operations: [],
+        skippedOperations: []
       };
 
       const outputDir = '/output/dir';
@@ -45,6 +47,7 @@ describe('ManifestService', () => {
         totalOperations: 5,
         successful: 5,
         failed: 0,
+        skipped: 0,
         entries: []
       };
 
@@ -72,8 +75,10 @@ describe('ManifestService', () => {
       const result: IOrganizationResult = {
         successful: 3,
         failed: 2,
+        skipped: 0,
         errors: [{ file: 'test.txt', error: 'Test error' }],
-        operations: []
+        operations: [],
+        skippedOperations: []
       };
 
       const outputDir = '/output/dir';
@@ -82,6 +87,7 @@ describe('ManifestService', () => {
         totalOperations: 5,
         successful: 3,
         failed: 2,
+        skipped: 0,
         entries: []
       };
 
@@ -105,8 +111,10 @@ describe('ManifestService', () => {
       const result: IOrganizationResult = {
         successful: 5,
         failed: 0,
+        skipped: 0,
         errors: [],
-        operations: []
+        operations: [],
+        skippedOperations: []
       };
 
       const outputDir = '/output/dir';
@@ -115,6 +123,7 @@ describe('ManifestService', () => {
         totalOperations: 5,
         successful: 5,
         failed: 0,
+        skipped: 0,
         entries: []
       };
 

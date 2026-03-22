@@ -7,7 +7,8 @@ import type { IFileOperation, IOrganizationResult, IFileError } from './types';
 
 export enum OperationStatus {
   SUCCESS = 'success',
-  FAILED = 'failed'
+  FAILED = 'failed',
+  SKIPPED = 'skipped'
 }
 
 export interface ManifestEntry {
@@ -22,6 +23,7 @@ export interface Manifest {
   totalOperations: number;
   successful: number;
   failed: number;
+  skipped: number;
   entries: ManifestEntry[];
   // Backward compatibility: operations is an alias for entries
   operations?: ManifestEntry[];

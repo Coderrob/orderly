@@ -16,7 +16,8 @@ export class ManifestFormatter implements IManifestFormatter {
       `**Generated:** ${manifest.generatedAt}\n`,
       `**Total Operations:** ${manifest.totalOperations}`,
       `**Successful:** ${manifest.successful}`,
-      `**Failed:** ${manifest.failed}\n`
+      `**Failed:** ${manifest.failed}`,
+      `**Skipped:** ${manifest.skipped}\n`
     ];
 
     if (manifest.entries.length > 0) {
@@ -35,7 +36,12 @@ export class ManifestFormatter implements IManifestFormatter {
     const lines: string[] = [];
 
     for (const entry of entries) {
-      const status = entry.status === OperationStatus.SUCCESS ? '✓' : '✗';
+      let status = '↷';
+      if (entry.status === OperationStatus.SUCCESS) {
+        status = '✓';
+      } else if (entry.status === OperationStatus.FAILED) {
+        status = '✗';
+      }
       const entryLines = [
         `### ${status} ${entry.operation.type.toUpperCase()}`,
         `- **From:** \`${entry.operation.originalPath}\``,

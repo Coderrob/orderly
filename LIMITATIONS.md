@@ -43,8 +43,7 @@ interface OrderlyConfig {
   collisionResolution?: {
     strategy: 'skip' | 'keep-both' | 'replace';
     renamePattern?: string; // Default: '{name}-{n}{ext}'
-    maxAttempts?: number;   // Default: 100
-    interactive?: boolean;  // Default: false (planned feature)
+    maxAttempts?: number; // Default: 100
   };
 }
 ```
@@ -55,12 +54,12 @@ interface OrderlyConfig {
 # .orderly.yml
 collisionResolution:
   strategy: keep-both
-  renamePattern: '{name} ({n}){ext}'  # Optional custom pattern
-  maxAttempts: 50                     # Optional max rename attempts
-  interactive: false                  # Default: false (planned feature)
+  renamePattern: '{name} ({n}){ext}' # Optional custom pattern
+  maxAttempts: 50 # Optional max rename attempts
 ```
 
 **Implementation Details:**
+
 - Collision detection happens during operation execution in `OperationExecutor`
 - Rename pattern supports placeholders: `{name}`, `{n}`, `{ext}`
 - Falls back to timestamp-based naming if max attempts exceeded
@@ -69,6 +68,7 @@ collisionResolution:
 **Future Enhancements:**
 
 Potential improvements for future releases:
+
 - Interactive mode (`ask` strategy) to prompt user for each collision
 - Early collision detection in `OperationPlanner` phase
 - Collision preview before execution
@@ -116,6 +116,7 @@ targetDirectory: /output
 ```
 
 See the implementation in:
+
 - `src/config/types.ts` - Type definitions
 - `src/organizer/operation-planner.ts` - Path resolution logic
 - `src/cli/cli.service.ts` - CLI option handling
@@ -143,8 +144,8 @@ The file scanner always scans recursively using the glob pattern `**/*`, finding
    interface OrderlyConfig {
      // ... existing fields
      scanning?: {
-       recursive?: boolean;      // Default: true
-       maxDepth?: number;        // Default: unlimited
+       recursive?: boolean; // Default: true
+       maxDepth?: number; // Default: unlimited
        followSymlinks?: boolean; // Default: false
      };
    }
@@ -165,7 +166,7 @@ The file scanner always scans recursively using the glob pattern `**/*`, finding
    private async findFiles(directory: string): Promise<string[]> {
      const recursive = this.config.scanning?.recursive ?? true;
      const maxDepth = this.config.scanning?.maxDepth;
-     
+
      let pattern: string;
      if (!recursive) {
        pattern = this.config.includeHidden ? '*' : '[!.]*';
@@ -175,7 +176,7 @@ The file scanner always scans recursively using the glob pattern `**/*`, finding
      } else {
        pattern = this.config.includeHidden ? '**/*' : '**/[!.]*';
      }
-     
+
      return glob(pattern, {
        cwd: directory,
        nodir: true,
@@ -231,8 +232,8 @@ The scanner finds all files regardless of extension. Filtering happens during or
    interface OrderlyConfig {
      scanning?: {
        // ... existing options
-       includeExtensions?: string[];  // Only scan these extensions
-       excludeExtensions?: string[];  // Skip these extensions
+       includeExtensions?: string[]; // Only scan these extensions
+       excludeExtensions?: string[]; // Skip these extensions
      };
    }
    ```
@@ -264,7 +265,7 @@ The scanner finds all files regardless of extension. Filtering happens during or
 private async findFiles(directory: string): Promise<string[]> {
   const basePattern = this.buildBasePattern();
   const extensionPattern = this.buildExtensionPattern();
-  
+
   return glob(extensionPattern || basePattern, {
     cwd: directory,
     nodir: true,
@@ -275,12 +276,12 @@ private async findFiles(directory: string): Promise<string[]> {
 
 private buildExtensionPattern(): string | null {
   const { includeExtensions, excludeExtensions } = this.config.scanning || {};
-  
+
   if (includeExtensions?.length) {
     const exts = includeExtensions.map(e => e.replace(/^\./, '')).join(',');
     return `**/*.{${exts}}`;
   }
-  
+
   // Exclusion handled via ignore patterns
   return null;
 }
@@ -288,13 +289,13 @@ private buildExtensionPattern(): string | null {
 private buildIgnorePatterns(): string[] {
   const patterns = [...this.config.excludePatterns];
   const { excludeExtensions } = this.config.scanning || {};
-  
+
   if (excludeExtensions?.length) {
     excludeExtensions.forEach(ext => {
       patterns.push(`**/*${ext.startsWith('.') ? ext : '.' + ext}`);
     });
   }
-  
+
   return patterns;
 }
 ```
@@ -392,5 +393,5 @@ For questions or discussions, please open an issue on GitHub.
 
 ---
 
-*Last Updated: February 2, 2026*
-*Document Version: 1.0*
+_Last Updated: February 2, 2026_
+_Document Version: 1.0_

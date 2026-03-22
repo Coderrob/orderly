@@ -333,6 +333,24 @@ describe('Scan Command Integration Tests', () => {
       // Hidden files may not be included by default
       expect(result.message).toContain('file');
     });
+
+    it('should include hidden files and hidden directory contents when includeHidden is true', async () => {
+      // Arrange
+      const configPath = path.join(testDir, '.orderly.yml');
+      const config = createTestConfig({ includeHidden: true });
+      testEnv.createFile(configPath, JSON.stringify(config, null, 2));
+
+      testEnv.createFile(path.join(testDir, 'visible.txt'), 'visible');
+      testEnv.createFile(path.join(testDir, '.hidden.txt'), 'hidden');
+      testEnv.createFile(path.join(testDir, '.cache', 'nested.txt'), 'nested hidden');
+
+      // Act
+      const result = await scanHandler.execute(testDir, {});
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('4 files');
+    });
   });
 
   describe('Configuration file integration', () => {

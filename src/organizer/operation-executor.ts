@@ -56,7 +56,9 @@ export class OperationExecutor implements IOperationExecutor {
       operations,
       successful: 0,
       failed: 0,
-      errors: []
+      skipped: 0,
+      errors: [],
+      skippedOperations: []
     };
   }
 
@@ -114,8 +116,14 @@ export class OperationExecutor implements IOperationExecutor {
           from: operation.originalPath,
           to: executionResult.finalPath
         });
+      } else {
+        result.skipped = (result.skipped ?? 0) + 1;
+        result.skippedOperations = result.skippedOperations ?? [];
+        result.skippedOperations.push({
+          file: operation.originalPath,
+          reason: executionResult.skipReason ?? 'Operation skipped'
+        });
       }
-      // If not succeeded, operation was skipped - don't increment counters
     } catch (error) {
       this.handleOperationError(operation, error, result);
     }
@@ -130,24 +138,30 @@ export class OperationExecutor implements IOperationExecutor {
     succeeded: boolean;
     finalPath: string;
     collisionResolved: boolean;
+    skipReason?: string;
   } {
     let finalTargetPath = operation.newPath;
     let collisionResolved = false;
-
-    const targetDir = path.dirname(finalTargetPath);
-    FileSystemUtils.mkdirSync(targetDir);
 
     // Check for file existence and handle collision resolution
     if (FileSystemUtils.existsSync(finalTargetPath) && finalTargetPath !== operation.originalPath) {
       const resolvedPath = this.resolveCollision(operation, finalTargetPath);
       if (!resolvedPath) {
         // Skip this operation based on strategy
-        this.logger.warn(`Skipping ${operation.originalPath} due to collision resolution strategy`);
-        return { succeeded: false, finalPath: operation.newPath, collisionResolved: false };
+        const skipReason = `Skipping ${operation.originalPath} due to collision resolution strategy`;
+        this.logger.warn(skipReason);
+        return {
+          succeeded: false,
+          finalPath: operation.newPath,
+          collisionResolved: false,
+          skipReason
+        };
       }
       finalTargetPath = resolvedPath;
       collisionResolved = true;
     }
+
+    FileSystemUtils.mkdirSync(path.dirname(finalTargetPath));
 
     FileSystemUtils.renameSync(operation.originalPath, finalTargetPath);
     return { succeeded: true, finalPath: finalTargetPath, collisionResolved };

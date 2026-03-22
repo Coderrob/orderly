@@ -37,6 +37,8 @@ describe('ManifestGenerator', () => {
       operations: [],
       successful: 1,
       failed: 0,
+      skipped: 0,
+      skippedOperations: [],
       errors: []
     };
     testErrors = [];
@@ -45,6 +47,7 @@ describe('ManifestGenerator', () => {
       totalOperations: 1,
       successful: 1,
       failed: 0,
+      skipped: 0,
       entries: []
     };
 

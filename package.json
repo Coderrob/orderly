@@ -4,7 +4,7 @@
   "description": "Agentic file and folder organization to maintain an orderly directory.",
   "main": "dist/index.js",
   "bin": {
-    "orderly": "./dist/cli/index.js"
+    "orderly": "./dist/cli.js"
   },
   "scripts": {
     "build": "npm run clean && tsc",
@@ -15,6 +15,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage && npm run make-badge",
     "test:ci": "jest --coverage --ci --maxWorkers=2 && npm run make-badge",
+    "test:integration": "jest --config jest.integration.config.cjs",
     "make-badge": "make-coverage-badge --output-path .github/badges/coverage.svg",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",

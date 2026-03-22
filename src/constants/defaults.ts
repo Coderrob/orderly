@@ -1,12 +1,23 @@
 /**
  * Configuration file names in order of precedence.
  */
-export const CONFIG_FILE_NAMES = ['.orderly.yml', '.orderly.yaml', 'orderly.config.json'] as const;
+export const CONFIG_FILE_NAMES = [
+  '.orderly.yml',
+  '.orderly.yaml',
+  '.orderly.config.yaml',
+  '.orderly.config.json',
+  'orderly.config.json'
+] as const;
 
 /**
  * Valid configuration file name type
  */
-export type ConfigFileName = '.orderly.yml' | '.orderly.yaml' | 'orderly.config.json';
+export type ConfigFileName =
+  | '.orderly.yml'
+  | '.orderly.yaml'
+  | '.orderly.config.yaml'
+  | '.orderly.config.json'
+  | 'orderly.config.json';
 
 /**
  * Default file paths.

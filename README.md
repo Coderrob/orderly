@@ -20,24 +20,26 @@ A configurable CLI tool that scans folders, categorizes and organizes files by t
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 
 <!-- Quality Badges -->
-[![Coverage Badge](.github/badges/coverage.svg)](https://github.com/Coderrob/orderly)
-[![Tests](https://img.shields.io/badge/tests-570%20passing-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
+
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
 [![Code Quality](https://img.shields.io/badge/code%20quality-A+-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
 
 <!-- Standards & Tools -->
+
 [![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square&logo=prettier)](https://prettier.io/)
 [![Linter: ESLint](https://img.shields.io/badge/linter-ESLint-4B32C3.svg?style=flat-square&logo=eslint)](https://eslint.org/)
 [![Tested with Jest](https://img.shields.io/badge/tested_with-jest-99424f.svg?style=flat-square&logo=jest)](https://jestjs.io/)
 [![Commitizen Friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg?style=flat-square)](http://commitizen.github.io/cz-cli/)
 
 <!-- Metrics -->
+
 [![Code Duplication](https://img.shields.io/badge/duplication-%3C1%25-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
 [![Maintainability](https://img.shields.io/badge/maintainability-A-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
 [![Dependencies](https://img.shields.io/badge/dependencies-5-blue.svg?style=flat-square)](package.json)
 [![DevDependencies](https://img.shields.io/badge/devDependencies-19-blue.svg?style=flat-square)](package.json)
 
 <!-- Additional Badges -->
+
 [![GitHub Stars](https://img.shields.io/github/stars/Coderrob/orderly?style=flat-square)](https://github.com/Coderrob/orderly/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/Coderrob/orderly?style=flat-square)](https://github.com/Coderrob/orderly/issues)
 [![GitHub Last Commit](https://img.shields.io/github/last-commit/Coderrob/orderly?style=flat-square)](https://github.com/Coderrob/orderly/commits/main)
@@ -58,7 +60,7 @@ A configurable CLI tool that scans folders, categorizes and organizes files by t
 - 🔒 **Dry Run Mode**: Preview changes before applying them
 - 🎨 **Colorized Output**: Easy-to-read console output with colors
 - 🛡️ **Type Safety**: Built with TypeScript using strict mode and type-safe enums
-- ✅ **Production Ready**: 99.69% test coverage, zero lint errors, comprehensive quality gates
+- ✅ **Production Ready**: comprehensive test suite, strict linting, and enforced quality gates
 
 ## Installation
 
@@ -113,7 +115,7 @@ Organize files in the specified directory (defaults to current directory).
 - `-o, --output <path>` - Output directory for organized files
 - `--no-auto-config` - Disable auto-discovery of config files in target directory
 
-> **Note:** By default, Orderly will automatically use a config file if found in the target directory. It searches in this order and uses the first file it finds: `.orderly.yml`, `.orderly.yaml`, then `orderly.config.json`. Use `--no-auto-config` to disable this behavior and use only the default configuration or an explicitly specified config file.
+> **Note:** By default, Orderly will automatically use a config file if found in the target directory. It searches in this order and uses the first file it finds: `.orderly.yml`, `.orderly.yaml`, `.orderly.config.yaml`, `.orderly.config.json`, then `orderly.config.json`. Use `--no-auto-config` to disable this behavior and use only the default configuration or an explicitly specified config file.
 
 **Examples:**
 
@@ -162,7 +164,7 @@ orderly init --format json
 
 ## Configuration
 
-Create a `.orderly.yml` (or `.orderly.yaml` or `orderly.config.json`) file in your project root:
+Create a `.orderly.yml` (or `.orderly.yaml`, `.orderly.config.yaml`, `.orderly.config.json`, or `orderly.config.json`) file in your project root:
 
 ```yaml
 categories:
@@ -192,7 +194,7 @@ categories:
     targetFolder: code
 
 namingConvention:
-  type: kebab-case  # Options: kebab-case, snake_case, camelCase, PascalCase
+  type: kebab-case # Options: kebab-case, snake_case, camelCase, PascalCase
   lowercase: true
 
 excludePatterns:
@@ -205,6 +207,18 @@ includeHidden: false
 dryRun: false
 generateManifest: true
 logLevel: info
+
+dedupe:
+  enabled: true
+  recursive: false
+  strategy:
+    mode: any # Options: any, all
+    name:
+      caseSensitive: false
+      ignoreExtension: false
+    size: true
+    sha256: true
+  action: skip # Options: skip, report, replace
 ```
 
 ### Configuration Options
@@ -245,6 +259,20 @@ Preview changes without applying them.
 
 Generate JSON and Markdown manifests of all operations.
 
+#### `dedupe`
+
+Control duplicate detection and duplicate handling before organization planning.
+
+- `enabled`: Turn dedupe on or off.
+- `recursive`: Reserved for strategy-specific recursion behavior.
+- `strategy.mode`:
+  - `any`: A file pair is treated as duplicate when at least one applicable enabled strategy matches.
+  - `all`: A file pair is treated as duplicate only when all applicable enabled strategies match.
+- `action`:
+  - `skip`: Keep the primary file from each duplicate group and skip the rest.
+  - `report`: Report duplicate groups but keep all files in the organization pipeline.
+  - `replace`: Keep the primary file from each duplicate group, remove duplicate source files before planning, and continue organization with primary files only. In dry-run mode, no files are removed and planned removals are only reported.
+
 #### `logLevel`
 
 Logging verbosity: `debug`, `info`, `warn`, or `error`.
@@ -262,7 +290,7 @@ These files contain:
 
 - Timestamp of operation
 - Total number of operations
-- Success/failure counts
+- Success/failure/skipped counts
 - Detailed list of all file operations
 - Any errors encountered
 
@@ -352,7 +380,7 @@ npm run test:watch
 npm run test:ci
 ```
 
-**Test Results**: All 570 tests passing across 40 test suites with 99.69% code coverage.
+**Test Results**: The test suite and coverage checks are validated through `npm run verify`.
 
 ### Code Quality
 
@@ -387,21 +415,13 @@ npm run verify
 npm run quality:fix
 ```
 
-### Quality Metrics
+### Quality Signals
 
-| Metric | Target | Current | Status |
-|--------|--------|---------|--------|
-| Test Coverage | ≥ 90% | **99.69%** | ✅ |
-| Tests Passing | 100% | **570/570** | ✅ |
-| Test Suites | All | **40/40** | ✅ |
-| Code Duplication | < 1% | **< 1%** | ✅ |
-| TypeScript Errors | 0 | **0** | ✅ |
-| ESLint Errors | 0 | **0** | ✅ |
-| Cyclomatic Complexity | ≤ 10/function | **≤ 10** | ✅ |
-| Max Lines/Function | ≤ 50 | **≤ 50** | ✅ |
-| Max Parameters | ≤ 5 | **≤ 5** | ✅ |
-| Max Nesting Depth | ≤ 3 | **≤ 3** | ✅ |
-| SOLID Compliance | 100% | **100%** | ✅ |
+- Automated type checking via `npm run typecheck`
+- Lint enforcement via `npm run lint`
+- Formatting checks via `npm run format:check`
+- Coverage and test execution via `npm run test:coverage`
+- Full quality gate via `npm run verify`
 
 ### Code Quality Features
 
@@ -409,7 +429,7 @@ npm run quality:fix
   - `ConfigFormat`: JSON, YAML configuration formats
   - `NamingConventionType`: kebab-case, snake_case, camelCase, PascalCase
   - `FileOperationType`: move, rename, move-rename operations
-  - `OperationStatus`: success, failed status tracking
+  - `OperationStatus`: success, failed, skipped status tracking
 - **Defensive Testing**: Comprehensive test assertions using `toHaveBeenCalledTimes()` and `toHaveBeenNthCalledWith()`
 - **Module Consistency**: Proper Node.js module imports with `node:` prefix for built-in modules
 - **Mock Integrity**: All tests use proper mocking patterns with `jest.mock()` and `jest.mocked()`
@@ -431,13 +451,13 @@ Comprehensive documentation is available:
   - Configuration format validation (JSON/YAML)
   - Naming convention types (kebab-case, snake_case, camelCase, PascalCase)
   - File operation types (move, rename, move-rename)
-  - Operation status tracking (success, failed)
+  - Operation status tracking (success, failed, skipped)
 - ✅ **Enhanced Test Quality**: Upgraded all unit tests with defensive assertions
   - Precise call count verification with `toHaveBeenCalledTimes()`
   - Argument validation with `toHaveBeenNthCalledWith()`
   - Proper module mocking with `node:` prefix consistency
 - ✅ **Bug Fixes**: Resolved critical module import mismatches and test mocking issues
-- ✅ **Quality Gates**: Achieved 99.69% test coverage with 570 passing tests
+- ✅ **Quality Gates**: Full verify/build pipeline is part of the standard workflow
 - ✅ **Zero Defects**: No TypeScript errors, no lint errors, no code duplication
 
 ## License

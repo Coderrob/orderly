@@ -215,6 +215,22 @@ describe('ScanHandler', () => {
       );
     });
 
+    it('should not auto-discover config when autoConfig is false', async () => {
+      const config = { logLevel: 'info' as any };
+      const targetDir = '/test/dir';
+      const files: any[] = [];
+      const summary = new Map();
+
+      mockConfigService.loadWithOverrides.mockReturnValue(config);
+      mockDirectoryValidator.validate.mockReturnValue(targetDir);
+      mockFileScanner.prototype.scan.mockResolvedValue(files);
+      mockFileScanner.prototype.getCategorySummary.mockReturnValue(summary);
+
+      await handler.execute(targetDir, { autoConfig: false });
+
+      expect(mockConfigService.findConfigInDirectory).not.toHaveBeenCalled();
+    });
+
     it('should handle config load error', async () => {
       mockConfigService.loadWithOverrides.mockImplementation(() => {
         throw new Error('Config error');

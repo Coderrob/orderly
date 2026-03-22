@@ -42,10 +42,6 @@ export interface CollisionResolutionConfig {
   strategy: CollisionResolutionStrategy;
   renamePattern?: string;
   maxAttempts?: number;
-  /**
-   * Reserved for future use. This option is currently ignored by the implementation.
-   */
-  interactive?: boolean;
 }
 
 export interface OrderlyConfig {

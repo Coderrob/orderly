@@ -38,7 +38,7 @@ export class ScanHandler implements IScanHandler {
       // If no config specified and auto-discovery not disabled, check target directory for config file
       const configOptions = { ...options };
       let autoDiscoveredConfig: string | undefined;
-      if (!configOptions.config && !options.noAutoConfig) {
+      if (!configOptions.config && options.autoConfig !== false) {
         const targetConfig = this.configService.findConfigInDirectory(targetDir);
         if (targetConfig) {
           configOptions.config = targetConfig;

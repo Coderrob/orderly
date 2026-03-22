@@ -88,6 +88,7 @@ export interface IDedupeCandidate {
 export interface IDuplicateGroup {
   readonly key: string;
   readonly strategy: string;
+  readonly strategies?: readonly string[];
   readonly files: readonly IScannedFile[];
   readonly primary?: IScannedFile;
 }

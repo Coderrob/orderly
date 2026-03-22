@@ -106,11 +106,19 @@ describe('OperationExecutor', () => {
       expect(mockFileSystemUtils.existsSync).toHaveBeenCalledWith('/target/file.txt');
       expect(result.successful).toBe(0);
       expect(result.failed).toBe(0);
+      expect(result.skipped).toBe(1);
       expect(result.errors).toHaveLength(0);
+      expect(result.skippedOperations).toEqual([
+        {
+          file: '/source/file.txt',
+          reason: 'Skipping /source/file.txt due to collision resolution strategy'
+        }
+      ]);
       expect(loggerInstance.warn).toHaveBeenCalledWith(
         expect.stringContaining('Skipping /source/file.txt due to collision resolution strategy')
       );
       expect(mockFileSystemUtils.renameSync).not.toHaveBeenCalled();
+      expect(mockFileSystemUtils.mkdirSync).not.toHaveBeenCalled();
     });
 
     it('should handle collision with keep-both strategy', () => {
@@ -509,6 +517,41 @@ describe('OperationExecutor', () => {
       expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
         '/source/file.txt',
         path.join('/target', 'file_1.txt')
+      );
+    });
+
+    it('should create the resolved target directory when rename pattern introduces subdirectories', () => {
+      const configWithCustomPattern: OrderlyConfig = {
+        ...DEFAULT_CONFIG,
+        collisionResolution: {
+          strategy: CollisionResolutionStrategy.KEEP_BOTH,
+          renamePattern: 'conflicts/{name}_{n}{ext}'
+        }
+      };
+      const executorWithCustomPattern = new OperationExecutor(
+        loggerInstance,
+        false,
+        configWithCustomPattern
+      );
+
+      const operation: IFileOperation = {
+        type: FileOperationType.MOVE,
+        originalPath: '/source/file.txt',
+        newPath: '/target/file.txt',
+        reason: 'Moving to target'
+      };
+
+      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+        return filePath === '/target/file.txt';
+      });
+
+      const result = executorWithCustomPattern.execute([operation]);
+
+      expect(result.successful).toBe(1);
+      expect(mockFileSystemUtils.mkdirSync).toHaveBeenCalledWith(path.join('/target', 'conflicts'));
+      expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
+        '/source/file.txt',
+        path.join('/target', 'conflicts', 'file_1.txt')
       );
     });
 

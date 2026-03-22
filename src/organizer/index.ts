@@ -9,4 +9,4 @@ export type { IManifestGenerator, Manifest, ManifestEntry } from './manifest-gen
 export { OperationExecutor } from './operation-executor.js';
 export { OperationPlanner } from './operation-planner.js';
 export { FileOperationType } from './types.js';
-export type { IFileError, IFileOperation, IOrganizationResult } from './types.js';
+export type { IFileError, IFileOperation, IFileSkip, IOrganizationResult } from './types.js';

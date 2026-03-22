@@ -20,8 +20,8 @@ export interface IOrganizeOptions {
   dedupe?: boolean;
   /** Action to take on duplicates (skip, report, replace) */
   dedupeAction?: string;
-  /** Disable auto-discovery of config files in target directory */
-  noAutoConfig?: boolean;
+  /** Commander negated option `--no-auto-config` surfaces as `autoConfig: false` */
+  autoConfig?: boolean;
 }
 
 /**
@@ -40,8 +40,8 @@ export interface IScanOptions {
   config?: string;
   /** Log level (debug, info, warn, error) */
   logLevel?: string;
-  /** Disable auto-discovery of config files in target directory */
-  noAutoConfig?: boolean;
+  /** Commander negated option `--no-auto-config` surfaces as `autoConfig: false` */
+  autoConfig?: boolean;
 }
 
 /**

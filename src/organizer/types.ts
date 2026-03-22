@@ -31,8 +31,12 @@ export interface IOrganizationResult {
   successful: number;
   /** Count of failed operations */
   failed: number;
+  /** Count of skipped operations */
+  skipped?: number;
   /** Details of any errors encountered */
   errors: IFileError[];
+  /** Details of any operations intentionally skipped */
+  skippedOperations?: IFileSkip[];
 }
 
 /**
@@ -43,4 +47,14 @@ export interface IFileError {
   file: string;
   /** Error message */
   error: string;
+}
+
+/**
+ * Represents an operation that was intentionally skipped.
+ */
+export interface IFileSkip {
+  /** File path that was skipped */
+  file: string;
+  /** Human-readable reason for the skip */
+  reason: string;
 }
