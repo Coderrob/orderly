@@ -1,5 +1,6 @@
 // @ts-check
 import eslint from '@eslint/js';
+import zeroTolerance from '@coderrob/eslint-plugin-zero-tolerance';
 import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
 import jsdocPlugin from 'eslint-plugin-jsdoc';
@@ -18,6 +19,7 @@ export default tseslint.config(
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
+  zeroTolerance.configs.strict,
   {
     plugins: {
       import: importPlugin,
@@ -67,11 +69,6 @@ export default tseslint.config(
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
 
-      // JSDoc requirements (temporarily disabled - requires manual implementation)
-      // TODO: Add JSDoc comments to all functions with @param and @returns tags
-      'jsdoc/require-jsdoc': 'off',
-      'jsdoc/require-param': 'off',
-      'jsdoc/require-returns': 'off',
       'jsdoc/require-param-type': 'off', // TypeScript handles this
       'jsdoc/require-returns-type': 'off', // TypeScript handles this
 

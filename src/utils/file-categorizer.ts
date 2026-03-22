@@ -1,12 +1,12 @@
 import micromatch from 'micromatch';
 
-import { CategoryRule } from '../config/types';
+import { type CategoryRule } from '../config/types';
 
 export interface IFileCategorizer {
   categorize(
     extension: string,
     filename: string,
-    categories: CategoryRule[]
+    categories: readonly CategoryRule[]
   ): CategoryRule | undefined;
 }
 
@@ -21,10 +21,10 @@ export class FileCategorizer implements IFileCategorizer {
   static categorize(
     extension: string,
     filename: string,
-    categories: CategoryRule[]
+    categories: readonly CategoryRule[]
   ): CategoryRule | undefined {
     for (const category of categories) {
-      if (this.matchesCategory(extension, filename, category)) {
+      if (this.hasCategoryMatch(extension, filename, category)) {
         return category;
       }
     }
@@ -41,7 +41,7 @@ export class FileCategorizer implements IFileCategorizer {
   categorize(
     extension: string,
     filename: string,
-    categories: CategoryRule[]
+    categories: readonly CategoryRule[]
   ): CategoryRule | undefined {
     return FileCategorizer.categorize(extension, filename, categories);
   }
@@ -51,12 +51,12 @@ export class FileCategorizer implements IFileCategorizer {
    * @param extension - The file extension to match
    * @param filename - The complete filename for pattern matching
    * @param category - The category rule to check against
-   * @returns True if file matches the category rule, false otherwise
+   * @returns True when the file matches the category rule; otherwise false
    */
-  private static matchesCategory(
+  private static hasCategoryMatch(
     extension: string,
     filename: string,
-    category: CategoryRule
+    category: Readonly<CategoryRule>
   ): boolean {
     if (!category.extensions.includes(extension)) {
       return false;

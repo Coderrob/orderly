@@ -35,6 +35,7 @@ export class ManifestBuilder implements IManifestBuilder {
    * Builds manifest entries from operations and errors
    * @param operations - Array of file operations to create entries for
    * @param errors - Array of file errors to match with operations
+   * @param skippedOperations - Array of skipped operations that should be marked as skipped in the manifest
    * @param timestamp - ISO timestamp to assign to each entry
    * @returns Array of manifest entries with status and error information
    */

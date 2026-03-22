@@ -14,7 +14,9 @@ import type { IScannedFile } from '../scanner/interfaces';
 import { LogLevel } from '../types';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
-import { CLI_CONSTANTS, ExitCode, CONFIG_FILE_NAMES } from './constants';
+import { CLI_CONSTANTS, ExitCode, CONFIG_FILE_NAMES, COMMAND_MESSAGES } from './constants';
+import { HandleCliActionErrors } from './decorators/cli-action-error-handler.decorator';
+import { WithCliAutoConfigDiscovery } from './decorators/cli-auto-config-discovery.decorator';
 import type { IOrganizeOptions, IInitOptions, IScanOptions } from './interfaces';
 
 /**
@@ -24,6 +26,9 @@ import type { IOrganizeOptions, IInitOptions, IScanOptions } from './interfaces'
 export class CliService {
   private readonly program: Command;
 
+  /**
+   * Creates the CLI service and registers all available commands.
+   */
   constructor() {
     this.program = new Command();
     this.setupProgram();
@@ -55,11 +60,7 @@ export class CliService {
       .option('-o, --output <path>', 'Output directory for organized files')
       .option('--no-auto-config', 'Disable auto-discovery of config files in target directory')
       .action(async (directory: string, options: IOrganizeOptions) => {
-        try {
-          await this.handleOrganizeCommand(directory, options);
-        } catch (error) {
-          this.handleError(error);
-        }
+        await this.handleOrganizeCommand(directory, options);
       });
   }
 
@@ -76,11 +77,7 @@ export class CliService {
         CLI_CONSTANTS.DEFAULT_CONFIG_FORMAT
       )
       .action((options: IInitOptions) => {
-        try {
-          this.handleInitCommand(options);
-        } catch (error) {
-          this.handleError(error);
-        }
+        this.handleInitCommand(options);
       });
   }
 
@@ -96,11 +93,7 @@ export class CliService {
       .option('-l, --log-level <level>', 'Log level (debug, info, warn, error)', 'info')
       .option('--no-auto-config', 'Disable auto-discovery of config files in target directory')
       .action(async (directory: string, options: IScanOptions) => {
-        try {
-          await this.handleScanCommand(directory, options);
-        } catch (error) {
-          this.handleError(error);
-        }
+        await this.handleScanCommand(directory, options);
       });
   }
 
@@ -113,10 +106,23 @@ export class CliService {
 
   /**
    * Handles the organize command
+   * @param directory - Target directory passed from the CLI.
+   * @param options - Parsed organize command options.
+   * @param autoDiscoveredConfig - Config path discovered automatically for the target directory, when present.
    */
-  private async handleOrganizeCommand(directory: string, options: IOrganizeOptions): Promise<void> {
+  @HandleCliActionErrors()
+  @WithCliAutoConfigDiscovery<IOrganizeOptions>()
+  private async handleOrganizeCommand(
+    directory: string,
+    options: IOrganizeOptions,
+    autoDiscoveredConfig?: string
+  ): Promise<void> {
     const config = this.loadConfig(options);
     const logger = this.createLogger(config.logLevel);
+
+    if (autoDiscoveredConfig) {
+      logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
+    }
 
     console.log(chalk.blue.bold(`\n🗂️  ${CLI_CONSTANTS.TOOL_NAME} - File Organization Tool\n`));
 
@@ -159,7 +165,9 @@ export class CliService {
 
   /**
    * Handles the init command
+   * @param options - Parsed init command options.
    */
+  @HandleCliActionErrors()
   private handleInitCommand(options: IInitOptions): void {
     const format = this.validateFormat(options.format);
     const filename = this.getFilename(format);
@@ -176,13 +184,27 @@ export class CliService {
 
   /**
    * Handles the scan command
+   * @param directory - Target directory passed from the CLI.
+   * @param options - Parsed scan command options.
+   * @param autoDiscoveredConfig - Config path discovered automatically for the target directory, when present.
    */
-  private async handleScanCommand(directory: string, options: IScanOptions): Promise<void> {
+  @HandleCliActionErrors()
+  @WithCliAutoConfigDiscovery<IScanOptions>()
+  private async handleScanCommand(
+    directory: string,
+    options: IScanOptions,
+    autoDiscoveredConfig?: string
+  ): Promise<void> {
     const config = ConfigLoader.load(options.config);
     config.dryRun = true;
     if (options.logLevel) config.logLevel = options.logLevel as LogLevel;
 
     const logger = new Logger(config.logLevel);
+
+    if (autoDiscoveredConfig) {
+      logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
+    }
+
     console.log(chalk.blue.bold('\n🔍 Scanning directory...\n'));
 
     const targetDir = this.validateDirectory(directory, logger);
@@ -200,11 +222,13 @@ export class CliService {
 
   /**
    * Loads configuration with overrides from options
+   * @param options - Parsed organize command options containing config overrides.
+   * @returns The loaded configuration with CLI overrides applied.
    */
   private loadConfig(options: IOrganizeOptions): OrderlyConfig {
     const config = ConfigLoader.load(options.config);
     if (options.dryRun) config.dryRun = true;
-    if (options.manifest === false) config.generateManifest = false;
+    if (!options.manifest) config.generateManifest = false;
     if (options.logLevel) config.logLevel = options.logLevel as LogLevel;
     if (options.output) config.targetDirectory = path.resolve(options.output);
     return config;
@@ -212,6 +236,8 @@ export class CliService {
 
   /**
    * Creates a logger instance
+   * @param logLevel - Minimum log level to use for this command execution.
+   * @returns A logger configured to write to the orderly log file.
    */
   private createLogger(logLevel: string): Logger {
     const logFile = path.join(process.cwd(), CLI_CONSTANTS.ORDERLY_DIR, CLI_CONSTANTS.LOG_FILE);
@@ -219,7 +245,28 @@ export class CliService {
   }
 
   /**
+   * Finds the first supported config file in the provided directory.
+   * @param directory - Directory to search for supported config filenames.
+   * @returns The first matching config file path, or null when none is found.
+   */
+  private findConfigInDirectory(directory: string): string | null {
+    const targetDirectory = path.resolve(directory);
+
+    for (const configFile of Object.values(CONFIG_FILE_NAMES)) {
+      const candidatePath = path.join(targetDirectory, configFile);
+      if (FileSystemUtils.existsSync(candidatePath)) {
+        return candidatePath;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Validates and resolves a directory path
+   * @param directory - Directory path provided by the user.
+   * @param logger - Logger used to report validation failures.
+   * @returns The resolved absolute directory path.
    */
   private validateDirectory(directory: string, logger: Logger): string {
     const targetDir = path.resolve(directory);
@@ -232,6 +279,9 @@ export class CliService {
 
   /**
    * Logs configuration information
+   * @param targetDir - Resolved target directory being processed.
+   * @param dryRun - Whether the current command is running without modifying files.
+   * @param logger - Logger used for status output.
    */
   private logConfiguration(targetDir: string, dryRun: boolean, logger: Logger): void {
     logger.info(`Target directory: ${targetDir}`);
@@ -242,6 +292,9 @@ export class CliService {
 
   /**
    * Logs file summary information
+   * @param scanner - Scanner used to compute category summaries.
+   * @param files - Files returned from the scan operation.
+   * @param logger - Logger used for status output.
    */
   private logFileSummary(scanner: FileScanner, files: IScannedFile[], logger: Logger): void {
     const summary = scanner.getCategorySummary(files);
@@ -253,6 +306,8 @@ export class CliService {
 
   /**
    * Logs organization results
+   * @param result - Organization result to summarize.
+   * @param logger - Logger used for status output.
    */
   private logResults(result: IOrganizationResult, logger: Logger): void {
     logger.info(`\n${'='.repeat(50)}`);
@@ -264,6 +319,8 @@ export class CliService {
 
   /**
    * Saves manifest files
+   * @param result - Organization result used to generate manifests.
+   * @param logger - Logger used for status output.
    */
   private saveManifests(result: IOrganizationResult, logger: Logger): void {
     const manifestGenerator = new ManifestGenerator(logger);
@@ -279,6 +336,7 @@ export class CliService {
   /**
    * Validates the config format
    * @param format
+   * @returns The normalized config format string.
    */
   private validateFormat(format?: string): string {
     const normalized = (format || CLI_CONSTANTS.DEFAULT_CONFIG_FORMAT).toLowerCase();
@@ -297,6 +355,7 @@ export class CliService {
   /**
    * Gets the filename for a config format
    * @param format
+   * @returns The default config filename for the requested format.
    */
   private getFilename(format: string): string {
     return format === 'json' ? CONFIG_FILE_NAMES.JSON : CONFIG_FILE_NAMES.YAML;
@@ -304,6 +363,11 @@ export class CliService {
 
   /**
    * Displays scan results
+   * @param scanner - Scanner used to compute category summaries.
+   * @param files - Files returned from the scan operation.
+   * @param config - Configuration that would be used for organization.
+   * @param logger - Logger passed to the organizer preview.
+   * @param targetDir - Resolved target directory being scanned.
    */
   private displayScanResults(
     scanner: FileScanner,
@@ -338,6 +402,7 @@ export class CliService {
 
   /**
    * Handles and displays errors
+   * @param error - Error thrown during command execution.
    */
   private handleError(error: unknown): void {
     console.error(chalk.red('Error:'), error instanceof Error ? error.message : error);

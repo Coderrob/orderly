@@ -1,0 +1,30 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\cli\\constants.ts",
+  "module": {
+    "name": "constants",
+    "description": "Behavioral contract for D:\\orderly\\src\\cli\\constants.ts",
+    "exports": [
+      "CLI_CONSTANTS",
+      "COMMAND_MESSAGES",
+      "CONFIG_FILE_NAMES",
+      "ConfigFileFormat",
+      "ConfigFormat",
+      "ExitCode"
+    ]
+  },
+  "specifications": [
+    {
+      "feature": "Source contract for constants",
+      "scenarios": [
+        {
+          "name": "should satisfy the documented module contract",
+          "given": "the module is imported by consumers",
+          "when": "its public API is used according to the source definition",
+          "then": "the documented behavior should remain consistent"
+        }
+      ]
+    }
+  ]
+}

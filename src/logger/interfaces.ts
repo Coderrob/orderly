@@ -1,4 +1,4 @@
-import type { LogEntry, LogLevel } from '../types';
+import type { ILogEntry, LogLevel } from '../types';
 
 /**
  * Interface for checking if a log level should be logged.
@@ -65,7 +65,7 @@ export interface ILogger {
    * Retrieves all logged entries.
    * @returns Array of log entries
    */
-  getLogs(): LogEntry[];
+  getLogs(): ILogEntry[];
 
   /**
    * Clears all stored log entries.

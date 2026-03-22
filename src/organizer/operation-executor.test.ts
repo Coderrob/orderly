@@ -175,6 +175,36 @@ describe('OperationExecutor', () => {
       expect(unlinkCall).toBeLessThan(renameCall);
     });
 
+    it('should fall back to keep-both when replace deletion fails', () => {
+      const config = {
+        ...DEFAULT_CONFIG,
+        collisionResolution: { strategy: CollisionResolutionStrategy.REPLACE }
+      };
+      const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
+
+      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+        return filePath === '/target/file.txt';
+      });
+      mockFileSystemUtils.unlinkSync.mockImplementation(() => {
+        throw new Error('Delete failed');
+      });
+
+      const result = executorWithConfig.execute(testOperations);
+
+      expect(result.successful).toBe(1);
+      expect(loggerInstance.warn).toHaveBeenCalledWith(
+        'REPLACE strategy: failed to delete existing file, falling back to keep-both',
+        {
+          target: '/target/file.txt',
+          error: 'Delete failed'
+        }
+      );
+      expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
+        '/source/file.txt',
+        path.join('/target', 'file-1.txt')
+      );
+    });
+
     it('should warn and fallback to keep-both for unknown collision strategy', () => {
       const config = { ...DEFAULT_CONFIG, collisionResolution: { strategy: 'unknown' as any } };
       const executorWithConfig = new OperationExecutor(loggerInstance, false, config);

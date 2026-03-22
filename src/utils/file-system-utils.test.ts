@@ -139,6 +139,15 @@ describe('FileSystemUtils', () => {
     });
   });
 
+  describe('unlink', () => {
+    it('should delete a file', () => {
+      FileSystemUtils.unlinkSync(testPath);
+
+      expect(fs.unlinkSync).toHaveBeenCalledTimes(1);
+      expect(fs.unlinkSync).toHaveBeenNthCalledWith(1, testPath);
+    });
+  });
+
   describe('stat', () => {
     it('should return file stats', () => {
       const mockStats = { size: 1024, isFile: () => true } as fs.Stats;
@@ -214,6 +223,14 @@ describe('FileSystemUtils', () => {
         fileSystemUtils.renameSync(oldPath, newPath);
 
         expect(fs.renameSync).toHaveBeenCalledWith(oldPath, newPath);
+      });
+    });
+
+    describe('unlinkSync', () => {
+      it('should delegate to static method', () => {
+        fileSystemUtils.unlinkSync(testPath);
+
+        expect(fs.unlinkSync).toHaveBeenCalledWith(testPath);
       });
     });
 

@@ -12,12 +12,13 @@ export const CONFIG_FILE_NAMES = [
 /**
  * Valid configuration file name type
  */
-export type ConfigFileName =
-  | '.orderly.yml'
-  | '.orderly.yaml'
-  | '.orderly.config.yaml'
-  | '.orderly.config.json'
-  | 'orderly.config.json';
+export enum ConfigFileName {
+  OrderlyYml = '.orderly.yml',
+  OrderlyYaml = '.orderly.yaml',
+  OrderlyConfigYaml = '.orderly.config.yaml',
+  OrderlyConfigJson = '.orderly.config.json',
+  OrderlyConfigJson2 = 'orderly.config.json'
+}
 
 /**
  * Default file paths.

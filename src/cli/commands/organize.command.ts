@@ -8,6 +8,12 @@ import { FileScanner } from '../../scanner/file-scanner';
 import type { IScannedFile } from '../../scanner/interfaces';
 import { FileSystemUtils } from '../../utils/file-system-utils';
 import { ExitCode, COMMAND_MESSAGES } from '../constants';
+import {
+  IAutoConfigContext,
+  WithAutoConfigDiscovery
+} from '../decorators/auto-config-discovery.decorator';
+import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
+import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
 import type {
   IOrganizeOptions,
   IOrganizeHandler,
@@ -37,77 +43,67 @@ export class OrganizeHandler implements IOrganizeHandler {
    * Executes the organize command.
    * @param directory - Target directory to organize
    * @param options - Organize command options
+   * @param context - Optional context injected by auto-config discovery.
    * @returns Promise resolving to command result
    */
-  async execute(directory: string, options: IOrganizeOptions): Promise<ICommandResult> {
-    try {
-      // Validate and resolve directory first
-      const targetDir = this.directoryValidator.validate(directory);
+  @WithCommandTelemetry('organize')
+  @HandleCommandErrors(COMMAND_MESSAGES.ORGANIZATION_FAILED)
+  @WithAutoConfigDiscovery<IOrganizeOptions>()
+  async execute(
+    directory: string,
+    options: IOrganizeOptions,
+    context?: IAutoConfigContext<IOrganizeOptions>
+  ): Promise<ICommandResult> {
+    const targetDir = context?.targetDir ?? this.directoryValidator.validate(directory);
+    const configOptions = context?.configOptions ?? { ...options };
+    const autoDiscoveredConfig = context?.autoDiscoveredConfig;
 
-      // If no config specified and auto-discovery not disabled, check target directory for config file
-      const configOptions = { ...options };
-      let autoDiscoveredConfig: string | undefined;
-      if (!configOptions.config && options.autoConfig !== false) {
-        const targetConfig = this.configService.findConfigInDirectory(targetDir);
-        if (targetConfig) {
-          configOptions.config = targetConfig;
-          autoDiscoveredConfig = targetConfig;
-        }
-      }
+    // Load configuration
+    const config = this.configService.loadWithOverrides(configOptions);
 
-      // Load configuration
-      const config = this.configService.loadWithOverrides(configOptions);
+    // Create logger
+    const logger = new Logger(config.logLevel);
 
-      // Create logger
-      const logger = new Logger(config.logLevel);
-
-      // Log auto-discovered config through the logger so log-level and log-file output are respected
-      if (autoDiscoveredConfig) {
-        logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
-      }
-
-      // Create services
-      const scanner = new FileScanner(config, logger);
-      const organizer = new FileOrganizer(config, logger, targetDir);
-
-      // Scan files
-      const files = await scanner.scan(targetDir);
-      logger.info(COMMAND_MESSAGES.FILES_FOUND.replace('{0}', String(files.length)));
-
-      // Process duplicates if enabled
-      let filesToOrganize = files;
-      if (config.dedupe?.enabled) {
-        filesToOrganize = await this.processDuplicates(files, config, logger);
-      }
-
-      // Plan operations
-      const operations = organizer.planOperations(filesToOrganize);
-      logger.info(COMMAND_MESSAGES.OPERATIONS_PLANNED.replace('{0}', String(operations.length)));
-
-      // Execute operations
-      const result = organizer.executeOperations(operations);
-
-      // Generate manifests if requested
-      if (options.manifest) {
-        this.manifestService.saveManifests(result, targetDir);
-        logger.info(COMMAND_MESSAGES.MANIFESTS_GENERATED);
-      }
-
-      // Log results
-      this.logResults(result, logger);
-
-      return {
-        success: true,
-        exitCode: ExitCode.SUCCESS,
-        message: COMMAND_MESSAGES.ORGANIZED_SUCCESS.replace('{0}', String(result.operations.length))
-      };
-    } catch (error) {
-      return {
-        success: false,
-        exitCode: ExitCode.ERROR,
-        message: `${COMMAND_MESSAGES.ORGANIZATION_FAILED}${error instanceof Error ? error.message : String(error)}`
-      };
+    // Log auto-discovered config through the logger so log-level and log-file output are respected
+    if (autoDiscoveredConfig) {
+      logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
     }
+
+    // Create services
+    const scanner = new FileScanner(config, logger);
+    const organizer = new FileOrganizer(config, logger, targetDir);
+
+    // Scan files
+    const files = await scanner.scan(targetDir);
+    logger.info(COMMAND_MESSAGES.FILES_FOUND.replace('{0}', String(files.length)));
+
+    // Process duplicates if enabled
+    let filesToOrganize = files;
+    if (config.dedupe?.enabled) {
+      filesToOrganize = await this.processDuplicates(files, config, logger);
+    }
+
+    // Plan operations
+    const operations = organizer.planOperations(filesToOrganize);
+    logger.info(COMMAND_MESSAGES.OPERATIONS_PLANNED.replace('{0}', String(operations.length)));
+
+    // Execute operations
+    const result = organizer.executeOperations(operations);
+
+    // Generate manifests if requested
+    if (options.manifest) {
+      this.manifestService.saveManifests(result, targetDir);
+      logger.info(COMMAND_MESSAGES.MANIFESTS_GENERATED);
+    }
+
+    // Log results
+    this.logResults(result, logger);
+
+    return {
+      success: true,
+      exitCode: ExitCode.SUCCESS,
+      message: COMMAND_MESSAGES.ORGANIZED_SUCCESS.replace('{0}', String(result.operations.length))
+    };
   }
 
   /**

@@ -19,8 +19,8 @@
     "make-badge": "make-coverage-badge --output-path .github/badges/coverage.svg",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
     "typecheck": "tsc --noEmit",
     "duplication": "jscpd src",
     "duplication:check": "jscpd src --ignore \"**/*.test.ts\" --threshold 1 --exitCode 1",
@@ -53,6 +53,7 @@
     "micromatch": "^4.0.8"
   },
   "devDependencies": {
+    "@coderrob/eslint-plugin-zero-tolerance": "^1.1.6",
     "@eslint/js": "^9.39.2",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",

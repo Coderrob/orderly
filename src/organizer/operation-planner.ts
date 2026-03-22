@@ -7,9 +7,86 @@ import { NamingUtils } from '../utils/naming';
 import type { IOperationPlanner } from './interfaces';
 import { FileOperationType, type IFileOperation } from './types';
 
-interface TargetPaths {
+interface ITargetPaths {
   targetDir: string;
   targetFilename: string;
+}
+
+/**
+ * Computes the destination directory for a scanned file.
+ * @param file - The scanned file being planned.
+ * @param config - The active organizer configuration.
+ * @param baseDirectory - The base directory used for relative target folders.
+ * @returns The directory where the file should be placed.
+ */
+function getOperationMetadata(
+  file: Readonly<IScannedFile>,
+  targetFilename: string
+): Readonly<{ reason: string; type: FileOperationType }> {
+  const needsMove = file.targetFolder !== undefined;
+  const needsRename = file.filename !== targetFilename;
+
+  if (needsMove && needsRename) {
+    return {
+      reason: `Moving to ${file.targetFolder} and renaming to ${targetFilename}`,
+      type: FileOperationType.MOVE_RENAME
+    };
+  }
+
+  if (needsMove) {
+    return {
+      reason: `Moving to ${file.targetFolder}`,
+      type: FileOperationType.MOVE
+    };
+  }
+
+  return {
+    reason: `Renaming to ${targetFilename}`,
+    type: FileOperationType.RENAME
+  };
+}
+
+/**
+ * Computes the destination filename for a scanned file.
+ * @param file - The scanned file being planned.
+ * @param config - The active organizer configuration.
+ * @returns The filename that should be used after naming normalization.
+ * @param baseDirectory TODO: describe parameter
+ */
+function getTargetDirectory(
+  file: Readonly<IScannedFile>,
+  config: Readonly<OrderlyConfig>,
+  baseDirectory: string
+): string {
+  if (!file.targetFolder) {
+    return path.dirname(file.originalPath);
+  }
+
+  return config.targetDirectory
+    ? path.join(config.targetDirectory, file.targetFolder)
+    : path.join(baseDirectory, file.targetFolder);
+}
+
+/**
+ * Checks whether the new path would leave the file unchanged.
+ * @param newPath - The proposed destination path.
+ * @param originalPath - The file's current path.
+ * @returns True when both normalized paths are the same; otherwise false.
+ */
+function getTargetFilename(file: Readonly<IScannedFile>, config: Readonly<OrderlyConfig>): string {
+  return NamingUtils.shouldRename(file.filename, config.namingConvention)
+    ? NamingUtils.applyNamingConvention(file.filename, config.namingConvention)
+    : file.filename;
+}
+
+/**
+ * Builds a file operation reason and type from the computed targets.
+ * @param file - The scanned file being planned.
+ * @param targetFilename - The computed target filename.
+ * @returns The operation metadata describing what will change.
+ */
+function isUnchangedPath(newPath: string, originalPath: string): boolean {
+  return path.normalize(newPath) === path.normalize(originalPath);
 }
 
 export class OperationPlanner implements IOperationPlanner {
@@ -19,7 +96,7 @@ export class OperationPlanner implements IOperationPlanner {
    * @param baseDirectory - Base directory for relative path calculations
    */
   constructor(
-    private readonly config: OrderlyConfig,
+    private readonly config: Readonly<OrderlyConfig>,
     private readonly baseDirectory: string
   ) {}
 
@@ -28,13 +105,13 @@ export class OperationPlanner implements IOperationPlanner {
    * @param files - Array of scanned files to plan operations for
    * @returns Array of planned file operations (move, rename, or move-rename)
    */
-  plan(files: IScannedFile[]): IFileOperation[] {
-    const operations: IFileOperation[] = [];
+  plan(files: readonly IScannedFile[]): IFileOperation[] {
+    let operations: IFileOperation[] = [];
 
     for (const file of files) {
       const operation = this.planFileOperation(file);
-      if (operation) {
-        operations.push(operation);
+      if (operation !== null) {
+        operations = [...operations, operation];
       }
     }
 
@@ -46,12 +123,11 @@ export class OperationPlanner implements IOperationPlanner {
    * @param file - Scanned file to plan operation for
    * @returns File operation if changes are needed, or null if file is already in correct location with correct name
    */
-  private planFileOperation(file: IScannedFile): IFileOperation | null {
+  private planFileOperation(file: Readonly<IScannedFile>): IFileOperation | null {
     const { targetDir, targetFilename } = this.calculateTargets(file);
     const newPath = path.join(targetDir, targetFilename);
 
-    // Normalize paths for comparison (handles Windows/Unix path separator differences)
-    if (path.normalize(newPath) === path.normalize(file.originalPath)) {
+    if (isUnchangedPath(newPath, file.originalPath)) {
       return null;
     }
 
@@ -63,25 +139,11 @@ export class OperationPlanner implements IOperationPlanner {
    * @param file - Scanned file to calculate targets for
    * @returns Object containing target directory and target filename
    */
-  private calculateTargets(file: IScannedFile): TargetPaths {
-    const originalDir = path.dirname(file.originalPath);
-    let targetDir = originalDir;
-    let targetFilename = file.filename;
-
-    if (file.targetFolder) {
-      targetDir = this.config.targetDirectory
-        ? path.join(this.config.targetDirectory, file.targetFolder)
-        : path.join(this.baseDirectory, file.targetFolder);
-    }
-
-    if (NamingUtils.needsRename(file.filename, this.config.namingConvention)) {
-      targetFilename = NamingUtils.applyNamingConvention(
-        file.filename,
-        this.config.namingConvention
-      );
-    }
-
-    return { targetDir, targetFilename };
+  private calculateTargets(file: Readonly<IScannedFile>): ITargetPaths {
+    return {
+      targetDir: getTargetDirectory(file, this.config, this.baseDirectory),
+      targetFilename: getTargetFilename(file, this.config)
+    };
   }
 
   /**
@@ -92,31 +154,11 @@ export class OperationPlanner implements IOperationPlanner {
    * @returns File operation with appropriate type and reason
    */
   private createOperation(
-    file: IScannedFile,
+    file: Readonly<IScannedFile>,
     targetFilename: string,
     newPath: string
   ): IFileOperation {
-    const needsMove = file.targetFolder !== undefined;
-    const needsRename = file.filename !== targetFilename;
-
-    let type: FileOperationType;
-    let reason: string;
-
-    switch (true) {
-      case needsMove && needsRename:
-        type = FileOperationType.MOVE_RENAME;
-        reason = `Moving to ${file.targetFolder} and renaming to ${targetFilename}`;
-        break;
-      case needsMove:
-        type = FileOperationType.MOVE;
-        reason = `Moving to ${file.targetFolder}`;
-        break;
-      default:
-        type = FileOperationType.RENAME;
-        reason = `Renaming to ${targetFilename}`;
-        break;
-    }
-
+    const { reason, type } = getOperationMetadata(file, targetFilename);
     return { type, originalPath: file.originalPath, newPath, reason };
   }
 }

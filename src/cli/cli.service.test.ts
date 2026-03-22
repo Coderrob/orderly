@@ -158,19 +158,20 @@ describe('CliService', () => {
 
       const organizeCallback = organizeActionCall![0] as Function;
 
-      // Mock handleOrganizeCommand to throw an error
-      const handleOrganizeCommandSpy = jest.spyOn(cliService as any, 'handleOrganizeCommand');
-      handleOrganizeCommandSpy.mockRejectedValue(new Error('Test error'));
-
       // Mock handleError
       const handleErrorSpy = jest.spyOn(cliService as any, 'handleError');
       handleErrorSpy.mockImplementation(() => {});
+
+      // Trigger an internal error in the decorated method
+      const loadConfigSpy = jest.spyOn(cliService as any, 'loadConfig');
+      loadConfigSpy.mockImplementation(() => {
+        throw new Error('Test error');
+      });
 
       // Call the action callback
       await organizeCallback('.', {});
 
       // Verify error handling
-      expect(handleOrganizeCommandSpy).toHaveBeenCalledWith('.', {});
       expect(handleErrorSpy).toHaveBeenCalledWith(new Error('Test error'));
     });
 
@@ -183,21 +184,20 @@ describe('CliService', () => {
 
       const initCallback = initActionCall![0] as Function;
 
-      // Mock handleInitCommand to throw an error
-      const handleInitCommandSpy = jest.spyOn(cliService as any, 'handleInitCommand');
-      handleInitCommandSpy.mockImplementation(() => {
-        throw new Error('Init test error');
-      });
-
       // Mock handleError
       const handleErrorSpy = jest.spyOn(cliService as any, 'handleError');
       handleErrorSpy.mockImplementation(() => {});
+
+      // Trigger an internal error in the decorated method
+      const validateFormatSpy = jest.spyOn(cliService as any, 'validateFormat');
+      validateFormatSpy.mockImplementation(() => {
+        throw new Error('Init test error');
+      });
 
       // Call the action callback
       initCallback({ format: 'json' });
 
       // Verify error handling
-      expect(handleInitCommandSpy).toHaveBeenCalledWith({ format: 'json' });
       expect(handleErrorSpy).toHaveBeenCalledWith(new Error('Init test error'));
     });
 
@@ -210,19 +210,19 @@ describe('CliService', () => {
 
       const scanCallback = scanActionCall![0] as Function;
 
-      // Mock handleScanCommand to throw an error
-      const handleScanCommandSpy = jest.spyOn(cliService as any, 'handleScanCommand');
-      handleScanCommandSpy.mockRejectedValue(new Error('Scan test error'));
-
       // Mock handleError
       const handleErrorSpy = jest.spyOn(cliService as any, 'handleError');
       handleErrorSpy.mockImplementation(() => {});
+
+      // Trigger an internal error in the decorated method
+      mockConfigLoader.load.mockImplementationOnce(() => {
+        throw new Error('Scan test error');
+      });
 
       // Call the action callback
       await scanCallback('.', {});
 
       // Verify error handling
-      expect(handleScanCommandSpy).toHaveBeenCalledWith('.', {});
       expect(handleErrorSpy).toHaveBeenCalledWith(new Error('Scan test error'));
     });
   });
@@ -326,6 +326,42 @@ describe('CliService', () => {
       expect(mockLoggerInstance.info).toHaveBeenCalledWith('No files found');
       // Should not call displayScanResults or log "Scan complete" when no files found
       expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining('Scan complete'));
+    });
+
+    it('should auto-discover config for scan when autoConfig is enabled', async () => {
+      const discoveredConfig = '/test/dir/.orderly.yml';
+
+      const findConfigSpy = jest.spyOn(cliService as any, 'findConfigInDirectory');
+      findConfigSpy.mockReturnValueOnce(discoveredConfig);
+
+      mockConfigLoader.load.mockReturnValueOnce({ ...mockConfig });
+      mockScannerInstance.scan.mockResolvedValueOnce([]);
+
+      const validateDirectorySpy = jest.spyOn(cliService as any, 'validateDirectory');
+      validateDirectorySpy.mockReturnValueOnce('/test/dir');
+
+      await (cliService as any).handleScanCommand('/test/dir', {});
+
+      expect(findConfigSpy).toHaveBeenCalledWith('/test/dir');
+      expect(mockConfigLoader.load).toHaveBeenCalledWith(discoveredConfig);
+      expect(mockLoggerInstance.info).toHaveBeenCalledWith(
+        `Using config file found in target directory: ${discoveredConfig}`
+      );
+    });
+
+    it('should skip scan auto-discovery when autoConfig is false', async () => {
+      const findConfigSpy = jest.spyOn(cliService as any, 'findConfigInDirectory');
+
+      mockConfigLoader.load.mockReturnValueOnce({ ...mockConfig });
+      mockScannerInstance.scan.mockResolvedValueOnce([]);
+
+      const validateDirectorySpy = jest.spyOn(cliService as any, 'validateDirectory');
+      validateDirectorySpy.mockReturnValueOnce('/test/dir');
+
+      await (cliService as any).handleScanCommand('/test/dir', { autoConfig: false });
+
+      expect(findConfigSpy).not.toHaveBeenCalled();
+      expect(mockConfigLoader.load).toHaveBeenCalledWith(undefined);
     });
 
     it('should handle organize command successfully', async () => {
@@ -466,6 +502,40 @@ describe('CliService', () => {
       );
     });
 
+    it('should auto-discover config for organize when autoConfig is enabled', async () => {
+      const discoveredConfig = '/test/dir/.orderly.yml';
+      const mockFiles = [{ path: 'file1.txt' }];
+
+      const findConfigSpy = jest.spyOn(cliService as any, 'findConfigInDirectory');
+      findConfigSpy.mockReturnValueOnce(discoveredConfig);
+
+      const loadConfigSpy = jest.spyOn(cliService as any, 'loadConfig');
+      loadConfigSpy.mockReturnValueOnce({ ...mockConfig });
+      const createLoggerSpy = jest.spyOn(cliService as any, 'createLogger');
+      createLoggerSpy.mockReturnValueOnce(mockLoggerInstance);
+      const validateDirectorySpy = jest.spyOn(cliService as any, 'validateDirectory');
+      validateDirectorySpy.mockReturnValueOnce('/test/dir');
+      const logConfigurationSpy = jest.spyOn(cliService as any, 'logConfiguration');
+      logConfigurationSpy.mockImplementationOnce(() => {});
+      const logFileSummarySpy = jest.spyOn(cliService as any, 'logFileSummary');
+      logFileSummarySpy.mockImplementationOnce(() => {});
+
+      mockScannerInstance.scan.mockResolvedValueOnce(mockFiles);
+      mockScannerInstance.getCategorySummary.mockReturnValueOnce(new Map([['document', 1]]));
+      mockOrganizerInstance.planOperations.mockReturnValueOnce([]);
+
+      await (cliService as any).handleOrganizeCommand('/test/dir', {});
+
+      expect(findConfigSpy).toHaveBeenCalledWith('/test/dir');
+      expect(loadConfigSpy).toHaveBeenCalledWith({ config: discoveredConfig });
+      expect(mockLoggerInstance.info).toHaveBeenCalledWith(
+        `Using config file found in target directory: ${discoveredConfig}`
+      );
+      expect(validateDirectorySpy).toHaveBeenCalledWith('/test/dir', mockLoggerInstance);
+      expect(logConfigurationSpy).toHaveBeenCalledWith('/test/dir', false, mockLoggerInstance);
+      expect(logFileSummarySpy).toHaveBeenCalled();
+    });
+
     describe('loadConfig', () => {
       it('should load config with default values', () => {
         mockConfigLoader.load.mockReturnValue({ ...mockConfig });
@@ -505,6 +575,36 @@ describe('CliService', () => {
           '/mocked/path/.orderly/orderly.log'
         );
         expect(result).toBe(mockLoggerInstance);
+      });
+    });
+
+    describe('findConfigInDirectory', () => {
+      it('should return first matching config file path', () => {
+        (path as any).resolve.mockReturnValue('/resolved/dir');
+        (path as any).join
+          .mockReturnValueOnce('/resolved/dir/.orderly.config.json')
+          .mockReturnValueOnce('/resolved/dir/.orderly.config.yaml');
+        mockFileSystemUtils.existsSync.mockReturnValueOnce(false).mockReturnValueOnce(true);
+
+        const result = (cliService as any).findConfigInDirectory('/input/dir');
+
+        expect(result).toBe('/resolved/dir/.orderly.config.yaml');
+      });
+
+      it('should return null when no config files exist', () => {
+        (path as any).resolve.mockReturnValue('/resolved/dir');
+        (path as any).join
+          .mockReturnValueOnce('/resolved/dir/.orderly.config.json')
+          .mockReturnValueOnce('/resolved/dir/.orderly.config.yaml')
+          .mockReturnValueOnce('/resolved/dir/.orderly.yml');
+        mockFileSystemUtils.existsSync
+          .mockReturnValueOnce(false)
+          .mockReturnValueOnce(false)
+          .mockReturnValueOnce(false);
+
+        const result = (cliService as any).findConfigInDirectory('/input/dir');
+
+        expect(result).toBeNull();
       });
     });
 

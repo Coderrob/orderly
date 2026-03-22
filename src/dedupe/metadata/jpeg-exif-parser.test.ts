@@ -17,6 +17,11 @@ describe('jpeg-exif-parser', () => {
       expect(extractExifFromJpeg(jpeg)).toBeNull();
     });
 
+    it('should return null when JPEG reaches start-of-scan before APP1', () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xda, 0x00, 0x08, 0xff, 0xd9]);
+      expect(extractExifFromJpeg(jpeg)).toBeNull();
+    });
+
     it('should return null on invalid TIFF byte order', () => {
       const payload = Buffer.concat([
         Buffer.from('Exif\u0000\u0000', 'ascii'),
@@ -39,6 +44,13 @@ describe('jpeg-exif-parser', () => {
       expect(result).toEqual({ Model: 'X-T5' });
     });
 
+    it('should extract short ASCII values stored inline in the IFD entry', () => {
+      const exifPayload = createExifPayloadLittleEndian([{ tag: 0x0110, value: 'abc' }]);
+      const result = extractExifFromJpeg(wrapApp1(exifPayload));
+
+      expect(result).toEqual({ Model: 'abc' });
+    });
+
     it('should ignore non-ASCII tags and keep valid ASCII tags', () => {
       const exifPayload = createExifPayloadLittleEndian([
         { tag: 0x0112, value: '1', forceType: 3 },
@@ -57,6 +69,23 @@ describe('jpeg-exif-parser', () => {
 
       const payload = Buffer.concat([Buffer.from('Exif\u0000\u0000', 'ascii'), tiffHeader]);
       expect(extractExifFromJpeg(wrapApp1(payload))).toBeNull();
+    });
+
+    it('should return null when TIFF marker is not 42', () => {
+      const tiffHeader = Buffer.alloc(8);
+      tiffHeader.write('II', 0, 'ascii');
+      tiffHeader.writeUInt16LE(41, 2);
+      tiffHeader.writeUInt32LE(8, 4);
+
+      const payload = Buffer.concat([Buffer.from('Exif\u0000\u0000', 'ascii'), tiffHeader]);
+      expect(extractExifFromJpeg(wrapApp1(payload))).toBeNull();
+    });
+
+    it('should return null when a declared ASCII value points outside the TIFF buffer', () => {
+      const exifPayload = createExifPayloadLittleEndian([{ tag: 0x010f, value: 'Canon' }]);
+      exifPayload.writeUInt32LE(9999, 24);
+
+      expect(extractExifFromJpeg(wrapApp1(exifPayload))).toBeNull();
     });
   });
 });

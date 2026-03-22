@@ -1,0 +1,43 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\constants\\index.ts",
+  "module": {
+    "name": "index",
+    "description": "Behavioral contract for D:\\orderly\\src\\constants\\index.ts",
+    "exports": [
+      "ARCHIVE_EXTENSIONS",
+      "AUDIO_EXTENSIONS",
+      "CODE_EXTENSIONS",
+      "CONFIG_FILE_NAMES",
+      "DEFAULT_CATEGORIES",
+      "DEFAULT_DRY_RUN",
+      "DEFAULT_GENERATE_MANIFEST",
+      "DEFAULT_INCLUDE_HIDDEN",
+      "DEFAULT_LOG_FILE",
+      "DEFAULT_LOG_LEVEL",
+      "DEFAULT_MANIFEST_DIR",
+      "DEFAULT_MANIFEST_FILE",
+      "DEFAULT_MANIFEST_MD",
+      "DEFAULT_NAMING_CONVENTION",
+      "DOCUMENT_EXTENSIONS",
+      "IMAGE_EXTENSIONS",
+      "MAX_FILENAME_LENGTH",
+      "RESERVED_NAMES",
+      "VIDEO_EXTENSIONS"
+    ]
+  },
+  "specifications": [
+    {
+      "feature": "Source contract for index",
+      "scenarios": [
+        {
+          "name": "should satisfy the documented module contract",
+          "given": "the module is imported by consumers",
+          "when": "its public API is used according to the source definition",
+          "then": "the documented behavior should remain consistent"
+        }
+      ]
+    }
+  ]
+}

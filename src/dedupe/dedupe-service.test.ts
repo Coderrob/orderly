@@ -271,4 +271,29 @@ describe('DedupeService', () => {
       );
     });
   });
+
+  describe('private methods', () => {
+    it('should treat ANY mode as non-duplicate when no strategies matched', () => {
+      expect(service['isDuplicatePair']([], 2)).toBe(false);
+    });
+
+    it('should skip pair matches when either file is missing a strategy key', () => {
+      const result = service['findPairMatches']('/left', '/right', [
+        {
+          strategy: 'name',
+          keysByPath: new Map([['/left', 'same']])
+        }
+      ]);
+
+      expect(result).toEqual({ applicableStrategies: 0, matched: [] });
+    });
+
+    it('should not union indexes already in the same set', () => {
+      const parents = [0, 0, 2];
+
+      service['union'](parents, 0, 1);
+
+      expect(parents).toEqual([0, 0, 2]);
+    });
+  });
 });

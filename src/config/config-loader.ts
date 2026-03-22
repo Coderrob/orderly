@@ -46,6 +46,7 @@ export class ConfigLoader implements IConfigLoader {
    * @param configPath - Path to the configuration file to load
    * @param baseConfig - Base configuration to merge with the loaded configuration
    * @returns Merged configuration with loaded values overriding base configuration
+   * @throws {ConfigNotFoundError} Thrown when the requested config path does not exist.
    */
   private static loadFromPath(configPath: string, baseConfig: OrderlyConfig): OrderlyConfig {
     if (!FileSystemUtils.existsSync(configPath)) {

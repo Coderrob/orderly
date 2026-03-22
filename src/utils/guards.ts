@@ -11,8 +11,8 @@ import type { IOrderlyError } from '../errors';
  * @param value The value to check
  * @returns True when the value is a non-null object; otherwise false.
  */
-export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+export function isArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
 }
 
 /**
@@ -20,8 +20,8 @@ export function isObject(value: unknown): value is Record<string, unknown> {
  * @param value The value to check
  * @returns True when the value is a string; otherwise false.
  */
-export function isString(value: unknown): value is string {
-  return typeof value === 'string';
+export function isBoolean(value: unknown): value is boolean {
+  return typeof value === 'boolean';
 }
 
 /**
@@ -29,8 +29,8 @@ export function isString(value: unknown): value is string {
  * @param value The value to check
  * @returns True when the value is a number; otherwise false.
  */
-export function isNumber(value: unknown): value is number {
-  return typeof value === 'number';
+export function isNullOrUndefined(value: unknown): value is null | undefined {
+  return value === null || value === undefined;
 }
 
 /**
@@ -38,8 +38,8 @@ export function isNumber(value: unknown): value is number {
  * @param value The value to check
  * @returns True when the value is a boolean; otherwise false.
  */
-export function isBoolean(value: unknown): value is boolean {
-  return typeof value === 'boolean';
+export function isNumber(value: unknown): value is number {
+  return typeof value === 'number';
 }
 
 /**
@@ -47,8 +47,8 @@ export function isBoolean(value: unknown): value is boolean {
  * @param value The value to check
  * @returns True when the value is an array; otherwise false.
  */
-export function isArray(value: unknown): value is unknown[] {
-  return Array.isArray(value);
+export function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -56,8 +56,8 @@ export function isArray(value: unknown): value is unknown[] {
  * @param value The value to check
  * @returns True when the value is null or undefined; otherwise false.
  */
-export function isNullOrUndefined(value: unknown): value is null | undefined {
-  return value === null || value === undefined;
+export function isOrderlyError(error: unknown): error is IOrderlyError {
+  return error instanceof Error && 'code' in error && 'category' in error;
 }
 
 /**
@@ -86,6 +86,6 @@ export function isPrimitive(
  * @param error The error to check
  * @returns True when the error is an IOrderlyError; otherwise false.
  */
-export function isOrderlyError(error: unknown): error is IOrderlyError {
-  return error instanceof Error && 'code' in error && 'category' in error;
+export function isString(value: unknown): value is string {
+  return typeof value === 'string';
 }

@@ -17,8 +17,23 @@ describe('image-parsers', () => {
       expect(extractImageDimensions(gif)).toEqual({ width: 120, height: 80 });
     });
 
+    it('should extract GIF87a dimensions', () => {
+      const gif = createMinimalGif(120, 80, 'GIF87a');
+      expect(extractImageDimensions(gif)).toEqual({ width: 120, height: 80 });
+    });
+
+    it('should return null for GIF with zero dimensions', () => {
+      const gif = createMinimalGif(0, 80);
+      expect(extractImageDimensions(gif)).toBeNull();
+    });
+
     it('should extract BMP dimensions', () => {
       const bmp = createMinimalBmp(1920, 1080);
+      expect(extractImageDimensions(bmp)).toEqual({ width: 1920, height: 1080 });
+    });
+
+    it('should treat top-down BMP height as positive dimensions', () => {
+      const bmp = createMinimalBmp(1920, -1080);
       expect(extractImageDimensions(bmp)).toEqual({ width: 1920, height: 1080 });
     });
 
@@ -36,6 +51,17 @@ describe('image-parsers', () => {
     it('should return null for JPEG with invalid segment length', () => {
       const jpeg = createBrokenJpeg();
       expect(extractImageDimensions(jpeg)).toBeNull();
+    });
+
+    it('should return null when JPEG reaches a stop marker before SOF', () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xda, 0x00, 0x08, 0xff, 0xd9]);
+      expect(extractImageDimensions(jpeg)).toBeNull();
+    });
+
+    it('should return null when PNG header does not contain IHDR', () => {
+      const png = createMinimalPng(320, 240);
+      png.write('TEXT', 12, 'ascii');
+      expect(extractImageDimensions(png)).toBeNull();
     });
 
     it('should return null for non-image buffers', () => {
@@ -57,9 +83,13 @@ function createMinimalPng(width: number, height: number): Buffer {
   return buffer;
 }
 
-function createMinimalGif(width: number, height: number): Buffer {
+function createMinimalGif(
+  width: number,
+  height: number,
+  header: 'GIF87a' | 'GIF89a' = 'GIF89a'
+): Buffer {
   const buffer = Buffer.alloc(10);
-  buffer.write('GIF89a', 0, 'ascii');
+  buffer.write(header, 0, 'ascii');
   buffer.writeUInt16LE(width, 6);
   buffer.writeUInt16LE(height, 8);
   return buffer;

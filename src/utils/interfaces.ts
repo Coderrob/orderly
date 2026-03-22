@@ -5,6 +5,6 @@ export interface INamingUtils {
   toSnakeCase(str: string): string;
   toCamelCase(str: string): string;
   toPascalCase(str: string): string;
-  applyNamingConvention(filename: string, convention: NamingConvention): string;
-  needsRename(filename: string, convention: NamingConvention): boolean;
+  applyNamingConvention(filename: string, convention: Readonly<NamingConvention>): string;
+  shouldRename(filename: string, convention: Readonly<NamingConvention>): boolean;
 }

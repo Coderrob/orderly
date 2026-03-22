@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\utils\\file-categorizer.ts",
+  "module": {
+    "name": "file-categorizer",
+    "description": "Behavioral contract for D:\\orderly\\src\\utils\\file-categorizer.ts",
+    "exports": ["FileCategorizer", "IFileCategorizer"]
+  },
+  "specifications": [
+    {
+      "feature": "Source contract for file-categorizer",
+      "scenarios": [
+        {
+          "name": "should satisfy the documented module contract",
+          "given": "the module is imported by consumers",
+          "when": "its public API is used according to the source definition",
+          "then": "the documented behavior should remain consistent"
+        }
+      ]
+    }
+  ]
+}

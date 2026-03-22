@@ -148,5 +148,42 @@ describe('ManifestBuilder', () => {
       expect(manifest.failed).toBe(0);
       expect(manifest.entries.every(e => e.status === 'success')).toBe(true);
     });
+
+    it('should default skipped operations to an empty array when omitted', () => {
+      const resultWithoutSkippedOperations = {
+        operations: testOperations,
+        successful: 2,
+        failed: 0,
+        skipped: 0,
+        errors: []
+      } as IOrganizationResult;
+
+      const manifest = builder.build(resultWithoutSkippedOperations, []);
+
+      expect(manifest.entries).toHaveLength(2);
+      expect(manifest.entries.every(entry => entry.status === 'success')).toBe(true);
+    });
+
+    it('should prioritize skipped status over matching errors for the same file', () => {
+      const skippedResult: IOrganizationResult = {
+        operations: testOperations,
+        successful: 0,
+        failed: 1,
+        skipped: 1,
+        errors: [],
+        skippedOperations: [{ file: '/source/file1.txt', reason: 'Skipped intentionally' }]
+      };
+
+      const manifest = builder.build(skippedResult, [
+        { file: '/source/file1.txt', error: 'Should not win over skipped' }
+      ]);
+
+      const entry = manifest.entries.find(
+        item => item.operation.originalPath === '/source/file1.txt'
+      );
+
+      expect(entry?.status).toBe('skipped');
+      expect(entry?.error).toBe('Skipped intentionally');
+    });
   });
 });

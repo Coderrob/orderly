@@ -27,6 +27,7 @@ export abstract class OrderlyError extends Error implements IOrderlyError {
 
   /**
    * Creates a JSON representation for logging/serialization.
+   * @returns A plain object containing the error name, code, category, message, and context.
    */
   toJSON(): Record<string, unknown> {
     return {

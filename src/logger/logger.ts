@@ -2,7 +2,7 @@ import * as path from 'node:path';
 
 import chalk from 'chalk';
 
-import { LogEntry, LogLevel } from '../types';
+import { type ILogEntry, LogLevel } from '../types';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
 import type { ILogLevelChecker, ILogFormatter, ILogger } from './interfaces';
@@ -60,7 +60,7 @@ class LogFormatter implements ILogFormatter {
 }
 
 export class Logger implements ILogger {
-  private logs: LogEntry[] = [];
+  private logs: ILogEntry[] = [];
   private readonly levelChecker = new LogLevelChecker();
   private readonly formatter = new LogFormatter();
 
@@ -101,9 +101,9 @@ export class Logger implements ILogger {
    * @param level - The log level indicating message severity
    * @param message - The log message text
    * @param details - Optional additional data associated with the log entry
-   * @returns A structured LogEntry object ready for storage or output
+   * @returns A structured log entry object ready for storage or output
    */
-  private createLogEntry(level: LogLevel, message: string, details?: unknown): LogEntry {
+  private createLogEntry(level: LogLevel, message: string, details?: unknown): ILogEntry {
     return {
       timestamp: new Date().toISOString(),
       level,
@@ -131,7 +131,7 @@ export class Logger implements ILogger {
    * Writes a log entry to the configured log file, if one is set
    * @param entry - The log entry to write to file
    */
-  private writeToFile(entry: LogEntry): void {
+  private writeToFile(entry: ILogEntry): void {
     if (!this.logFile) return;
 
     const detailsStr = entry.details ? ` ${JSON.stringify(entry.details)}` : '';
@@ -179,7 +179,7 @@ export class Logger implements ILogger {
    * Retrieves a copy of all logged entries
    * @returns Array containing all logged entries in the order they were recorded
    */
-  getLogs(): LogEntry[] {
+  getLogs(): ILogEntry[] {
     return [...this.logs];
   }
 

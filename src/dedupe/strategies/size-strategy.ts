@@ -12,6 +12,7 @@ export class SizeStrategy implements IDedupeStrategy {
   /**
    * All files have sizes, so this strategy supports all files.
    * @param _file
+   * @returns Always true because every scanned file has a size.
    */
   supports(_file: IScannedFile): boolean {
     return true;
@@ -20,6 +21,7 @@ export class SizeStrategy implements IDedupeStrategy {
   /**
    * Returns file size as string key for comparison.
    * @param file
+   * @returns The file size converted to a string comparison key.
    */
   // eslint-disable-next-line @typescript-eslint/require-await
   async getKey(file: IScannedFile): Promise<string | null> {

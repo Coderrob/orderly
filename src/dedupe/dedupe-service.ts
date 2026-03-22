@@ -77,6 +77,7 @@ export class DedupeService implements IDedupeService {
    * @param result - Dedupe result containing duplicate groups to process
    * @param action - Action to apply to the duplicate groups (SKIP, REPORT, or REPLACE)
    * @returns Dedupe outcome with details about the action applied
+   * @throws {Error} Thrown when an unsupported dedupe action is requested.
    */
   // eslint-disable-next-line @typescript-eslint/require-await
   async applyAction(result: IDedupeResult, action: DedupeAction): Promise<IDedupeOutcome> {

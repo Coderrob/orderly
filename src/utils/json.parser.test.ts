@@ -86,7 +86,7 @@ describe('JSON Parser', () => {
 
       const result = writeJsonFile('/path/to/file.json', data, mockLogger);
 
-      expect(result).toBe(true);
+      expect(result).toEqual({ success: true });
       expect(FileSystemUtils.writeFileSync).toHaveBeenCalledWith(
         '/path/to/file.json',
         '{"key":"value"}'
@@ -103,7 +103,10 @@ describe('JSON Parser', () => {
 
       const result = writeJsonFile('/path/to/file.json', { key: 'value' }, mockLogger);
 
-      expect(result).toBe(false);
+      expect(result).toEqual({
+        error: 'Error: Write failed',
+        success: false
+      });
       expect(mockLogger.error).toHaveBeenCalledWith('Failed to write JSON file', {
         error: 'Error: Write failed',
         filePath: '/path/to/file.json'

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\organizer\\manifest-generator.ts",
+  "module": {
+    "name": "manifest-generator",
+    "description": "Behavioral contract for D:\\orderly\\src\\organizer\\manifest-generator.ts",
+    "exports": [
+      "IManifestGenerator",
+      "Manifest",
+      "ManifestEntry",
+      "ManifestGenerator",
+      "OperationStatus"
+    ]
+  },
+  "specifications": [
+    {
+      "feature": "Source contract for manifest-generator",
+      "scenarios": [
+        {
+          "name": "should satisfy the documented module contract",
+          "given": "the module is imported by consumers",
+          "when": "its public API is used according to the source definition",
+          "then": "the documented behavior should remain consistent"
+        }
+      ]
+    }
+  ]
+}

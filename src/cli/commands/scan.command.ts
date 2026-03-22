@@ -2,6 +2,12 @@ import { Logger } from '../../logger/logger';
 import { FileScanner } from '../../scanner/file-scanner';
 import type { IScannedFile } from '../../scanner/interfaces';
 import { ExitCode, COMMAND_MESSAGES } from '../constants';
+import {
+  IAutoConfigContext,
+  WithAutoConfigDiscovery
+} from '../decorators/auto-config-discovery.decorator';
+import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
+import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
 import type {
   IScanOptions,
   IScanHandler,
@@ -28,59 +34,49 @@ export class ScanHandler implements IScanHandler {
    * Executes the scan command.
    * @param directory - Target directory to scan
    * @param options - Scan command options
+   * @param context - Optional context injected by auto-config discovery.
    * @returns Promise resolving to command result
    */
-  async execute(directory: string, options: IScanOptions): Promise<ICommandResult> {
-    try {
-      // Validate and resolve directory first
-      const targetDir = this.directoryValidator.validate(directory);
+  @WithCommandTelemetry('scan')
+  @HandleCommandErrors(COMMAND_MESSAGES.SCAN_FAILED)
+  @WithAutoConfigDiscovery<IScanOptions>()
+  async execute(
+    directory: string,
+    options: IScanOptions,
+    context?: IAutoConfigContext<IScanOptions>
+  ): Promise<ICommandResult> {
+    const targetDir = context?.targetDir ?? this.directoryValidator.validate(directory);
+    const configOptions = context?.configOptions ?? { ...options };
+    const autoDiscoveredConfig = context?.autoDiscoveredConfig;
 
-      // If no config specified and auto-discovery not disabled, check target directory for config file
-      const configOptions = { ...options };
-      let autoDiscoveredConfig: string | undefined;
-      if (!configOptions.config && options.autoConfig !== false) {
-        const targetConfig = this.configService.findConfigInDirectory(targetDir);
-        if (targetConfig) {
-          configOptions.config = targetConfig;
-          autoDiscoveredConfig = targetConfig;
-        }
-      }
+    // Load configuration
+    const config = this.configService.loadWithOverrides(configOptions);
 
-      // Load configuration
-      const config = this.configService.loadWithOverrides(configOptions);
+    // Create logger
+    const logger = new Logger(config.logLevel);
 
-      // Create logger
-      const logger = new Logger(config.logLevel);
-
-      // Log auto-discovered config through the logger so log-level and log-file output are respected
-      if (autoDiscoveredConfig) {
-        logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
-      }
-
-      // Create scanner
-      const scanner = new FileScanner(config, logger);
-
-      // Scan files
-      const files = await scanner.scan(targetDir);
-
-      // Display results
-      this.displayResults(files, scanner, logger);
-
-      return {
-        success: true,
-        exitCode: ExitCode.SUCCESS,
-        message: COMMAND_MESSAGES.SCAN_SUCCESS.replace('{0}', String(files.length)).replace(
-          '{1}',
-          targetDir
-        )
-      };
-    } catch (error) {
-      return {
-        success: false,
-        exitCode: ExitCode.ERROR,
-        message: `${COMMAND_MESSAGES.SCAN_FAILED}${error instanceof Error ? error.message : String(error)}`
-      };
+    // Log auto-discovered config through the logger so log-level and log-file output are respected
+    if (autoDiscoveredConfig) {
+      logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
     }
+
+    // Create scanner
+    const scanner = new FileScanner(config, logger);
+
+    // Scan files
+    const files = await scanner.scan(targetDir);
+
+    // Display results
+    this.displayResults(files, scanner, logger);
+
+    return {
+      success: true,
+      exitCode: ExitCode.SUCCESS,
+      message: COMMAND_MESSAGES.SCAN_SUCCESS.replace('{0}', String(files.length)).replace(
+        '{1}',
+        targetDir
+      )
+    };
   }
 
   /**

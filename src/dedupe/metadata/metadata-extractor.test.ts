@@ -1,4 +1,6 @@
 import { promises as fs } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { MetadataExtractor } from './metadata-extractor';
 
 /**
@@ -28,8 +30,9 @@ describe('MetadataExtractor', () => {
     });
 
     it('should extract dimensions from a PNG file', async () => {
-      const testFilePath = './test-temp-image.png';
       const pngBuffer = createMinimalPngBuffer(640, 480);
+      const tempDir = await createTempDir();
+      const testFilePath = join(tempDir, 'image.png');
 
       try {
         await fs.writeFile(testFilePath, pngBuffer);
@@ -38,11 +41,29 @@ describe('MetadataExtractor', () => {
 
         expect(result).toEqual({ width: 640, height: 480 });
       } finally {
-        try {
-          await fs.unlink(testFilePath);
-        } catch {
-          // Ignore cleanup errors
-        }
+        await removeTempDir(tempDir);
+      }
+    });
+
+    it('should extract PNG dimensions without using fs.readFile for large files', async () => {
+      const largePngBuffer = Buffer.concat([
+        createMinimalPngBuffer(640, 480),
+        Buffer.alloc(2 * 1024 * 1024, 0)
+      ]);
+      const readFileSpy = jest.spyOn(fs, 'readFile').mockRejectedValue(new Error('unexpected'));
+      const tempDir = await createTempDir();
+      const testFilePath = join(tempDir, 'large-image.png');
+
+      try {
+        await fs.writeFile(testFilePath, largePngBuffer);
+
+        const result = await extractor.extractDimensions(testFilePath);
+
+        expect(result).toEqual({ width: 640, height: 480 });
+        expect(readFileSpy).not.toHaveBeenCalled();
+      } finally {
+        readFileSpy.mockRestore();
+        await removeTempDir(tempDir);
       }
     });
   });
@@ -54,8 +75,9 @@ describe('MetadataExtractor', () => {
     });
 
     it('should extract EXIF fields from a JPEG APP1 block', async () => {
-      const testFilePath = './test-temp-exif.jpg';
       const jpegBuffer = createJpegWithExifMake('Canon');
+      const tempDir = await createTempDir();
+      const testFilePath = join(tempDir, 'exif.jpg');
 
       try {
         await fs.writeFile(testFilePath, jpegBuffer);
@@ -65,11 +87,30 @@ describe('MetadataExtractor', () => {
         expect(result).not.toBeNull();
         expect(result).toHaveProperty('Make', 'Canon');
       } finally {
-        try {
-          await fs.unlink(testFilePath);
-        } catch {
-          // Ignore cleanup errors
-        }
+        await removeTempDir(tempDir);
+      }
+    });
+
+    it('should extract EXIF from a large JPEG without using fs.readFile', async () => {
+      const jpegBuffer = Buffer.concat([
+        createJpegWithExifMake('Canon'),
+        Buffer.alloc(2 * 1024 * 1024, 0)
+      ]);
+      const readFileSpy = jest.spyOn(fs, 'readFile').mockRejectedValue(new Error('unexpected'));
+      const tempDir = await createTempDir();
+      const testFilePath = join(tempDir, 'large-exif.jpg');
+
+      try {
+        await fs.writeFile(testFilePath, jpegBuffer);
+
+        const result = await extractor.extractExif(testFilePath);
+
+        expect(result).not.toBeNull();
+        expect(result).toHaveProperty('Make', 'Canon');
+        expect(readFileSpy).not.toHaveBeenCalled();
+      } finally {
+        readFileSpy.mockRestore();
+        await removeTempDir(tempDir);
       }
     });
   });
@@ -81,9 +122,9 @@ describe('MetadataExtractor', () => {
     });
 
     it('should extract properties from existing file', async () => {
-      // Create a temporary test file
-      const testFilePath = './test-temp-file.txt';
       const testContent = 'test content';
+      const tempDir = await createTempDir();
+      const testFilePath = join(tempDir, 'file.txt');
 
       try {
         await fs.writeFile(testFilePath, testContent, 'utf8');
@@ -100,19 +141,14 @@ describe('MetadataExtractor', () => {
           expect(result.mimeType).toBe('text/plain');
         }
       } finally {
-        // Clean up
-        try {
-          await fs.unlink(testFilePath);
-        } catch {
-          // Ignore cleanup errors
-        }
+        await removeTempDir(tempDir);
       }
     });
 
     it('should extract properties from image file', async () => {
-      // Create a temporary test file with .jpg extension
-      const testFilePath = './test-temp-file.jpg';
       const testContent = 'fake image content';
+      const tempDir = await createTempDir();
+      const testFilePath = join(tempDir, 'file.jpg');
 
       try {
         await fs.writeFile(testFilePath, testContent, 'utf8');
@@ -129,12 +165,7 @@ describe('MetadataExtractor', () => {
           expect(result.mimeType).toBe('image/jpeg');
         }
       } finally {
-        // Clean up
-        try {
-          await fs.unlink(testFilePath);
-        } catch {
-          // Ignore cleanup errors
-        }
+        await removeTempDir(tempDir);
       }
     });
   });
@@ -146,9 +177,9 @@ describe('MetadataExtractor', () => {
     });
 
     it('should extract attributes from existing file', async () => {
-      // Create a temporary test file
-      const testFilePath = './test-temp-file-attributes.txt';
       const testContent = 'test content';
+      const tempDir = await createTempDir();
+      const testFilePath = join(tempDir, 'file-attributes.txt');
 
       try {
         await fs.writeFile(testFilePath, testContent, 'utf8');
@@ -160,17 +191,52 @@ describe('MetadataExtractor', () => {
         expect(typeof result?.readonly).toBe('boolean');
         expect(typeof result?.system).toBe('boolean');
       } finally {
-        // Clean up
-        try {
-          await fs.unlink(testFilePath);
-        } catch {
-          // Ignore cleanup errors
-        }
+        await removeTempDir(tempDir);
       }
     });
   });
 
   describe('private methods', () => {
+    describe('extractWithProgressiveRead', () => {
+      it('should return null for non-JPEG buffers when initial extraction fails', async () => {
+        const tempDir = await createTempDir();
+        const testFilePath = join(tempDir, 'not-a-jpeg.bin');
+
+        try {
+          await fs.writeFile(testFilePath, Buffer.from('not-an-image', 'ascii'));
+
+          const result = await extractor['extractWithProgressiveRead'](testFilePath, () => null);
+
+          expect(result).toBeNull();
+        } finally {
+          await removeTempDir(tempDir);
+        }
+      });
+
+      it('should retry JPEG extraction with a larger prefix when needed', async () => {
+        const tempDir = await createTempDir();
+        const testFilePath = join(tempDir, 'delayed-exif.jpg');
+        const app0Length = Buffer.alloc(2);
+        app0Length.writeUInt16BE(72, 0);
+        const delayedExif = Buffer.concat([
+          Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+          app0Length,
+          Buffer.alloc(70, 0),
+          createJpegWithExifMake('Canon').subarray(2)
+        ]);
+
+        try {
+          await fs.writeFile(testFilePath, delayedExif);
+
+          const result = await extractor.extractExif(testFilePath);
+
+          expect(result).toEqual({ Make: 'Canon' });
+        } finally {
+          await removeTempDir(tempDir);
+        }
+      });
+    });
+
     describe('isHiddenFile', () => {
       it('should detect dot-files as hidden', () => {
         expect(extractor['isHiddenFile']('/path/.hidden')).toBe(true);
@@ -191,6 +257,17 @@ describe('MetadataExtractor', () => {
         expect(extractor['isSystemFile']('/dev/file', mockStats, 'linux')).toBe(true);
         expect(extractor['isSystemFile']('/home/file', mockStats, 'linux')).toBe(false);
       });
+
+      it('should return false for system file checks on Windows', () => {
+        const mockStats = { mode: 0o644 } as any;
+        expect(
+          extractor['isSystemFile'](
+            String.raw`C:\Windows\System32\kernel32.dll`,
+            mockStats,
+            'win32'
+          )
+        ).toBe(false);
+      });
     });
 
     describe('isReadonlyFile', () => {
@@ -210,6 +287,33 @@ describe('MetadataExtractor', () => {
         expect(extractor['getMimeTypeFromExtension']('unknown.xyz')).toBe(
           'application/octet-stream'
         );
+      });
+    });
+
+    describe('readFilePrefix', () => {
+      it('should return only the bytes read from the file handle', async () => {
+        const tempDir = await createTempDir();
+        const testFilePath = join(tempDir, 'prefix.bin');
+        const handle = await fs.open(testFilePath, 'w+');
+
+        try {
+          await handle.writeFile(Buffer.from([1, 2, 3, 4]));
+
+          const prefix = await extractor['readFilePrefix'](handle, 10);
+
+          expect([...prefix]).toEqual([1, 2, 3, 4]);
+        } finally {
+          await handle.close();
+          await removeTempDir(tempDir);
+        }
+      });
+    });
+
+    describe('isJpeg', () => {
+      it('should detect JPEG signatures', () => {
+        expect(extractor['isJpeg'](Buffer.from([0xff, 0xd8, 0xff]))).toBe(true);
+        expect(extractor['isJpeg'](Buffer.from([0xff]))).toBe(false);
+        expect(extractor['isJpeg'](Buffer.from([0x89, 0x50]))).toBe(false);
       });
     });
   });
@@ -237,6 +341,18 @@ function createMinimalPngBuffer(width: number, height: number): Buffer {
   buffer.writeUInt32BE(height, 20);
 
   return buffer;
+}
+
+async function createTempDir(): Promise<string> {
+  return await fs.mkdtemp(join(tmpdir(), 'orderly-metadata-extractor-'));
+}
+
+async function removeTempDir(directoryPath: string): Promise<void> {
+  try {
+    await fs.rm(directoryPath, { recursive: true, force: true });
+  } catch {
+    // Ignore cleanup errors
+  }
 }
 
 function createJpegWithExifMake(make: string): Buffer {
