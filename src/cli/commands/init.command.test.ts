@@ -87,7 +87,7 @@ describe('InitHandler', () => {
         throw new Error('Config not found');
       });
       mockConfigLoader.save.mockImplementation(() => {
-        throw 'Save failed';
+        throw new Error('Save failed');
       });
 
       const result = await handler.execute({ format: 'json' });
@@ -97,11 +97,11 @@ describe('InitHandler', () => {
       expect(result.message).toContain('Init failed: Save failed');
     });
 
-    it('should return error when config exists via configExists branch', async () => {
+    it('should return error when config exists via hasExistingConfig branch', async () => {
       const configExistsSpy = jest
         .spyOn(
-          handler as unknown as { configExists: (configPath: string) => boolean },
-          'configExists'
+          handler as unknown as { hasExistingConfig: (configPath: string) => boolean },
+          'hasExistingConfig'
         )
         .mockReturnValue(true);
 
@@ -135,11 +135,11 @@ describe('InitHandler', () => {
       });
     });
 
-    describe('configExists', () => {
+    describe('hasExistingConfig', () => {
       it('should return true when config exists', () => {
         mockConfigLoader.load.mockReturnValue(DEFAULT_CONFIG);
 
-        const result = (handler as any).configExists('test.json');
+        const result = (handler as any).hasExistingConfig('test.json');
 
         expect(result).toBe(true);
         expect(mockConfigLoader.load).toHaveBeenCalledWith('test.json');
@@ -150,7 +150,7 @@ describe('InitHandler', () => {
           throw new Error('Not found');
         });
 
-        const result = (handler as any).configExists('test.json');
+        const result = (handler as any).hasExistingConfig('test.json');
 
         expect(result).toBe(false);
         expect(mockConfigLoader.load).toHaveBeenCalledWith('test.json');

@@ -7,7 +7,7 @@ export const CONFIG_FILE_NAMES = [
   '.orderly.config.yaml',
   '.orderly.config.json',
   'orderly.config.json'
-] as const;
+];
 
 /**
  * Valid configuration file name type
@@ -23,24 +23,24 @@ export enum ConfigFileName {
 /**
  * Default file paths.
  */
-export const DEFAULT_LOG_FILE = '.orderly/orderly.log' as const;
-export const DEFAULT_MANIFEST_DIR = '.orderly' as const;
-export const DEFAULT_MANIFEST_FILE = 'manifest.json' as const;
-export const DEFAULT_MANIFEST_MD = 'manifest.md' as const;
+export const DEFAULT_LOG_FILE = '.orderly/orderly.log';
+export const DEFAULT_MANIFEST_DIR = '.orderly';
+export const DEFAULT_MANIFEST_FILE = 'manifest.json';
+export const DEFAULT_MANIFEST_MD = 'manifest.md';
 
 /**
  * Default configuration values.
  */
-export const DEFAULT_LOG_LEVEL = 'info' as const;
-export const DEFAULT_DRY_RUN = false as const;
-export const DEFAULT_GENERATE_MANIFEST = false as const;
-export const DEFAULT_INCLUDE_HIDDEN = false as const;
-export const DEFAULT_NAMING_CONVENTION = 'kebab-case' as const;
+export const DEFAULT_LOG_LEVEL = 'info';
+export const DEFAULT_DRY_RUN = false;
+export const DEFAULT_GENERATE_MANIFEST = false;
+export const DEFAULT_INCLUDE_HIDDEN = false;
+export const DEFAULT_NAMING_CONVENTION = 'kebab-case';
 
 /**
  * File system constants.
  */
-export const MAX_FILENAME_LENGTH = 255 as const;
+export const MAX_FILENAME_LENGTH = 255;
 export const RESERVED_NAMES = [
   'CON',
   'PRN',
@@ -64,4 +64,4 @@ export const RESERVED_NAMES = [
   'LPT7',
   'LPT8',
   'LPT9'
-] as const;
+];

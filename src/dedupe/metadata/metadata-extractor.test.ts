@@ -205,7 +205,9 @@ describe('MetadataExtractor', () => {
         try {
           await fs.writeFile(testFilePath, Buffer.from('not-an-image', 'ascii'));
 
-          const result = await extractor['extractWithProgressiveRead'](testFilePath, () => null);
+          const result = await extractor['extractWithProgressiveRead'](testFilePath, {
+            run: () => null
+          });
 
           expect(result).toBeNull();
         } finally {

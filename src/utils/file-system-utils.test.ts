@@ -32,14 +32,14 @@ describe('FileSystemUtils', () => {
     jest.clearAllMocks();
   });
 
-  describe('exists', () => {
+  describe('hasPath', () => {
     it.each([
       [true, 'file exists'],
       [false, 'file does not exist']
     ])('should return %s when %s', expected => {
       jest.mocked(fs.existsSync).mockReturnValue(expected);
 
-      const result = FileSystemUtils.existsSync(testPath);
+      const result = FileSystemUtils.hasPath(testPath);
 
       expect(result).toBe(expected);
       expect(fs.existsSync).toHaveBeenCalledWith(testPath);
@@ -162,11 +162,11 @@ describe('FileSystemUtils', () => {
   });
 
   describe('instance methods', () => {
-    describe('existsSync', () => {
+    describe('hasPath', () => {
       it('should delegate to static method', () => {
         jest.mocked(fs.existsSync).mockReturnValue(true);
 
-        const result = fileSystemUtils.existsSync(testPath);
+        const result = fileSystemUtils.hasPath(testPath);
 
         expect(result).toBe(true);
         expect(fs.existsSync).toHaveBeenCalledWith(testPath);

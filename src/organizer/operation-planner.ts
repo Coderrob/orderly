@@ -25,25 +25,14 @@ function getOperationMetadata(
 ): Readonly<{ reason: string; type: FileOperationType }> {
   const needsMove = file.targetFolder !== undefined;
   const needsRename = file.filename !== targetFilename;
-
-  if (needsMove && needsRename) {
-    return {
-      reason: `Moving to ${file.targetFolder} and renaming to ${targetFilename}`,
-      type: FileOperationType.MOVE_RENAME
-    };
-  }
-
-  if (needsMove) {
-    return {
-      reason: `Moving to ${file.targetFolder}`,
-      type: FileOperationType.MOVE
-    };
-  }
-
-  return {
-    reason: `Renaming to ${targetFilename}`,
-    type: FileOperationType.RENAME
-  };
+  return needsMove
+    ? needsRename
+      ? {
+          reason: `Moving to ${file.targetFolder} and renaming to ${targetFilename}`,
+          type: FileOperationType.MOVE_RENAME
+        }
+      : { reason: `Moving to ${file.targetFolder}`, type: FileOperationType.MOVE }
+    : { reason: `Renaming to ${targetFilename}`, type: FileOperationType.RENAME };
 }
 
 /**

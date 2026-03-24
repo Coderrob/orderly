@@ -52,4 +52,68 @@ describe('WithCliAutoConfigDiscovery', () => {
     expect(findConfigInDirectory).not.toHaveBeenCalled();
     expect(result).toEqual({ options: { autoConfig: false }, autoDiscoveredConfig: undefined });
   });
+
+  it('should skip discovery when config is already specified in options', () => {
+    const findConfigInDirectory = jest.fn();
+
+    class TestService {
+      public findConfigInDirectory = findConfigInDirectory;
+
+      @WithCliAutoConfigDiscovery<ITestOptions>()
+      execute(
+        _directory: string,
+        options: ITestOptions,
+        autoDiscoveredConfig?: string
+      ): { options: ITestOptions; autoDiscoveredConfig?: string } {
+        return { options, autoDiscoveredConfig };
+      }
+    }
+
+    const result = new TestService().execute('/target', { config: '/explicit/config.yml' });
+
+    expect(findConfigInDirectory).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      options: { config: '/explicit/config.yml' },
+      autoDiscoveredConfig: undefined
+    });
+  });
+
+  it('should pass undefined autoDiscoveredConfig when findConfigInDirectory returns null', () => {
+    const findConfigInDirectory = jest.fn().mockReturnValue(null);
+
+    class TestService {
+      public findConfigInDirectory = findConfigInDirectory;
+
+      @WithCliAutoConfigDiscovery<ITestOptions>()
+      execute(
+        _directory: string,
+        options: ITestOptions,
+        autoDiscoveredConfig?: string
+      ): { options: ITestOptions; autoDiscoveredConfig?: string } {
+        return { options, autoDiscoveredConfig };
+      }
+    }
+
+    const result = new TestService().execute('/target', {});
+
+    expect(findConfigInDirectory).toHaveBeenCalledWith('/target');
+    expect(result).toEqual({ options: {}, autoDiscoveredConfig: undefined });
+  });
+
+  it('should handle context without config discovery capability', () => {
+    class TestService {
+      @WithCliAutoConfigDiscovery<ITestOptions>()
+      execute(
+        _directory: string,
+        options: ITestOptions,
+        autoDiscoveredConfig?: string
+      ): { options: ITestOptions; autoDiscoveredConfig?: string } {
+        return { options, autoDiscoveredConfig };
+      }
+    }
+
+    const result = new TestService().execute('/target', {});
+
+    expect(result).toEqual({ options: {}, autoDiscoveredConfig: undefined });
+  });
 });

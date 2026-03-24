@@ -1,11 +1,18 @@
+import { ok as assert } from 'node:assert';
 import * as path from 'node:path';
 
 import { CONFIG_FILE_NAMES } from '../constants';
 import { ConfigNotFoundError } from '../errors';
-import { ConfigParser } from '../utils/config-parser';
+import {
+  type ConfigParseResult,
+  ConfigParser,
+  type ConfigStringifyResult
+} from '../utils/config-parser';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
 import { OrderlyConfig, DEFAULT_CONFIG, ConfigFormat } from './types';
+
+const JSON_EXTENSION = '.json';
 
 export interface IConfigLoader {
   load(configPath?: string): OrderlyConfig;
@@ -48,12 +55,14 @@ export class ConfigLoader implements IConfigLoader {
    * @returns Merged configuration with loaded values overriding base configuration
    * @throws {ConfigNotFoundError} Thrown when the requested config path does not exist.
    */
-  private static loadFromPath(configPath: string, baseConfig: OrderlyConfig): OrderlyConfig {
-    if (!FileSystemUtils.existsSync(configPath)) {
-      throw new ConfigNotFoundError(configPath);
-    }
-    const override = ConfigParser.parse(configPath);
-    return this.mergeConfig(baseConfig, override);
+  private static loadFromPath(
+    configPath: string,
+    baseConfig: Readonly<OrderlyConfig>
+  ): OrderlyConfig {
+    assert(FileSystemUtils.hasPath(configPath), new ConfigNotFoundError(configPath));
+    const overrideResult = ConfigParser.parse(configPath);
+    assertConfigParseSucceeded(overrideResult);
+    return this.mergeConfig(baseConfig, overrideResult.value);
   }
 
   /**
@@ -61,12 +70,13 @@ export class ConfigLoader implements IConfigLoader {
    * @param baseConfig - Base configuration to merge with the found configuration
    * @returns Merged configuration if a default config file is found, otherwise the base configuration
    */
-  private static loadFromDefault(baseConfig: OrderlyConfig): OrderlyConfig {
+  private static loadFromDefault(baseConfig: Readonly<OrderlyConfig>): OrderlyConfig {
     const foundConfig = this.findConfig();
     if (!foundConfig) return baseConfig;
 
-    const override = ConfigParser.parse(foundConfig);
-    return this.mergeConfig(baseConfig, override);
+    const overrideResult = ConfigParser.parse(foundConfig);
+    assertConfigParseSucceeded(overrideResult);
+    return this.mergeConfig(baseConfig, overrideResult.value);
   }
 
   /**
@@ -77,7 +87,7 @@ export class ConfigLoader implements IConfigLoader {
     const cwd = process.cwd();
     for (const configFile of this.CONFIG_FILES) {
       const fullPath = path.join(cwd, configFile);
-      if (FileSystemUtils.existsSync(fullPath)) {
+      if (FileSystemUtils.hasPath(fullPath)) {
         return fullPath;
       }
     }
@@ -90,7 +100,10 @@ export class ConfigLoader implements IConfigLoader {
    * @param override - Override configuration with values to merge in
    * @returns Merged configuration with override values taking precedence for nested objects
    */
-  private static mergeConfig(base: OrderlyConfig, override: Partial<OrderlyConfig>): OrderlyConfig {
+  private static mergeConfig(
+    base: Readonly<OrderlyConfig>,
+    override: Readonly<Partial<OrderlyConfig>>
+  ): OrderlyConfig {
     return {
       ...base,
       ...override,
@@ -107,11 +120,12 @@ export class ConfigLoader implements IConfigLoader {
    * @param config - Configuration object to save
    * @param filePath - Path where the configuration file will be saved
    */
-  static save(config: OrderlyConfig, filePath: string): void {
+  static save(config: Readonly<OrderlyConfig>, filePath: string): void {
     const ext = path.extname(filePath).toLowerCase();
-    const format = ext === '.json' ? ConfigFormat.JSON : ConfigFormat.YAML;
-    const content = ConfigParser.stringify(config, format);
-    FileSystemUtils.writeFileSync(filePath, content);
+    const format = ext === JSON_EXTENSION ? ConfigFormat.JSON : ConfigFormat.YAML;
+    const contentResult = ConfigParser.stringify(config, format);
+    assertConfigStringifySucceeded(contentResult);
+    FileSystemUtils.writeFileSync(filePath, contentResult.value);
   }
 
   /**
@@ -119,7 +133,27 @@ export class ConfigLoader implements IConfigLoader {
    * @param config - Configuration object to save
    * @param filePath - Path where the configuration file will be saved
    */
-  save(config: OrderlyConfig, filePath: string): void {
+  save(config: Readonly<OrderlyConfig>, filePath: string): void {
     ConfigLoader.save(config, filePath);
   }
+}
+
+/**
+ * Narrows a parse result to the successful variant or raises the underlying error.
+ * @param parseResult - Parse result to validate.
+ */
+function assertConfigParseSucceeded(
+  parseResult: Readonly<ConfigParseResult>
+): asserts parseResult is Extract<ConfigParseResult, { success: true }> {
+  assert(parseResult.success, parseResult.success ? undefined : parseResult.error);
+}
+
+/**
+ * Narrows a stringify result to the successful variant or raises the underlying error.
+ * @param stringifyResult - Stringify result to validate.
+ */
+function assertConfigStringifySucceeded(
+  stringifyResult: Readonly<ConfigStringifyResult>
+): asserts stringifyResult is Extract<ConfigStringifyResult, { success: true }> {
+  assert(stringifyResult.success, stringifyResult.success ? undefined : stringifyResult.error);
 }

@@ -11,6 +11,10 @@
       "CollisionResolutionStrategy",
       "ConfigFormat",
       "DEFAULT_CONFIG",
+      "ICategoryRule",
+      "ICollisionResolutionConfig",
+      "INamingConvention",
+      "IOrderlyConfig",
       "NamingConvention",
       "NamingConventionType",
       "OrderlyConfig"

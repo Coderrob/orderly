@@ -5,34 +5,40 @@ import { ManifestBuilder } from './manifest-builder';
 import { ManifestFormatter } from './manifest-formatter';
 import type { IFileOperation, IOrganizationResult, IFileError } from './types';
 
+const JSON_INDENT_SPACES = 2;
+
 export enum OperationStatus {
   SUCCESS = 'success',
   FAILED = 'failed',
   SKIPPED = 'skipped'
 }
 
-export interface ManifestEntry {
+export interface IManifestEntry {
   timestamp: string;
   operation: IFileOperation;
   status: OperationStatus;
   error?: string;
 }
 
-export interface Manifest {
+export type ManifestEntry = IManifestEntry;
+
+export interface IManifest {
   generatedAt: string;
   totalOperations: number;
   successful: number;
   failed: number;
   skipped: number;
-  entries: ManifestEntry[];
+  entries: IManifestEntry[];
   // Backward compatibility: operations is an alias for entries
-  operations?: ManifestEntry[];
+  operations?: IManifestEntry[];
 }
 
+export type Manifest = IManifest;
+
 export interface IManifestGenerator {
-  generate(result: IOrganizationResult, errors: IFileError[]): Manifest;
-  save(manifest: Manifest, outputPath: string): void;
-  saveMarkdown(manifest: Manifest, outputPath: string): void;
+  generate(result: Readonly<IOrganizationResult>, errors: readonly IFileError[]): IManifest;
+  save(manifest: Readonly<IManifest>, outputPath: string): void;
+  saveMarkdown(manifest: Readonly<IManifest>, outputPath: string): void;
 }
 
 export class ManifestGenerator implements IManifestGenerator {
@@ -43,7 +49,7 @@ export class ManifestGenerator implements IManifestGenerator {
    * Creates a new ManifestGenerator instance
    * @param logger - Logger instance for recording manifest operations
    */
-  constructor(private readonly logger: Logger) {}
+  constructor(private readonly logger: Readonly<Logger>) {}
 
   /**
    * Generates a manifest from organization results and errors
@@ -51,12 +57,13 @@ export class ManifestGenerator implements IManifestGenerator {
    * @param errors - Array of file errors that occurred during organization
    * @returns A complete manifest with all operation entries and backward-compatible operations property
    */
-  generate(result: IOrganizationResult, errors: IFileError[]): Manifest {
+  generate(result: Readonly<IOrganizationResult>, errors: readonly IFileError[]): IManifest {
     const manifest = this.builder.build(result, errors);
-    // Add operations property for backward compatibility (shallow copy of entries).
-    // Note: ManifestEntry objects are shared between entries and operations - treat them as immutable.
-    manifest.operations = [...manifest.entries];
-    return manifest;
+    return {
+      ...manifest,
+      // ManifestEntry objects are shared between entries and operations; treat them as immutable.
+      operations: [...manifest.entries]
+    };
   }
 
   /**
@@ -64,8 +71,8 @@ export class ManifestGenerator implements IManifestGenerator {
    * @param manifest - The manifest to save
    * @param outputPath - The file path where the manifest should be saved
    */
-  save(manifest: Manifest, outputPath: string): void {
-    const content = JSON.stringify(manifest, null, 2);
+  save(manifest: Readonly<IManifest>, outputPath: string): void {
+    const content = JSON.stringify(manifest, null, JSON_INDENT_SPACES);
     FileSystemUtils.writeFileSync(outputPath, content);
     this.logger.info(`Manifest saved to: ${outputPath}`);
   }
@@ -75,7 +82,7 @@ export class ManifestGenerator implements IManifestGenerator {
    * @param manifest - The manifest to save
    * @param outputPath - The file path where the markdown manifest should be saved
    */
-  saveMarkdown(manifest: Manifest, outputPath: string): void {
+  saveMarkdown(manifest: Readonly<IManifest>, outputPath: string): void {
     const content = this.formatter.format(manifest);
     FileSystemUtils.writeFileSync(outputPath, content);
     this.logger.info(`Markdown manifest saved to: ${outputPath}`);

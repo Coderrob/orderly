@@ -29,19 +29,19 @@ describe('ConfigLoader', () => {
 
   describe('load', () => {
     it('should load config from specified path when file exists', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(true);
-      mockConfigParser.parse.mockReturnValue(testConfig);
+      mockFileSystemUtils.hasPath.mockReturnValue(true);
+      mockConfigParser.parse.mockReturnValue({ success: true, value: testConfig });
 
       const result = ConfigLoader.load(testConfigPath);
 
       expect(result.logLevel).toBe(LogLevel.DEBUG);
       expect(result.dryRun).toBe(true);
-      expect(mockFileSystemUtils.existsSync).toHaveBeenCalledWith(testConfigPath);
+      expect(mockFileSystemUtils.hasPath).toHaveBeenCalledWith(testConfigPath);
       expect(mockConfigParser.parse).toHaveBeenCalledWith(testConfigPath);
     });
 
     it('should throw error when specified config file does not exist', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.hasPath.mockReturnValue(false);
 
       expect(() => ConfigLoader.load(testConfigPath)).toThrow(
         `Config file not found: ${testConfigPath}`
@@ -49,7 +49,7 @@ describe('ConfigLoader', () => {
     });
 
     it('should load default config when no path specified and no config file found', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.hasPath.mockReturnValue(false);
 
       const result = ConfigLoader.load();
 
@@ -59,10 +59,8 @@ describe('ConfigLoader', () => {
     it.each([['.orderly.yml'], ['.orderly.yaml'], ['orderly.config.json']])(
       'should find and load %s when no path specified',
       configFile => {
-        mockFileSystemUtils.existsSync.mockImplementation((path: string) =>
-          path.endsWith(configFile)
-        );
-        mockConfigParser.parse.mockReturnValue(testConfig);
+        mockFileSystemUtils.hasPath.mockImplementation((path: string) => path.endsWith(configFile));
+        mockConfigParser.parse.mockReturnValue({ success: true, value: testConfig });
 
         const result = ConfigLoader.load();
 
@@ -76,8 +74,8 @@ describe('ConfigLoader', () => {
     );
 
     it('should merge config with defaults preserving all fields', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(true);
-      mockConfigParser.parse.mockReturnValue({ logLevel: LogLevel.WARN });
+      mockFileSystemUtils.hasPath.mockReturnValue(true);
+      mockConfigParser.parse.mockReturnValue({ success: true, value: { logLevel: LogLevel.WARN } });
 
       const result = ConfigLoader.load(testConfigPath);
 
@@ -88,9 +86,10 @@ describe('ConfigLoader', () => {
     });
 
     it('should merge naming convention partially', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(true);
+      mockFileSystemUtils.hasPath.mockReturnValue(true);
       mockConfigParser.parse.mockReturnValue({
-        namingConvention: { type: NamingConventionType.SNAKE_CASE }
+        success: true,
+        value: { namingConvention: { type: NamingConventionType.SNAKE_CASE } }
       });
 
       const result = ConfigLoader.load(testConfigPath);
@@ -100,9 +99,10 @@ describe('ConfigLoader', () => {
     });
 
     it('should preserve default naming convention when not overridden', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(true);
+      mockFileSystemUtils.hasPath.mockReturnValue(true);
       mockConfigParser.parse.mockReturnValue({
-        logLevel: LogLevel.INFO // Override something else, not namingConvention
+        success: true,
+        value: { logLevel: LogLevel.INFO } // Override something else, not namingConvention
       });
 
       const result = ConfigLoader.load(testConfigPath);
@@ -112,12 +112,12 @@ describe('ConfigLoader', () => {
     });
 
     it('should return default config when no config files found', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.hasPath.mockReturnValue(false);
 
       const result = ConfigLoader.load();
 
       expect(result).toEqual(DEFAULT_CONFIG);
-      expect(mockFileSystemUtils.existsSync).toHaveBeenCalled();
+      expect(mockFileSystemUtils.hasPath).toHaveBeenCalled();
     });
   });
 
@@ -130,7 +130,7 @@ describe('ConfigLoader', () => {
     ])('should save config to %s with %s format', (filePath, format) => {
       const config = { ...DEFAULT_CONFIG, logLevel: LogLevel.DEBUG } as OrderlyConfig;
       const stringified = format === 'json' ? '{}' : 'test: config';
-      mockConfigParser.stringify.mockReturnValue(stringified);
+      mockConfigParser.stringify.mockReturnValue({ success: true, value: stringified });
 
       ConfigLoader.save(config, filePath);
 
@@ -148,13 +148,13 @@ describe('ConfigLoader', () => {
 
     describe('load', () => {
       it('should delegate to static method', () => {
-        mockFileSystemUtils.existsSync.mockReturnValue(true);
-        mockConfigParser.parse.mockReturnValue(testConfig);
+        mockFileSystemUtils.hasPath.mockReturnValue(true);
+        mockConfigParser.parse.mockReturnValue({ success: true, value: testConfig });
 
         const result = configLoader.load(testConfigPath);
 
         expect(result.logLevel).toBe(LogLevel.DEBUG);
-        expect(mockFileSystemUtils.existsSync).toHaveBeenCalledWith(testConfigPath);
+        expect(mockFileSystemUtils.hasPath).toHaveBeenCalledWith(testConfigPath);
       });
     });
 
@@ -162,7 +162,7 @@ describe('ConfigLoader', () => {
       it('should delegate to static method', () => {
         const config = { ...DEFAULT_CONFIG, logLevel: LogLevel.DEBUG } as OrderlyConfig;
         const stringified = '{}';
-        mockConfigParser.stringify.mockReturnValue(stringified);
+        mockConfigParser.stringify.mockReturnValue({ success: true, value: stringified });
 
         configLoader.save(config, '/config/test.json');
 

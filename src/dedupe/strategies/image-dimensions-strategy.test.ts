@@ -41,7 +41,7 @@ describe('ImageDimensionsStrategy', () => {
       expect(strategy).toBeDefined();
       expect(typeof strategy.name).toBe('string');
       expect(typeof strategy.priority).toBe('number');
-      expect(typeof strategy.supports).toBe('function');
+      expect(typeof strategy.canProcess).toBe('function');
       expect(typeof strategy.getKey).toBe('function');
     });
   });
@@ -60,11 +60,11 @@ describe('ImageDimensionsStrategy', () => {
 
   describe('supports', () => {
     it('should support image files', () => {
-      expect(strategy.supports(mockImageFile)).toBe(true);
+      expect(strategy.canProcess(mockImageFile)).toBe(true);
     });
 
     it('should not support non-image files', () => {
-      expect(strategy.supports(mockTextFile)).toBe(false);
+      expect(strategy.canProcess(mockTextFile)).toBe(false);
     });
 
     it('should support various image extensions', () => {
@@ -86,7 +86,7 @@ describe('ImageDimensionsStrategy', () => {
           filename: `test${ext}`,
           extension: ext
         };
-        expect(strategy.supports(file)).toBe(true);
+        expect(strategy.canProcess(file)).toBe(true);
       });
     });
 
@@ -96,7 +96,7 @@ describe('ImageDimensionsStrategy', () => {
         filename: 'image.JPG',
         extension: '.JPG'
       };
-      expect(strategy.supports(file)).toBe(true);
+      expect(strategy.canProcess(file)).toBe(true);
     });
   });
 

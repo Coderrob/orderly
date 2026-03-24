@@ -198,7 +198,7 @@ describe('NamingUtils', () => {
     });
   });
 
-  describe('needsRename', () => {
+  describe('shouldRename', () => {
     it.each([
       ['test-file.txt', NamingConventionType.KEBAB_CASE, false],
       ['Test File.txt', NamingConventionType.KEBAB_CASE, true],
@@ -271,7 +271,7 @@ describe('NamingUtils', () => {
       });
     });
 
-    describe('needsRename', () => {
+    describe('shouldRename', () => {
       it('should delegate to static method', () => {
         const result = namingUtils.shouldRename('Test File.txt', testConvention);
         expect(result).toBe(true);

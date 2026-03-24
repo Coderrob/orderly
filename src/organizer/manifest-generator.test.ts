@@ -65,7 +65,10 @@ describe('ManifestGenerator', () => {
       const result = generator.generate(testResult, testErrors);
 
       expect(builderInstance.build).toHaveBeenCalledWith(testResult, testErrors);
-      expect(result).toBe(testManifest);
+      expect(result).toEqual({
+        ...testManifest,
+        operations: [...testManifest.entries]
+      });
     });
   });
 

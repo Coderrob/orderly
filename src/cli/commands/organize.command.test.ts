@@ -7,7 +7,8 @@ import type { OrderlyConfig } from '../../config/types';
 import { DEFAULT_CONFIG } from '../../config/types';
 import type { IScannedFile } from '../../scanner/interfaces';
 import { Logger } from '../../logger/logger';
-import { DedupeService, DedupeAction } from '../../dedupe';
+import { DedupeAction } from '../../dedupe';
+import { DedupeStrategyFactory } from '../../dedupe/dedupe-factory';
 import { FileScanner } from '../../scanner/file-scanner';
 import { FileOrganizer } from '../../organizer/file-organizer';
 import { FileSystemUtils } from '../../utils/file-system-utils';
@@ -23,11 +24,6 @@ jest.mock('chalk', () => ({
 
 // Mock the dedupe module
 jest.mock('../../dedupe', () => ({
-  DedupeService: jest.fn(),
-  NameStrategy: jest.fn(),
-  SizeStrategy: jest.fn(),
-  Sha256Strategy: jest.fn(),
-  Sha256Hasher: jest.fn(),
   DedupeMode: {
     ANY: 'any',
     ALL: 'all'
@@ -36,6 +32,12 @@ jest.mock('../../dedupe', () => ({
     SKIP: 'skip',
     REPORT: 'report',
     REPLACE: 'replace'
+  }
+}));
+
+jest.mock('../../dedupe/dedupe-factory', () => ({
+  DedupeStrategyFactory: {
+    createDedupeService: jest.fn()
   }
 }));
 
@@ -62,7 +64,7 @@ jest.mock('../../utils/file-system-utils', () => {
   return {
     ...actual,
     FileSystemUtils: {
-      existsSync: actual.FileSystemUtils.existsSync,
+      hasPath: actual.FileSystemUtils.hasPath,
       unlinkSync: jest.fn()
     }
   };
@@ -77,7 +79,10 @@ describe('OrganizeHandler - Dedupe Integration', () => {
   let configService: ConfigService;
   let directoryValidator: DirectoryValidator;
   let manifestService: ManifestService;
-  let mockDedupeService: jest.Mocked<DedupeService>;
+  let mockDedupeService: {
+    applyAction: jest.Mock;
+    findDuplicates: jest.Mock;
+  };
   let mockLogger: jest.Mocked<Logger>;
 
   beforeEach(() => {
@@ -101,7 +106,9 @@ describe('OrganizeHandler - Dedupe Integration', () => {
     } as any;
 
     // Mock the constructors
-    (DedupeService as jest.Mock).mockImplementation(() => mockDedupeService);
+    jest
+      .mocked(DedupeStrategyFactory.createDedupeService)
+      .mockReturnValue(mockDedupeService as any);
     (Logger as jest.Mock).mockImplementation(() => mockLogger);
 
     organizeHandler = new OrganizeHandler(configService, directoryValidator, manifestService);
@@ -606,7 +613,7 @@ describe('OrganizeHandler - Execute', () => {
     }));
 
     // Mock dedupe
-    (DedupeService as jest.Mock).mockImplementation(() => ({
+    jest.mocked(DedupeStrategyFactory.createDedupeService).mockReturnValue({
       findDuplicates: jest.fn().mockResolvedValue({
         groups: [],
         totalFiles: 1,
@@ -614,7 +621,7 @@ describe('OrganizeHandler - Execute', () => {
         strategiesUsed: []
       }),
       applyAction: jest.fn().mockReturnValue(dedupedFiles)
-    }));
+    } as any);
 
     const cmdResult = await handler.execute(targetDir, {});
 

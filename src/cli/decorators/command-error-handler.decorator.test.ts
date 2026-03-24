@@ -54,4 +54,28 @@ describe('HandleCommandErrors', () => {
       message: 'ok'
     });
   });
+
+  it('should return failure result when command returns an invalid result payload', async () => {
+    class TestHandler {
+      @HandleCommandErrors('Invalid: ')
+      async execute(): Promise<unknown> {
+        return 'not a valid command result';
+      }
+    }
+
+    const result = await (new TestHandler() as { execute(): Promise<unknown> }).execute();
+
+    expect(result).toEqual({
+      success: false,
+      exitCode: ExitCode.ERROR,
+      message: 'Invalid: Command returned an invalid result payload'
+    });
+  });
+
+  it('should return unmodified descriptor when applied to a non-function value', () => {
+    const nonFunctionDescriptor: PropertyDescriptor = { value: 42, writable: true };
+    const decorator = HandleCommandErrors('Prefix: ');
+    const result = decorator({} as object, 'prop', nonFunctionDescriptor);
+    expect(result).toEqual(nonFunctionDescriptor);
+  });
 });

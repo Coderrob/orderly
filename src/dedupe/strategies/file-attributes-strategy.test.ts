@@ -42,7 +42,7 @@ describe('FileAttributesStrategy', () => {
 
   describe('supports', () => {
     it('should support all files', () => {
-      expect(strategy.supports(mockFile)).toBe(true);
+      expect(strategy.canProcess(mockFile)).toBe(true);
     });
   });
 

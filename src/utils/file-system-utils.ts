@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 export interface IFileSystemUtils {
-  existsSync(filePath: string): boolean;
+  hasPath(filePath: string): boolean;
   readFileSync(filePath: string): string;
   writeFileSync(filePath: string, content: string): void;
   appendFileSync(filePath: string, content: string): void;
@@ -18,7 +18,7 @@ export class FileSystemUtils implements IFileSystemUtils {
    * @param filePath - The path to check
    * @returns True if the path exists, false otherwise
    */
-  static existsSync(filePath: string): boolean {
+  static hasPath(filePath: string): boolean {
     return fs.existsSync(filePath);
   }
 
@@ -27,8 +27,8 @@ export class FileSystemUtils implements IFileSystemUtils {
    * @param filePath - The path to check
    * @returns True if the path exists, false otherwise
    */
-  existsSync(filePath: string): boolean {
-    return FileSystemUtils.existsSync(filePath);
+  hasPath(filePath: string): boolean {
+    return FileSystemUtils.hasPath(filePath);
   }
 
   /**
@@ -56,7 +56,7 @@ export class FileSystemUtils implements IFileSystemUtils {
    */
   static writeFileSync(filePath: string, content: string): void {
     const dir = path.dirname(filePath);
-    if (!FileSystemUtils.existsSync(dir)) {
+    if (!FileSystemUtils.hasPath(dir)) {
       FileSystemUtils.mkdirSync(dir);
     }
     fs.writeFileSync(filePath, content, 'utf8');
@@ -94,7 +94,7 @@ export class FileSystemUtils implements IFileSystemUtils {
    * @param dirPath - The path to the directory to create
    */
   static mkdirSync(dirPath: string): void {
-    if (!FileSystemUtils.existsSync(dirPath)) {
+    if (!FileSystemUtils.hasPath(dirPath)) {
       fs.mkdirSync(dirPath, { recursive: true });
     }
   }

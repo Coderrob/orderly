@@ -34,7 +34,7 @@ describe('ConfigParser', () => {
 
       const result = ConfigParser.parse(jsonPath);
 
-      expect(result).toEqual(testConfig);
+      expect(result).toEqual({ success: true, value: testConfig });
       expect(mockFileSystemUtils.readFileSync).toHaveBeenCalledWith(jsonPath);
     });
 
@@ -45,7 +45,10 @@ describe('ConfigParser', () => {
 
       const result = ConfigParser.parse(jsonPath);
 
-      expect(result).toEqual({ logLevel: LogLevel.DEBUG, dryRun: true });
+      expect(result).toEqual({
+        success: true,
+        value: { logLevel: LogLevel.DEBUG, dryRun: true }
+      });
       expect(mockFileSystemUtils.readFileSync).toHaveBeenCalledWith(jsonPath);
     });
 
@@ -61,7 +64,7 @@ describe('ConfigParser', () => {
 
       const result = ConfigParser.parse(yamlPath);
 
-      expect(result).toEqual(testConfig);
+      expect(result).toEqual({ success: true, value: testConfig });
       expect(mockFileSystemUtils.readFileSync).toHaveBeenCalledWith(yamlPath);
       expect(mockYaml.load).toHaveBeenCalledWith(testContent);
     });
@@ -74,7 +77,7 @@ describe('ConfigParser', () => {
 
       const result = ConfigParser.parse(yamlPath);
 
-      expect(result).toEqual(testConfig);
+      expect(result).toEqual({ success: true, value: testConfig });
       expect(mockFileSystemUtils.readFileSync).toHaveBeenCalledWith(yamlPath);
       expect(mockYaml.load).toHaveBeenCalledWith(yamlContent);
     });
@@ -87,7 +90,7 @@ describe('ConfigParser', () => {
 
       const result = ConfigParser.parse(yamlPath);
 
-      expect(result).toEqual(testConfig);
+      expect(result).toEqual({ success: true, value: testConfig });
       expect(mockFileSystemUtils.readFileSync).toHaveBeenCalledWith(yamlPath);
       expect(mockYaml.load).toHaveBeenCalledWith(yamlContent);
     });
@@ -100,35 +103,71 @@ describe('ConfigParser', () => {
 
       const result = ConfigParser.parse(yamlPath);
 
-      expect(result).toEqual(testConfig);
+      expect(result).toEqual({ success: true, value: testConfig });
       expect(mockFileSystemUtils.readFileSync).toHaveBeenCalledWith(yamlPath);
       expect(mockYaml.load).toHaveBeenCalledWith(yamlContent);
     });
 
-    it('should throw error for unsupported file format', () => {
+    it('should return error for unsupported file format', () => {
       const unsupportedPath = '/config/test.txt';
       mockFileSystemUtils.readFileSync.mockReturnValue(testContent);
 
-      expect(() => ConfigParser.parse(unsupportedPath)).toThrow(
+      const result = ConfigParser.parse(unsupportedPath);
+
+      expect(result.success).toBe(false);
+      expect(result.success ? '' : result.error.message).toBe(
         'Unsupported config file format: .txt'
       );
     });
 
-    it('should throw error for .xml file format', () => {
+    it('should return error for .xml file format', () => {
       const unsupportedPath = '/config/test.xml';
       mockFileSystemUtils.readFileSync.mockReturnValue('<config></config>');
 
-      expect(() => ConfigParser.parse(unsupportedPath)).toThrow(
+      const result = ConfigParser.parse(unsupportedPath);
+
+      expect(result.success).toBe(false);
+      expect(result.success ? '' : result.error.message).toBe(
         'Unsupported config file format: .xml'
       );
     });
 
-    it('should throw error for .toml file format', () => {
+    it('should return error for .toml file format', () => {
       const unsupportedPath = '/config/test.toml';
       mockFileSystemUtils.readFileSync.mockReturnValue('[config]');
 
-      expect(() => ConfigParser.parse(unsupportedPath)).toThrow(
+      const result = ConfigParser.parse(unsupportedPath);
+
+      expect(result.success).toBe(false);
+      expect(result.success ? '' : result.error.message).toBe(
         'Unsupported config file format: .toml'
+      );
+    });
+
+    it('should return parse error when parsed JSON root is not an object', () => {
+      const jsonPath = '/config/test.json';
+      mockFileSystemUtils.readFileSync.mockReturnValue('true');
+
+      const result = ConfigParser.parse(jsonPath);
+
+      expect(result.success).toBe(false);
+      expect(result.success ? '' : result.error.message).toBe(
+        `Failed to parse config file: ${jsonPath}`
+      );
+    });
+
+    it('should return parse error when YAML parsing throws', () => {
+      const yamlPath = '/config/test.yml';
+      mockFileSystemUtils.readFileSync.mockReturnValue(testContent);
+      mockYaml.load.mockImplementation(() => {
+        throw new Error('Bad YAML');
+      });
+
+      const result = ConfigParser.parse(yamlPath);
+
+      expect(result.success).toBe(false);
+      expect(result.success ? '' : result.error.message).toBe(
+        `Failed to parse config file: ${yamlPath}`
       );
     });
   });
@@ -140,7 +179,7 @@ describe('ConfigParser', () => {
 
       const result = ConfigParser.stringify(config, ConfigFormat.JSON);
 
-      expect(result).toBe(expected);
+      expect(result).toEqual({ success: true, value: expected });
     });
 
     it('should stringify config as JSON using static method directly', () => {
@@ -157,9 +196,9 @@ describe('ConfigParser', () => {
 
       const result = ConfigParser.stringify(config, ConfigFormat.JSON);
 
-      expect(result).toBe(expected);
-      expect(result).toContain('"logLevel": "info"');
-      expect(result).toContain('"dryRun": true');
+      expect(result).toEqual({ success: true, value: expected });
+      expect(result.success ? result.value : '').toContain('"logLevel": "info"');
+      expect(result.success ? result.value : '').toContain('"dryRun": true');
     });
 
     it('should stringify config as YAML', () => {
@@ -169,7 +208,7 @@ describe('ConfigParser', () => {
 
       const result = ConfigParser.stringify(config, ConfigFormat.YAML);
 
-      expect(result).toBe(yamlOutput);
+      expect(result).toEqual({ success: true, value: yamlOutput });
       expect(mockYaml.dump).toHaveBeenCalledWith(config);
     });
 
@@ -188,22 +227,27 @@ describe('ConfigParser', () => {
 
       const result = ConfigParser.stringify(config, ConfigFormat.YAML);
 
-      expect(result).toBeDefined();
-      expect(typeof result).toBe('string');
+      expect(result).toEqual({ success: true, value: yamlOutput });
     });
 
-    it('should throw error for unsupported format', () => {
+    it('should return error for unsupported format', () => {
       const config = testConfig as OrderlyConfig;
 
-      expect(() => ConfigParser.stringify(config, 'xml' as any)).toThrow(
+      const result = ConfigParser.stringify(config, 'xml');
+
+      expect(result.success).toBe(false);
+      expect(result.success ? '' : result.error.message).toBe(
         'Invalid format: xml, expected: json or yaml'
       );
     });
 
-    it('should throw error for invalid format type', () => {
+    it('should return error for invalid format type', () => {
       const config = testConfig as OrderlyConfig;
 
-      expect(() => ConfigParser.stringify(config, 'toml' as any)).toThrow(
+      const result = ConfigParser.stringify(config, 'toml');
+
+      expect(result.success).toBe(false);
+      expect(result.success ? '' : result.error.message).toBe(
         'Invalid format: toml, expected: json or yaml'
       );
     });
@@ -224,7 +268,7 @@ describe('ConfigParser', () => {
 
         const result = configParser.parse(jsonPath);
 
-        expect(result).toEqual(testConfig);
+        expect(result).toEqual({ success: true, value: testConfig });
         expect(mockFileSystemUtils.readFileSync).toHaveBeenCalledWith(jsonPath);
       });
     });
@@ -236,7 +280,7 @@ describe('ConfigParser', () => {
 
         const result = configParser.stringify(config, ConfigFormat.JSON);
 
-        expect(result).toBe(expected);
+        expect(result).toEqual({ success: true, value: expected });
       });
     });
   });

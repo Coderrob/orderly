@@ -133,7 +133,7 @@ describe('DedupeService', () => {
       const sizeOnly = {
         name: 'size',
         priority: 1,
-        supports: jest.fn().mockReturnValue(true),
+        canProcess: jest.fn().mockReturnValue(true),
         getKey: jest
           .fn()
           .mockImplementation(async (file: IScannedFile) =>
@@ -143,7 +143,7 @@ describe('DedupeService', () => {
       const hashOnly = {
         name: 'sha256',
         priority: 2,
-        supports: jest.fn().mockReturnValue(true),
+        canProcess: jest.fn().mockReturnValue(true),
         getKey: jest.fn().mockImplementation(async (file: IScannedFile) => `hash-${file.filename}`)
       } satisfies IDedupeStrategy;
 
@@ -157,13 +157,13 @@ describe('DedupeService', () => {
       const nameStrategy = {
         name: 'name',
         priority: 1,
-        supports: jest.fn().mockReturnValue(true),
+        canProcess: jest.fn().mockReturnValue(true),
         getKey: jest.fn().mockResolvedValue('duplicate')
       } satisfies IDedupeStrategy;
       const imageOnlyStrategy = {
         name: 'image-dimensions',
         priority: 2,
-        supports: jest.fn().mockReturnValue(false),
+        canProcess: jest.fn().mockReturnValue(false),
         getKey: jest.fn()
       } satisfies IDedupeStrategy;
 
@@ -291,8 +291,9 @@ describe('DedupeService', () => {
     it('should not union indexes already in the same set', () => {
       const parents = [0, 0, 2];
 
-      service['union'](parents, 0, 1);
+      const result = service['union'](parents, 0, 1);
 
+      expect(result).toEqual([0, 0, 2]);
       expect(parents).toEqual([0, 0, 2]);
     });
   });

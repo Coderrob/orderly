@@ -15,21 +15,15 @@ export class Sha256Hasher implements IDedupeHasher {
    * @returns Hex-encoded hash string
    */
   async sha256(filePath: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const hash = createHash('sha256');
-      const stream = createReadStream(filePath);
+    const hash = createHash('sha256');
+    const stream = createReadStream(filePath);
 
-      stream.on('data', chunk => {
+    for await (const chunk of stream) {
+      if (typeof chunk === 'string' || Buffer.isBuffer(chunk)) {
         hash.update(chunk);
-      });
+      }
+    }
 
-      stream.on('end', () => {
-        resolve(hash.digest('hex'));
-      });
-
-      stream.on('error', error => {
-        reject(error);
-      });
-    });
+    return hash.digest('hex');
   }
 }

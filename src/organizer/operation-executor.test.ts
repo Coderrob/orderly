@@ -65,7 +65,7 @@ describe('OperationExecutor', () => {
 
   describe('execute (real)', () => {
     it('should execute operation successfully', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.hasPath.mockReturnValue(false);
 
       const result = executor.execute(testOperations);
 
@@ -83,7 +83,7 @@ describe('OperationExecutor', () => {
     });
 
     it('should create target directory if it does not exist', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.hasPath.mockReturnValue(false);
 
       executor.execute(testOperations);
 
@@ -99,11 +99,11 @@ describe('OperationExecutor', () => {
       const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
 
       // Mock existsSync to return true for collision
-      mockFileSystemUtils.existsSync.mockReturnValue(true);
+      mockFileSystemUtils.hasPath.mockReturnValue(true);
 
       const result = executorWithConfig.execute(testOperations);
 
-      expect(mockFileSystemUtils.existsSync).toHaveBeenCalledWith('/target/file.txt');
+      expect(mockFileSystemUtils.hasPath).toHaveBeenCalledWith('/target/file.txt');
       expect(result.successful).toBe(0);
       expect(result.failed).toBe(0);
       expect(result.skipped).toBe(1);
@@ -129,7 +129,7 @@ describe('OperationExecutor', () => {
       const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
 
       // Mock existsSync to return true for collision, then false for suggested name
-      mockFileSystemUtils.existsSync.mockImplementation((path: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((path: string) => {
         return path === '/target/file.txt'; // Collision exists
       });
 
@@ -152,7 +152,7 @@ describe('OperationExecutor', () => {
 
       // Mock existsSync to return true to simulate an existing file at the target path
       // This mock will be called twice: once during collision detection and once before file deletion
-      mockFileSystemUtils.existsSync.mockReturnValue(true);
+      mockFileSystemUtils.hasPath.mockReturnValue(true);
 
       const result = executorWithConfig.execute(testOperations);
 
@@ -182,7 +182,7 @@ describe('OperationExecutor', () => {
       };
       const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
 
-      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((filePath: string) => {
         return filePath === '/target/file.txt';
       });
       mockFileSystemUtils.unlinkSync.mockImplementation(() => {
@@ -210,7 +210,7 @@ describe('OperationExecutor', () => {
       const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
 
       // Mock existsSync to return true for collision, then false for suggested name
-      mockFileSystemUtils.existsSync.mockImplementation((path: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((path: string) => {
         return path === '/target/file.txt'; // Collision exists
       });
 
@@ -238,7 +238,7 @@ describe('OperationExecutor', () => {
         testOperation,
         { ...testOperation, originalPath: '/source/file2.txt', newPath: '/target/file2.txt' }
       ];
-      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.hasPath.mockReturnValue(false);
 
       const result = executor.execute(operations);
 
@@ -252,7 +252,7 @@ describe('OperationExecutor', () => {
         testOperation,
         { ...testOperation, originalPath: '/source/file2.txt', newPath: '/target/file2.txt' }
       ];
-      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.hasPath.mockReturnValue(false);
       mockFileSystemUtils.renameSync
         .mockImplementationOnce(() => {
           throw new Error('File locked');
@@ -268,7 +268,7 @@ describe('OperationExecutor', () => {
     });
 
     it('should log successful operation', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.hasPath.mockReturnValue(false);
 
       executor.execute(testOperations);
 
@@ -282,7 +282,7 @@ describe('OperationExecutor', () => {
     });
 
     it('should log failed operation', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.hasPath.mockReturnValue(false);
       mockFileSystemUtils.renameSync.mockImplementation(() => {
         throw new Error('Permission denied');
       });
@@ -296,7 +296,7 @@ describe('OperationExecutor', () => {
     });
 
     it('should handle non-Error exceptions', () => {
-      mockFileSystemUtils.existsSync.mockReturnValue(false);
+      mockFileSystemUtils.hasPath.mockReturnValue(false);
       mockFileSystemUtils.renameSync.mockImplementation(() => {
         // eslint-disable-next-line @typescript-eslint/no-throw-literal
         throw { message: 'Custom error' } as any;
@@ -319,7 +319,7 @@ describe('OperationExecutor', () => {
         originalPath: '/same/file.txt',
         newPath: '/same/file.txt'
       };
-      mockFileSystemUtils.existsSync.mockReturnValue(true);
+      mockFileSystemUtils.hasPath.mockReturnValue(true);
       mockFileSystemUtils.mkdirSync.mockReturnValue(undefined);
       mockFileSystemUtils.renameSync.mockReturnValue(undefined);
 
@@ -353,7 +353,7 @@ describe('OperationExecutor', () => {
       const originalReason = operation.reason;
 
       // Mock existsSync to return true for collision, then false for suggested name
-      mockFileSystemUtils.existsSync.mockImplementation((path: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((path: string) => {
         return path === '/target/file.txt'; // Collision exists
       });
 
@@ -392,7 +392,7 @@ describe('OperationExecutor', () => {
       };
 
       // Mock collision on original, then success on suggested name
-      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((filePath: string) => {
         return filePath === '/target/README'; // Only original collides
       });
 
@@ -414,7 +414,7 @@ describe('OperationExecutor', () => {
       };
 
       // Mock collision on original, then success on suggested name
-      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((filePath: string) => {
         return filePath === '/target/file.test.ts'; // Only original collides
       });
 
@@ -438,7 +438,7 @@ describe('OperationExecutor', () => {
       };
 
       // Mock collision on original, then success on suggested name
-      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((filePath: string) => {
         return filePath === `/target/${longName}.txt`; // Only original collides
       });
 
@@ -461,7 +461,7 @@ describe('OperationExecutor', () => {
       };
 
       // Mock collision on original, then success on suggested name
-      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((filePath: string) => {
         return filePath === `/target/${specialName}.txt`; // Only original collides
       });
 
@@ -496,7 +496,7 @@ describe('OperationExecutor', () => {
       };
 
       // Mock all attempts as collisions to trigger fallback
-      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((filePath: string) => {
         // All regular numbered attempts will collide, fallback will succeed
         return (
           filePath === '/target/file.txt' ||
@@ -537,7 +537,7 @@ describe('OperationExecutor', () => {
       };
 
       // Mock collision on original, then success on suggested name
-      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((filePath: string) => {
         return filePath === '/target/file.txt'; // Only original collides
       });
 
@@ -571,7 +571,7 @@ describe('OperationExecutor', () => {
         reason: 'Moving to target'
       };
 
-      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((filePath: string) => {
         return filePath === '/target/file.txt';
       });
 
@@ -594,7 +594,7 @@ describe('OperationExecutor', () => {
       };
 
       // Mock collisions for original and first 4 suggestions
-      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((filePath: string) => {
         return (
           filePath === '/target/file.txt' ||
           filePath === path.join('/target', 'file-1.txt') ||
@@ -623,7 +623,7 @@ describe('OperationExecutor', () => {
       };
 
       // Mock collision on original, then success on suggested name
-      mockFileSystemUtils.existsSync.mockImplementation((filePath: string) => {
+      mockFileSystemUtils.hasPath.mockImplementation((filePath: string) => {
         return filePath === '/target/.gitignore'; // Only original collides
       });
 

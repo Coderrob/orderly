@@ -6,6 +6,8 @@
     "name": "manifest-generator",
     "description": "Behavioral contract for D:\\orderly\\src\\organizer\\manifest-generator.ts",
     "exports": [
+      "IManifest",
+      "IManifestEntry",
       "IManifestGenerator",
       "Manifest",
       "ManifestEntry",

@@ -11,19 +11,35 @@ import type { IScannedFile, IFileScanner } from './interfaces';
 
 export type { IScannedFile, IFileScanner } from './interfaces';
 
-export class FileScanner implements IFileScanner {
-  private readonly config: OrderlyConfig;
-  private readonly logger: Logger;
+/**
+ * Builds immutable category counts for scanned files.
+ * @param files - Files to count by category.
+ * @returns Category-to-count map source object.
+ */
+function buildCategoryCounts(files: readonly IScannedFile[]): Readonly<Record<string, number>> {
+  let categoryCounts: Record<string, number> = {};
 
+  for (const file of files) {
+    const category = file.category || 'uncategorized';
+    categoryCounts = {
+      ...categoryCounts,
+      [category]: (categoryCounts[category] ?? 0) + 1
+    };
+  }
+
+  return categoryCounts;
+}
+
+export class FileScanner implements IFileScanner {
   /**
    * Creates a new FileScanner instance
    * @param config - Orderly configuration containing file categories and include/exclude patterns
    * @param logger - Logger instance for recording scan operations and debug information
    */
-  constructor(config: OrderlyConfig, logger: Logger) {
-    this.config = config;
-    this.logger = logger;
-  }
+  constructor(
+    private readonly config: Readonly<OrderlyConfig>,
+    private readonly logger: Readonly<Logger>
+  ) {}
 
   /**
    * Scans a directory and categorizes all files according to configured rules
@@ -64,17 +80,17 @@ export class FileScanner implements IFileScanner {
    * @param files - Array of relative file paths to process
    * @returns Array of processed and categorized scanned files
    */
-  private processFiles(directory: string, files: string[]): IScannedFile[] {
-    const scannedFiles: IScannedFile[] = [];
+  private processFiles(directory: string, files: readonly string[]): IScannedFile[] {
+    let scannedFiles: readonly IScannedFile[] = [];
 
     for (const file of files) {
       const scannedFile = this.processFile(directory, file);
       if (scannedFile) {
-        scannedFiles.push(scannedFile);
+        scannedFiles = [...scannedFiles, scannedFile];
       }
     }
 
-    return scannedFiles;
+    return [...scannedFiles];
   }
 
   /**
@@ -87,10 +103,17 @@ export class FileScanner implements IFileScanner {
     const fullPath = join(directory, file);
     const stats = FileSystemUtils.statSync(fullPath);
 
-    if (!stats.isFile()) {
-      return null;
-    }
+    return stats.isFile() ? this.createScannedFile(fullPath, file, stats.size) : null;
+  }
 
+  /**
+   * Builds a scanned-file record for a discovered file.
+   * @param fullPath - Absolute file path.
+   * @param file - Relative file path.
+   * @param size - File size in bytes.
+   * @returns Scanned file metadata.
+   */
+  private createScannedFile(fullPath: string, file: string, size: number): IScannedFile {
     const ext = extname(file).toLowerCase();
     const category = FileCategorizer.categorize(ext, file, this.config.categories);
 
@@ -98,7 +121,7 @@ export class FileScanner implements IFileScanner {
       originalPath: fullPath,
       filename: basename(file),
       extension: ext,
-      size: stats.size,
+      size,
       category: category?.name,
       targetFolder: category?.targetFolder,
       needsRename: false
@@ -110,14 +133,7 @@ export class FileScanner implements IFileScanner {
    * @param files - Array of scanned files to summarize
    * @returns Map with category names as keys and file counts as values
    */
-  getCategorySummary(files: IScannedFile[]): Map<string, number> {
-    const summary = new Map<string, number>();
-
-    for (const file of files) {
-      const category = file.category || 'uncategorized';
-      summary.set(category, (summary.get(category) || 0) + 1);
-    }
-
-    return summary;
+  getCategorySummary(files: readonly IScannedFile[]): Map<string, number> {
+    return new Map(Object.entries(buildCategoryCounts(files)));
   }
 }

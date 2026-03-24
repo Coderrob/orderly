@@ -38,7 +38,7 @@ describe('NameStrategy', () => {
     it('should support all files', () => {
       strategy = new NameStrategy();
 
-      expect(strategy.supports(mockFile)).toBe(true);
+      expect(strategy.canProcess(mockFile)).toBe(true);
     });
   });
 

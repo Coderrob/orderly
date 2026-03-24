@@ -7,9 +7,52 @@ import { IImageDimensions, IFileProperties, IFileAttributes } from '../types';
 import { extractImageDimensions } from './image-parsers';
 import { extractExifFromJpeg } from './jpeg-exif-parser';
 
-const BASIC_IMAGE_HEADER_BYTES = 64;
-const JPEG_METADATA_CHUNK_BYTES = 64 * 1024;
-const MAX_JPEG_METADATA_BYTES = 1024 * 1024;
+const HEADER_READ_UNIT_BYTES = 64;
+const KIBIBYTE_BYTES = 1024;
+const BASIC_IMAGE_HEADER_BYTES = HEADER_READ_UNIT_BYTES;
+const JPEG_METADATA_CHUNK_BYTES = HEADER_READ_UNIT_BYTES * KIBIBYTE_BYTES;
+const MAX_JPEG_METADATA_BYTES = KIBIBYTE_BYTES * KIBIBYTE_BYTES;
+const WINDOWS_PLATFORM = 'win32';
+const OWNER_WRITE_PERMISSION_MASK = 0o200;
+const JPEG_SIGNATURE_LENGTH = 2;
+const JPEG_SIGNATURE_FIRST_BYTE = 0xff;
+const JPEG_SIGNATURE_SECOND_BYTE = 0xd8;
+const DEFAULT_MIME_TYPE = 'application/octet-stream';
+const POSIX_PATH_SEPARATOR = '/';
+
+type MetadataExtractorCallback<T> = (data: Readonly<Buffer>) => T | null;
+type MetadataExtractorRunner<T> = Readonly<{
+  run: MetadataExtractorCallback<T>;
+}>;
+
+const MIME_TYPES: Readonly<Record<string, string>> = {
+  '.txt': 'text/plain',
+  '.json': 'application/json',
+  '.xml': 'application/xml',
+  '.html': 'text/html',
+  '.css': 'text/css',
+  '.js': 'application/javascript',
+  '.ts': 'application/typescript',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.bmp': 'image/bmp',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.mp4': 'video/mp4',
+  '.avi': 'video/x-msvideo',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.zip': 'application/zip',
+  '.rar': 'application/x-rar-compressed',
+  '.7z': 'application/x-7z-compressed'
+};
+
+const SYSTEM_PATHS: readonly string[] = ['/sys', '/proc', '/dev'];
 
 /**
  * Metadata extraction service.
@@ -24,7 +67,7 @@ export class MetadataExtractor implements IMetadataExtractor {
    */
   async extractDimensions(filePath: string): Promise<IImageDimensions | null> {
     try {
-      return await this.extractWithProgressiveRead(filePath, extractImageDimensions);
+      return await this.extractWithProgressiveRead(filePath, { run: extractImageDimensions });
     } catch {
       return null;
     }
@@ -38,7 +81,7 @@ export class MetadataExtractor implements IMetadataExtractor {
    */
   async extractExif(filePath: string): Promise<Record<string, string> | null> {
     try {
-      return await this.extractWithProgressiveRead(filePath, extractExifFromJpeg);
+      return await this.extractWithProgressiveRead(filePath, { run: extractExifFromJpeg });
     } catch {
       return null;
     }
@@ -116,19 +159,32 @@ export class MetadataExtractor implements IMetadataExtractor {
    */
   private isSystemFile(
     filePath: string,
-    _stats: Stats,
+    _stats: Readonly<Stats>,
     platform: string = process.platform
   ): boolean {
-    if (platform === 'win32') {
+    if (platform === WINDOWS_PLATFORM) {
       // On Windows, system files have specific attributes
       // For now, simplified implementation
       return false;
-    } else {
-      // On Unix-like systems, check if path is in system directories
-      const systemPaths = ['/sys', '/proc', '/dev'];
-      const normalizedPath = normalize(filePath).replaceAll('\\', '/');
-      return systemPaths.some(sysPath => normalizedPath.includes(sysPath));
     }
+
+    const normalizedPath = normalize(filePath).replaceAll(/\\/g, POSIX_PATH_SEPARATOR);
+    return this.hasSystemPath(normalizedPath, SYSTEM_PATHS);
+  }
+
+  /**
+   * Determines whether a normalized path contains any system directory prefix.
+   * @param normalizedPath - Slash-normalized path.
+   * @param systemPaths - Known system path fragments.
+   * @returns True when any system path is present.
+   */
+  private hasSystemPath(normalizedPath: string, systemPaths: readonly string[]): boolean {
+    if (systemPaths.length === 0) {
+      return false;
+    }
+
+    const [firstPath, ...remainingPaths] = systemPaths;
+    return normalizedPath.includes(firstPath) || this.hasSystemPath(normalizedPath, remainingPaths);
   }
 
   /**
@@ -136,10 +192,10 @@ export class MetadataExtractor implements IMetadataExtractor {
    * @param stats - File stats containing permission bits.
    * @returns True when the owner write bit is not present; otherwise false.
    */
-  private isReadonlyFile(stats: Stats): boolean {
+  private isReadonlyFile(stats: Readonly<Stats>): boolean {
     // Check if file is writable by owner/group/others
     const mode = stats.mode;
-    return (mode & 0o200) === 0; // Check if owner has write permission
+    return (mode & OWNER_WRITE_PERMISSION_MASK) === 0; // Check if owner has write permission
   }
 
   /**
@@ -150,35 +206,7 @@ export class MetadataExtractor implements IMetadataExtractor {
    */
   private getMimeTypeFromExtension(filePath: string): string {
     const ext = extname(filePath).toLowerCase();
-
-    const mimeTypes: Record<string, string> = {
-      '.txt': 'text/plain',
-      '.json': 'application/json',
-      '.xml': 'application/xml',
-      '.html': 'text/html',
-      '.css': 'text/css',
-      '.js': 'application/javascript',
-      '.ts': 'application/typescript',
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.bmp': 'image/bmp',
-      '.webp': 'image/webp',
-      '.svg': 'image/svg+xml',
-      '.mp4': 'video/mp4',
-      '.avi': 'video/x-msvideo',
-      '.mp3': 'audio/mpeg',
-      '.wav': 'audio/wav',
-      '.pdf': 'application/pdf',
-      '.doc': 'application/msword',
-      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      '.zip': 'application/zip',
-      '.rar': 'application/x-rar-compressed',
-      '.7z': 'application/x-7z-compressed'
-    };
-
-    return mimeTypes[ext] || 'application/octet-stream';
+    return MIME_TYPES[ext] ?? DEFAULT_MIME_TYPE;
   }
 
   /**
@@ -190,41 +218,70 @@ export class MetadataExtractor implements IMetadataExtractor {
    */
   private async extractWithProgressiveRead<T>(
     filePath: string,
-    extract: (data: Buffer) => T | null
+    extractor: Readonly<MetadataExtractorRunner<T>>
   ): Promise<T | null> {
     const handle = await fs.open(filePath, 'r');
 
     try {
-      let bytesToRead = BASIC_IMAGE_HEADER_BYTES;
-      let buffer = await this.readFilePrefix(handle, bytesToRead);
-      const initialResult = extract(buffer);
-      if (initialResult) {
-        return initialResult;
-      }
-
-      if (!this.isJpeg(buffer)) {
-        return null;
-      }
-
-      while (buffer.length < MAX_JPEG_METADATA_BYTES) {
-        bytesToRead = Math.min(bytesToRead + JPEG_METADATA_CHUNK_BYTES, MAX_JPEG_METADATA_BYTES);
-        const nextBuffer = await this.readFilePrefix(handle, bytesToRead);
-
-        if (nextBuffer.length === buffer.length) {
-          return extract(nextBuffer);
-        }
-
-        buffer = nextBuffer;
-        const result = extract(buffer);
-        if (result) {
-          return result;
-        }
-      }
-
-      return extract(buffer);
+      const buffer = await this.readFilePrefix(handle, BASIC_IMAGE_HEADER_BYTES);
+      return await this.extractFromBuffer(handle, buffer, extractor);
     } finally {
       await handle.close();
     }
+  }
+
+  /**
+   * Attempts extraction from an initial buffer and continues for JPEGs when needed.
+   * @param handle - Open file handle to read from.
+   * @param buffer - Current file prefix.
+   * @param extract - Metadata extraction callback.
+   * @returns Extracted metadata value, or null when unavailable.
+   */
+  private async extractFromBuffer<T>(
+    handle: Readonly<fs.FileHandle>,
+    buffer: Readonly<Buffer>,
+    extractor: Readonly<MetadataExtractorRunner<T>>
+  ): Promise<T | null> {
+    const initialResult = extractor.run(buffer);
+    if (initialResult) {
+      return initialResult;
+    }
+
+    return this.isJpeg(buffer) ? this.extractFromJpegBuffer(handle, buffer, extractor) : null;
+  }
+
+  /**
+   * Continues progressively reading JPEG metadata until extraction succeeds or the limit is reached.
+   * @param handle - Open file handle to read from.
+   * @param buffer - Current file prefix.
+   * @param extract - Metadata extraction callback.
+   * @returns Extracted metadata value, or null when unavailable.
+   */
+  private async extractFromJpegBuffer<T>(
+    handle: Readonly<fs.FileHandle>,
+    buffer: Readonly<Buffer>,
+    extractor: Readonly<MetadataExtractorRunner<T>>
+  ): Promise<T | null> {
+    if (buffer.length >= MAX_JPEG_METADATA_BYTES) {
+      return extractor.run(buffer);
+    }
+
+    const nextBuffer = await this.readFilePrefix(handle, this.getNextReadSize(buffer.length));
+    if (nextBuffer.length === buffer.length) {
+      return extractor.run(nextBuffer);
+    }
+
+    const result = extractor.run(nextBuffer);
+    return result ?? this.extractFromJpegBuffer(handle, nextBuffer, extractor);
+  }
+
+  /**
+   * Computes the next progressive read size for JPEG metadata extraction.
+   * @param currentSize - Current buffer size.
+   * @returns Next bounded read size.
+   */
+  private getNextReadSize(currentSize: number): number {
+    return Math.min(currentSize + JPEG_METADATA_CHUNK_BYTES, MAX_JPEG_METADATA_BYTES);
   }
 
   /**
@@ -233,7 +290,7 @@ export class MetadataExtractor implements IMetadataExtractor {
    * @param maxBytes - Maximum number of bytes to read from the start of the file.
    * @returns A buffer containing only the bytes that were actually read.
    */
-  private async readFilePrefix(handle: fs.FileHandle, maxBytes: number): Promise<Buffer> {
+  private async readFilePrefix(handle: Readonly<fs.FileHandle>, maxBytes: number): Promise<Buffer> {
     const buffer = Buffer.allocUnsafe(maxBytes);
     const { bytesRead } = await handle.read(buffer, 0, maxBytes, 0);
     return buffer.subarray(0, bytesRead);
@@ -244,7 +301,11 @@ export class MetadataExtractor implements IMetadataExtractor {
    * @param data - Buffer prefix to inspect.
    * @returns True when the buffer begins with the JPEG SOI marker; otherwise false.
    */
-  private isJpeg(data: Buffer): boolean {
-    return data.length >= 2 && data[0] === 0xff && data[1] === 0xd8;
+  private isJpeg(data: Readonly<Buffer>): boolean {
+    return (
+      data.length >= JPEG_SIGNATURE_LENGTH &&
+      data[0] === JPEG_SIGNATURE_FIRST_BYTE &&
+      data[1] === JPEG_SIGNATURE_SECOND_BYTE
+    );
   }
 }

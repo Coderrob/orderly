@@ -6,26 +6,25 @@ import type { IOrganizationResult } from '../../organizer/types';
 import { LogLevel } from '../../types/logging';
 import type { IManifestService } from '../interfaces';
 
+const DEFAULT_MANIFEST_LOGGER = new Logger(LogLevel.INFO);
+
 /**
  * Service for generating and saving manifest files.
  */
 export class ManifestService implements IManifestService {
-  private readonly manifestGenerator: ManifestGenerator;
+  private readonly manifestGenerator = new ManifestGenerator(DEFAULT_MANIFEST_LOGGER);
 
   /**
    * Creates a new ManifestService instance with a logger
    */
-  constructor() {
-    const logger = new Logger(LogLevel.INFO); // Use default log level for manifests
-    this.manifestGenerator = new ManifestGenerator(logger);
-  }
+  constructor() {}
 
   /**
    * Generates and saves manifest files for an organization result.
    * @param result - Organization result to generate manifest for
    * @param outputDir - Directory to save manifest files
    */
-  saveManifests(result: IOrganizationResult, outputDir: string): void {
+  saveManifests(result: Readonly<IOrganizationResult>, outputDir: string): void {
     // Generate JSON manifest
     const manifest = this.manifestGenerator.generate(result, result.errors);
     const jsonPath = path.join(outputDir, 'orderly-manifest.json');

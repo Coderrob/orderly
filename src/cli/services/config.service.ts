@@ -17,7 +17,7 @@ export class ConfigService implements IConfigService {
    * @param options - Command options that may override config
    * @returns Loaded and merged configuration
    */
-  loadWithOverrides(options: IOrganizeOptions): OrderlyConfig {
+  loadWithOverrides(options: Readonly<IOrganizeOptions>): OrderlyConfig {
     const configPath = options.config;
     const baseConfig = configPath ? ConfigLoader.load(configPath) : ConfigLoader.load();
 
@@ -46,30 +46,81 @@ export class ConfigService implements IConfigService {
    * @param options - Command options to apply
    * @returns Configuration with overrides applied
    */
-  private applyOverrides(baseConfig: OrderlyConfig, options: IOrganizeOptions): OrderlyConfig {
-    const logLevel =
-      options.logLevel && Object.values(LogLevel).includes(options.logLevel as LogLevel)
-        ? (options.logLevel as LogLevel)
-        : baseConfig.logLevel;
-
-    const dedupeAction =
-      options.dedupeAction &&
-      Object.values(DedupeAction).includes(options.dedupeAction as DedupeAction)
-        ? (options.dedupeAction as DedupeAction)
-        : baseConfig.dedupe?.action;
-
+  private applyOverrides(
+    baseConfig: Readonly<OrderlyConfig>,
+    options: Readonly<IOrganizeOptions>
+  ): OrderlyConfig {
     const result = {
       ...baseConfig,
       dryRun: options.dryRun ?? baseConfig.dryRun,
-      logLevel,
+      logLevel: this.resolveLogLevel(options.logLevel) ?? baseConfig.logLevel,
       targetDirectory: options.output ? path.resolve(options.output) : baseConfig.targetDirectory
     };
+    return this.withOptionalDedupeOverride(result, baseConfig, options);
+  }
 
-    if (options.dedupe !== undefined || options.dedupeAction !== undefined) {
-      result.dedupe = this.createDedupeConfig(baseConfig.dedupe, options.dedupe, dedupeAction);
+  /**
+   * Applies dedupe overrides only when dedupe-related options were provided.
+   * @param baseResult - Config result before dedupe overrides.
+   * @param baseConfig - Base config loaded from file/defaults.
+   * @param options - Parsed organize options.
+   * @returns Config with optional dedupe override.
+   */
+  private withOptionalDedupeOverride(
+    baseResult: Readonly<OrderlyConfig>,
+    baseConfig: Readonly<OrderlyConfig>,
+    options: Readonly<IOrganizeOptions>
+  ): OrderlyConfig {
+    if (options.dedupe === undefined && options.dedupeAction === undefined) {
+      return { ...baseResult };
     }
 
-    return result;
+    return {
+      ...baseResult,
+      dedupe: this.createDedupeConfig(
+        baseConfig.dedupe,
+        options.dedupe,
+        this.resolveDedupeAction(options.dedupeAction) ?? baseConfig.dedupe?.action
+      )
+    };
+  }
+
+  /**
+   * Resolves a raw CLI log level to a supported enum value.
+   * @param logLevel - Raw CLI log level value.
+   * @returns Supported log level when valid.
+   */
+  private resolveLogLevel(logLevel?: string): LogLevel | undefined {
+    switch (logLevel) {
+      case LogLevel.DEBUG:
+        return LogLevel.DEBUG;
+      case LogLevel.INFO:
+        return LogLevel.INFO;
+      case LogLevel.WARN:
+        return LogLevel.WARN;
+      case LogLevel.ERROR:
+        return LogLevel.ERROR;
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Resolves a raw CLI dedupe action to a supported enum value.
+   * @param dedupeAction - Raw CLI dedupe action value.
+   * @returns Supported dedupe action when valid.
+   */
+  private resolveDedupeAction(dedupeAction?: string): DedupeAction | undefined {
+    switch (dedupeAction) {
+      case DedupeAction.SKIP:
+        return DedupeAction.SKIP;
+      case DedupeAction.REPORT:
+        return DedupeAction.REPORT;
+      case DedupeAction.REPLACE:
+        return DedupeAction.REPLACE;
+      default:
+        return undefined;
+    }
   }
 
   /**
@@ -80,7 +131,7 @@ export class ConfigService implements IConfigService {
    * @returns Merged dedupe configuration
    */
   private createDedupeConfig(
-    baseDedupe: IDedupeConfig | undefined,
+    baseDedupe: Readonly<IDedupeConfig> | undefined,
     enabled: boolean | undefined,
     action: DedupeAction | undefined
   ): IDedupeConfig {

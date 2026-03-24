@@ -3,6 +3,7 @@ import * as path from 'node:path';
 
 import { type OrderlyConfig, CollisionResolutionStrategy } from '../config/types';
 import { Logger } from '../logger/logger';
+import { Clock } from '../utils/clock';
 import { FileSystemUtils } from '../utils/file-system-utils';
 
 import type { IOperationExecutor } from './interfaces';
@@ -12,6 +13,7 @@ import type { IFileOperation, IOrganizationResult } from './types';
 const DEFAULT_COLLISION_STRATEGY = CollisionResolutionStrategy.KEEP_BOTH;
 const DEFAULT_RENAME_PATTERN = '{name}-{n}{ext}';
 const DEFAULT_MAX_ATTEMPTS = 100;
+const RANDOM_SUFFIX_LENGTH = 6;
 
 // Placeholders for rename pattern
 const NAME_PLACEHOLDER = '{name}';
@@ -26,9 +28,9 @@ export class OperationExecutor implements IOperationExecutor {
    * @param config - Optional configuration containing collision resolution and other settings
    */
   constructor(
-    private readonly logger: Logger,
+    private readonly logger: Readonly<Logger>,
     private readonly dryRun: boolean,
-    private readonly config?: OrderlyConfig
+    private readonly config?: Readonly<OrderlyConfig>
   ) {}
 
   /**
@@ -36,7 +38,7 @@ export class OperationExecutor implements IOperationExecutor {
    * @param operations - Array of file operations to execute
    * @returns Organization result containing success/failure counts and any errors
    */
-  execute(operations: IFileOperation[]): IOrganizationResult {
+  execute(operations: readonly IFileOperation[]): IOrganizationResult {
     const result = this.createEmptyResult(operations);
 
     if (this.dryRun) {
@@ -51,9 +53,9 @@ export class OperationExecutor implements IOperationExecutor {
    * @param operations - Array of file operations to include in the result
    * @returns Empty organization result with zero counts and no errors
    */
-  private createEmptyResult(operations: IFileOperation[]): IOrganizationResult {
+  private createEmptyResult(operations: readonly IFileOperation[]): IOrganizationResult {
     return {
-      operations,
+      operations: [...operations],
       successful: 0,
       failed: 0,
       skipped: 0,
@@ -69,8 +71,8 @@ export class OperationExecutor implements IOperationExecutor {
    * @returns Updated organization result with all operations marked as successful
    */
   private executeDryRun(
-    operations: IFileOperation[],
-    result: IOrganizationResult
+    operations: readonly IFileOperation[],
+    result: Readonly<IOrganizationResult>
   ): IOrganizationResult {
     this.logger.info('DRY RUN: No files will be modified');
 
@@ -78,9 +80,7 @@ export class OperationExecutor implements IOperationExecutor {
       this.logger.info(`[DRY RUN] ${op.type}: ${op.originalPath} -> ${op.newPath}`);
     }
 
-    result.successful = operations.length;
-    // Critical: Return early without executing performOperation
-    return result;
+    return { ...result, successful: operations.length };
   }
 
   /**
@@ -90,43 +90,88 @@ export class OperationExecutor implements IOperationExecutor {
    * @returns Updated organization result with success/failure counts and any errors
    */
   private executeReal(
-    operations: IFileOperation[],
-    result: IOrganizationResult
+    operations: readonly IFileOperation[],
+    result: Readonly<IOrganizationResult>
   ): IOrganizationResult {
+    let currentResult = result;
+
     for (const operation of operations) {
-      this.executeOperation(operation, result);
+      currentResult = this.executeOperation(operation, currentResult);
     }
-    return result;
+
+    return currentResult;
   }
 
   /**
    * Executes a single file operation and updates the result accordingly
    * @param operation - File operation to execute
    * @param result - Organization result to update with execution outcome
+   * @returns Updated organization result.
    */
-  private executeOperation(operation: IFileOperation, result: IOrganizationResult): void {
+  private executeOperation(
+    operation: Readonly<IFileOperation>,
+    result: Readonly<IOrganizationResult>
+  ): IOrganizationResult {
     try {
       const executionResult = this.performOperation(operation);
       if (executionResult.succeeded) {
-        result.successful++;
-        const reason = executionResult.collisionResolved
-          ? `${operation.reason} (collision resolved)`
-          : operation.reason;
-        this.logger.info(`✓ ${reason}`, {
-          from: operation.originalPath,
-          to: executionResult.finalPath
-        });
-      } else {
-        result.skipped = (result.skipped ?? 0) + 1;
-        result.skippedOperations = result.skippedOperations ?? [];
-        result.skippedOperations.push({
-          file: operation.originalPath,
-          reason: executionResult.skipReason ?? 'Operation skipped'
-        });
+        return this.handleSuccessfulOperation(operation, executionResult, result);
       }
+
+      return this.handleSkippedOperation(operation, executionResult, result);
     } catch (error) {
-      this.handleOperationError(operation, error, result);
+      return this.handleOperationError(operation, error, result);
     }
+  }
+
+  /**
+   * Records a successful file operation.
+   * @param operation - Executed file operation.
+   * @param executionResult - Final execution details.
+   * @param result - Current organization result.
+   * @returns Updated organization result.
+   */
+  private handleSuccessfulOperation(
+    operation: Readonly<IFileOperation>,
+    executionResult: Readonly<{
+      succeeded: boolean;
+      finalPath: string;
+      collisionResolved: boolean;
+    }>,
+    result: Readonly<IOrganizationResult>
+  ): IOrganizationResult {
+    const reason = executionResult.collisionResolved
+      ? `${operation.reason} (collision resolved)`
+      : operation.reason;
+    this.logger.info(`✓ ${reason}`, {
+      from: operation.originalPath,
+      to: executionResult.finalPath
+    });
+    return { ...result, successful: result.successful + 1 };
+  }
+
+  /**
+   * Records a skipped file operation.
+   * @param operation - Skipped file operation.
+   * @param executionResult - Final execution details.
+   * @param result - Current organization result.
+   * @returns Updated organization result.
+   */
+  private handleSkippedOperation(
+    operation: Readonly<IFileOperation>,
+    executionResult: Readonly<{ skipReason?: string }>,
+    result: Readonly<IOrganizationResult>
+  ): IOrganizationResult {
+    const skippedOperation = {
+      file: operation.originalPath,
+      reason: executionResult.skipReason ?? 'Operation skipped'
+    };
+
+    return {
+      ...result,
+      skipped: (result.skipped ?? 0) + 1,
+      skippedOperations: [...(result.skippedOperations ?? []), skippedOperation]
+    };
   }
 
   /**
@@ -134,37 +179,72 @@ export class OperationExecutor implements IOperationExecutor {
    * @param operation - The operation to perform
    * @returns An object indicating success, the final path used, and whether collision was resolved
    */
-  private performOperation(operation: IFileOperation): {
+  private performOperation(operation: Readonly<IFileOperation>): {
     succeeded: boolean;
     finalPath: string;
     collisionResolved: boolean;
     skipReason?: string;
   } {
-    let finalTargetPath = operation.newPath;
-    let collisionResolved = false;
-
-    // Check for file existence and handle collision resolution
-    if (FileSystemUtils.existsSync(finalTargetPath) && finalTargetPath !== operation.originalPath) {
-      const resolvedPath = this.resolveCollision(operation, finalTargetPath);
-      if (!resolvedPath) {
-        // Skip this operation based on strategy
-        const skipReason = `Skipping ${operation.originalPath} due to collision resolution strategy`;
-        this.logger.warn(skipReason);
-        return {
-          succeeded: false,
-          finalPath: operation.newPath,
-          collisionResolved: false,
-          skipReason
-        };
-      }
-      finalTargetPath = resolvedPath;
-      collisionResolved = true;
+    const collisionResult = this.getCollisionResult(operation);
+    if (collisionResult.skipReason) {
+      this.logger.warn(collisionResult.skipReason);
+      return collisionResult;
     }
 
-    FileSystemUtils.mkdirSync(path.dirname(finalTargetPath));
+    FileSystemUtils.mkdirSync(path.dirname(collisionResult.finalPath));
+    FileSystemUtils.renameSync(operation.originalPath, collisionResult.finalPath);
+    return collisionResult;
+  }
 
-    FileSystemUtils.renameSync(operation.originalPath, finalTargetPath);
-    return { succeeded: true, finalPath: finalTargetPath, collisionResolved };
+  /**
+   * Resolves collision handling before a rename.
+   * @param operation - Operation being prepared.
+   * @returns Final path details or a skip outcome.
+   */
+  private getCollisionResult(operation: Readonly<IFileOperation>): {
+    succeeded: boolean;
+    finalPath: string;
+    collisionResolved: boolean;
+    skipReason?: string;
+  } {
+    if (!this.hasCollision(operation)) {
+      return { succeeded: true, finalPath: operation.newPath, collisionResolved: false };
+    }
+
+    const resolvedPath = this.resolveCollision(operation, operation.newPath);
+    return resolvedPath
+      ? { succeeded: true, finalPath: resolvedPath, collisionResolved: true }
+      : this.buildSkippedCollisionResult(operation);
+  }
+
+  /**
+   * Creates the skipped collision result payload.
+   * @param operation - Operation being skipped.
+   * @returns Skipped collision result.
+   */
+  private buildSkippedCollisionResult(operation: Readonly<IFileOperation>): {
+    succeeded: boolean;
+    finalPath: string;
+    collisionResolved: boolean;
+    skipReason: string;
+  } {
+    return {
+      succeeded: false,
+      finalPath: operation.newPath,
+      collisionResolved: false,
+      skipReason: `Skipping ${operation.originalPath} due to collision resolution strategy`
+    };
+  }
+
+  /**
+   * Checks whether the target path collides with an existing file.
+   * @param operation - Operation being evaluated.
+   * @returns True when the destination already exists and differs from source.
+   */
+  private hasCollision(operation: Readonly<IFileOperation>): boolean {
+    return (
+      FileSystemUtils.hasPath(operation.newPath) && operation.newPath !== operation.originalPath
+    );
   }
 
   /**
@@ -173,53 +253,78 @@ export class OperationExecutor implements IOperationExecutor {
    * @param targetPath - The target path where the collision occurred
    * @returns The resolved target path, or null to skip the operation
    */
-  private resolveCollision(operation: IFileOperation, targetPath: string): string | null {
+  private resolveCollision(operation: Readonly<IFileOperation>, targetPath: string): string | null {
     const strategy = this.config?.collisionResolution?.strategy || DEFAULT_COLLISION_STRATEGY;
+    if (strategy === CollisionResolutionStrategy.SKIP) return null;
+    if (strategy === CollisionResolutionStrategy.KEEP_BOTH)
+      return this.generateSuggestedName(targetPath);
+    return strategy === CollisionResolutionStrategy.REPLACE
+      ? this.handleReplaceCollision(operation, targetPath)
+      : this.handleUnknownCollisionStrategy(operation, targetPath, strategy);
+  }
 
-    switch (strategy) {
-      case CollisionResolutionStrategy.SKIP:
-        return null; // Skip this operation
+  /**
+   * Handles replacement collision strategy.
+   * @param operation - Colliding file operation.
+   * @param targetPath - Existing destination path.
+   * @returns Target path or a generated fallback path.
+   */
+  private handleReplaceCollision(operation: Readonly<IFileOperation>, targetPath: string): string {
+    this.logger.warn('REPLACE strategy: deleting existing file to allow replacement', {
+      target: targetPath,
+      source: operation.originalPath
+    });
 
-      case CollisionResolutionStrategy.KEEP_BOTH:
-        return this.generateSuggestedName(targetPath);
-
-      case CollisionResolutionStrategy.REPLACE:
-        // Warn the user that the existing file will be deleted
-        this.logger.warn(`REPLACE strategy: deleting existing file to allow replacement`, {
-          target: targetPath,
-          source: operation.originalPath
-        });
-        // Delete the existing file before we proceed with the rename
-        // Safety check in case file was deleted between collision detection and resolution
-        if (FileSystemUtils.existsSync(targetPath)) {
-          try {
-            FileSystemUtils.unlinkSync(targetPath);
-          } catch (unlinkError) {
-            // If deletion fails (e.g., due to race condition), fall back to keep-both
-            this.logger.warn(
-              `REPLACE strategy: failed to delete existing file, falling back to keep-both`,
-              {
-                target: targetPath,
-                error: unlinkError instanceof Error ? unlinkError.message : String(unlinkError)
-              }
-            );
-            return this.generateSuggestedName(targetPath);
-          }
-        }
-        return targetPath; // Use original target path
-
-      default:
-        this.logger.warn(
-          `Unknown collision resolution strategy '${String(strategy)}', falling back to '${DEFAULT_COLLISION_STRATEGY}'`,
-          {
-            operation: operation.originalPath,
-            target: targetPath,
-            providedStrategy: strategy,
-            validStrategies: Object.values(CollisionResolutionStrategy)
-          }
-        );
-        return this.generateSuggestedName(targetPath);
+    if (!FileSystemUtils.hasPath(targetPath)) {
+      return targetPath;
     }
+
+    return this.tryDeleteCollisionTarget(targetPath);
+  }
+
+  /**
+   * Deletes the existing collision target or falls back to keep-both.
+   * @param targetPath - Existing destination path.
+   * @returns A safe target path for the operation.
+   */
+  private tryDeleteCollisionTarget(targetPath: string): string {
+    try {
+      FileSystemUtils.unlinkSync(targetPath);
+      return targetPath;
+    } catch (unlinkError) {
+      this.logger.warn(
+        'REPLACE strategy: failed to delete existing file, falling back to keep-both',
+        {
+          target: targetPath,
+          error: unlinkError instanceof Error ? unlinkError.message : String(unlinkError)
+        }
+      );
+      return this.generateSuggestedName(targetPath);
+    }
+  }
+
+  /**
+   * Handles invalid collision strategies defensively.
+   * @param operation - Colliding file operation.
+   * @param targetPath - Existing destination path.
+   * @param strategy - Unrecognized configured strategy.
+   * @returns A generated safe target path.
+   */
+  private handleUnknownCollisionStrategy(
+    operation: Readonly<IFileOperation>,
+    targetPath: string,
+    strategy: unknown
+  ): string {
+    this.logger.warn(
+      `Unknown collision resolution strategy '${String(strategy)}', falling back to '${DEFAULT_COLLISION_STRATEGY}'`,
+      {
+        operation: operation.originalPath,
+        target: targetPath,
+        providedStrategy: strategy,
+        validStrategies: Object.values(CollisionResolutionStrategy)
+      }
+    );
+    return this.generateSuggestedName(targetPath);
   }
 
   /**
@@ -228,32 +333,108 @@ export class OperationExecutor implements IOperationExecutor {
    * @returns A suggested alternative filename that doesn't conflict with existing files
    */
   private generateSuggestedName(targetPath: string): string {
-    const dir = path.dirname(targetPath);
+    const targetParts = this.getTargetPathParts(targetPath);
+    const availablePath = this.findAvailableSuggestedPath({
+      dir: targetParts.dir,
+      nameWithoutExt: targetParts.nameWithoutExt,
+      ext: targetParts.ext,
+      renamePattern: this.config?.collisionResolution?.renamePattern || DEFAULT_RENAME_PATTERN,
+      maxAttempts: this.config?.collisionResolution?.maxAttempts || DEFAULT_MAX_ATTEMPTS
+    });
+    if (availablePath) return availablePath;
+    return this.buildFallbackSuggestedPath(targetParts);
+  }
+
+  /**
+   * Splits a target path into reusable naming parts.
+   * @param targetPath - Path being resolved.
+   * @returns Parsed path parts.
+   */
+  private getTargetPathParts(targetPath: string): Readonly<{
+    dir: string;
+    ext: string;
+    nameWithoutExt: string;
+  }> {
     const filename = path.basename(targetPath);
     const ext = path.extname(filename);
-    const nameWithoutExt = path.basename(filename, ext);
+    return { dir: path.dirname(targetPath), ext, nameWithoutExt: path.basename(filename, ext) };
+  }
 
-    // Default pattern: {name}-{n}{ext}
-    const renamePattern = this.config?.collisionResolution?.renamePattern || DEFAULT_RENAME_PATTERN;
-    const maxAttempts = this.config?.collisionResolution?.maxAttempts || DEFAULT_MAX_ATTEMPTS;
-
-    for (let i = 1; i <= maxAttempts; i++) {
-      const suggestedName = renamePattern
-        .replace(NAME_PLACEHOLDER, nameWithoutExt)
-        .replace(NUMBER_PLACEHOLDER, i.toString())
-        .replace(EXT_PLACEHOLDER, ext);
-
-      const suggestedPath = path.join(dir, suggestedName);
-
-      // Check if this suggested name is available
-      if (!FileSystemUtils.existsSync(suggestedPath)) {
+  /**
+   * Searches for the first available keep-both filename.
+   * @param dir - Destination directory.
+   * @param nameWithoutExt - Base filename without extension.
+   * @param ext - Original extension.
+   * @param renamePattern - Pattern used for numbering collisions.
+   * @param maxAttempts - Maximum numbered attempts.
+   * @returns Available path when found; otherwise null.
+   */
+  private findAvailableSuggestedPath(
+    options: Readonly<{
+      dir: string;
+      nameWithoutExt: string;
+      ext: string;
+      renamePattern: string;
+      maxAttempts: number;
+    }>
+  ): string | null {
+    for (let attempt = 1; attempt <= options.maxAttempts; attempt++) {
+      const suggestedPath = path.join(
+        options.dir,
+        this.buildSuggestedName(options.renamePattern, options.nameWithoutExt, options.ext, attempt)
+      );
+      if (!FileSystemUtils.hasPath(suggestedPath)) {
         return suggestedPath;
       }
     }
 
-    // Fallback: append timestamp and crypto-generated random suffix to reduce collision risk
-    const randomSuffix = crypto.randomBytes(3).toString('hex');
-    return path.join(dir, `${nameWithoutExt}-${Date.now()}-${randomSuffix}${ext}`);
+    return null;
+  }
+
+  /**
+   * Creates a random suffix for collision fallback names.
+   * @returns Hex-like random suffix.
+   */
+  private createRandomSuffix(): string {
+    return crypto.randomUUID().replaceAll('-', '').slice(0, RANDOM_SUFFIX_LENGTH);
+  }
+
+  /**
+   * Builds the final fallback collision filename.
+   * @param targetParts - Parsed path parts for the colliding file.
+   * @returns Fallback path with monotonic token and random suffix.
+   */
+  private buildFallbackSuggestedPath(
+    targetParts: Readonly<{
+      dir: string;
+      ext: string;
+      nameWithoutExt: string;
+    }>
+  ): string {
+    return path.join(
+      targetParts.dir,
+      `${targetParts.nameWithoutExt}-${Clock.nowMonotonicToken()}-${this.createRandomSuffix()}${targetParts.ext}`
+    );
+  }
+
+  /**
+   * Builds a numbered collision filename.
+   * @param renamePattern - Pattern used for numbering collisions.
+   * @param nameWithoutExt - Base filename without extension.
+   * @param ext - Original extension.
+   * @param attempt - Attempt index.
+   * @returns Suggested filename.
+   */
+  private buildSuggestedName(
+    renamePattern: string,
+    nameWithoutExt: string,
+    ext: string,
+    attempt: number
+  ): string {
+    return renamePattern
+      .replace(NAME_PLACEHOLDER, nameWithoutExt)
+      .replace(NUMBER_PLACEHOLDER, String(attempt))
+      .replace(EXT_PLACEHOLDER, ext);
   }
 
   /**
@@ -261,18 +442,20 @@ export class OperationExecutor implements IOperationExecutor {
    * @param operation - The file operation that encountered an error
    * @param error - The error that occurred
    * @param result - Organization result to update with error information
+   * @returns Updated organization result.
    */
   private handleOperationError(
-    operation: IFileOperation,
+    operation: Readonly<IFileOperation>,
     error: unknown,
-    result: IOrganizationResult
-  ): void {
-    result.failed++;
+    result: Readonly<IOrganizationResult>
+  ): IOrganizationResult {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    result.errors.push({
-      file: operation.originalPath,
-      error: errorMessage
-    });
     this.logger.error(`✗ Failed to process ${operation.originalPath}`, errorMessage);
+
+    return {
+      ...result,
+      failed: result.failed + 1,
+      errors: [...result.errors, { file: operation.originalPath, error: errorMessage }]
+    };
   }
 }

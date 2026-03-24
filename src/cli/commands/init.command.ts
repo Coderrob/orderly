@@ -20,22 +20,21 @@ export class InitHandler implements IInitHandler {
   @WithCommandAudit('init')
   @WithCommandTelemetry('init')
   @HandleCommandErrors(COMMAND_MESSAGES.INIT_FAILED)
-  execute(options: IInitOptions): Promise<ICommandResult> {
+  execute(options: Readonly<IInitOptions>): Promise<ICommandResult> {
     const format = options.format || CLI_CONSTANTS.DEFAULT_CONFIG_FORMAT;
     const configPath = this.getConfigPath(format);
+    return this.hasExistingConfig(configPath)
+      ? Promise.resolve(this.buildFailureResult(configPath))
+      : this.createConfig(configPath);
+  }
 
-    // Check if config already exists
-    if (this.configExists(configPath)) {
-      return Promise.resolve({
-        success: false,
-        exitCode: ExitCode.ERROR,
-        message: `${COMMAND_MESSAGES.CONFIG_EXISTS}${configPath}`
-      });
-    }
-
-    // Save default configuration
+  /**
+   * Creates the config file and returns a success result.
+   * @param configPath - Path where the config file will be written.
+   * @returns Success result payload.
+   */
+  private createConfig(configPath: string): Promise<ICommandResult> {
     ConfigLoader.save(DEFAULT_CONFIG, configPath);
-
     return Promise.resolve({
       success: true,
       exitCode: ExitCode.SUCCESS,
@@ -44,22 +43,38 @@ export class InitHandler implements IInitHandler {
   }
 
   /**
+   * Builds the failure result used when a config file already exists.
+   * @param configPath - Existing config file path.
+   * @returns Failure result payload.
+   */
+  private buildFailureResult(configPath: string): ICommandResult {
+    return {
+      success: false,
+      exitCode: ExitCode.ERROR,
+      message: `${COMMAND_MESSAGES.CONFIG_EXISTS}${configPath}`
+    };
+  }
+
+  /**
    * Gets the configuration file path based on format.
    * @param format - Configuration format (json or yaml)
    * @returns Configuration file path
    */
   private getConfigPath(format: ConfigFileFormat | string): string {
-    const formatLower = typeof format === 'string' ? format.toLowerCase() : format;
-    const extension = formatLower === 'yaml' || formatLower === 'yml' ? 'yaml' : 'json';
+    const formatLower = String(format).toLowerCase();
+    const extension =
+      formatLower === `${ConfigFileFormat.YAML}` || formatLower === `${ConfigFileFormat.YML}`
+        ? ConfigFileFormat.YAML
+        : ConfigFileFormat.JSON;
     return path.resolve(`${CLI_CONSTANTS.CONFIG_PREFIX}${extension}`);
   }
 
   /**
    * Checks if a configuration file already exists.
    * @param configPath - Path to check
-   * @returns True if the file exists
+   * @returns True if the file exists.
    */
-  private configExists(configPath: string): boolean {
+  private hasExistingConfig(configPath: string): boolean {
     try {
       ConfigLoader.load(configPath);
       return true;

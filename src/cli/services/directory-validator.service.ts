@@ -1,3 +1,4 @@
+import { ok as assert } from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
@@ -15,24 +16,12 @@ export class DirectoryValidator implements IDirectoryValidator {
    */
   validate(directory: string): string {
     const resolvedPath = path.resolve(directory);
-
-    if (!fs.existsSync(resolvedPath)) {
-      throw new Error(`Directory does not exist: ${resolvedPath}`);
-    }
-
-    // Check if it's actually a directory
-    const stats = fs.statSync(resolvedPath);
-    if (!stats.isDirectory()) {
-      throw new Error(`Path is not a directory: ${resolvedPath}`);
-    }
-
-    // Check if directory is readable
-    try {
-      fs.readdirSync(resolvedPath);
-    } catch {
-      throw new Error(`Directory is not accessible: ${resolvedPath}`);
-    }
-
+    assert(fs.existsSync(resolvedPath), new Error(`Directory does not exist: ${resolvedPath}`));
+    assert(
+      fs.statSync(resolvedPath).isDirectory(),
+      new Error(`Path is not a directory: ${resolvedPath}`)
+    );
+    fs.accessSync(resolvedPath, fs.constants.R_OK);
     return resolvedPath;
   }
 }

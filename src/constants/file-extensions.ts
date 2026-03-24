@@ -11,7 +11,7 @@ export const IMAGE_EXTENSIONS: ReadonlyExtensionList = [
   '.bmp',
   '.tiff',
   '.tif'
-] as const;
+];
 
 export const DOCUMENT_EXTENSIONS: ReadonlyExtensionList = [
   '.pdf',
@@ -25,7 +25,7 @@ export const DOCUMENT_EXTENSIONS: ReadonlyExtensionList = [
   '.xlsx',
   '.ppt',
   '.pptx'
-] as const;
+];
 
 export const VIDEO_EXTENSIONS: ReadonlyExtensionList = [
   '.mp4',
@@ -37,7 +37,7 @@ export const VIDEO_EXTENSIONS: ReadonlyExtensionList = [
   '.webm',
   '.m4v',
   '.3gp'
-] as const;
+];
 
 export const AUDIO_EXTENSIONS: ReadonlyExtensionList = [
   '.mp3',
@@ -48,7 +48,7 @@ export const AUDIO_EXTENSIONS: ReadonlyExtensionList = [
   '.wma',
   '.m4a',
   '.opus'
-] as const;
+];
 
 export const ARCHIVE_EXTENSIONS: ReadonlyExtensionList = [
   '.zip',
@@ -60,7 +60,7 @@ export const ARCHIVE_EXTENSIONS: ReadonlyExtensionList = [
   '.xz',
   '.tgz',
   '.tbz2'
-] as const;
+];
 
 export const CODE_EXTENSIONS: ReadonlyExtensionList = [
   '.js',
@@ -86,7 +86,7 @@ export const CODE_EXTENSIONS: ReadonlyExtensionList = [
   '.lua',
   '.pl',
   '.r'
-] as const;
+];
 
 /**
  * Default file categories with type safety.
@@ -98,4 +98,4 @@ export const DEFAULT_CATEGORIES: readonly IFileCategory[] = [
   { name: 'audio', extensions: AUDIO_EXTENSIONS, targetFolder: 'audio' },
   { name: 'archives', extensions: ARCHIVE_EXTENSIONS, targetFolder: 'archives' },
   { name: 'code', extensions: CODE_EXTENSIONS, targetFolder: 'code' }
-] as const;
+];
