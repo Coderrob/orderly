@@ -29,13 +29,15 @@
     "quality:fix": "npm run lint:fix && npm run format",
     "verify": "npm run typecheck && npm run lint && npm run format:check && npm run test:coverage",
     "setup": "node scripts/setup-and-verify.js",
+    "setup:rg": "node scripts/setup-rg.js",
     "prepack": "npm run verify && npm run build",
     "prepublishOnly": "npm run verify",
     "clean": "rimraf dist coverage reports .eslintcache",
     "update:check": "npm outdated",
     "update:patch": "npm update",
     "update:all": "npx npm-check-updates -u && npm install",
-    "audit:fix": "npm audit fix"
+    "audit:fix": "npm audit fix",
+    "rg": "node scripts/rg.js"
   },
   "keywords": [
     "cli",
@@ -59,6 +61,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/micromatch": "^4.0.10",
     "@types/node": "^25.1.0",
+    "@vscode/ripgrep": "^1.17.1",
     "eslint": "^9.39.2",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jsdoc": "^62.5.0",

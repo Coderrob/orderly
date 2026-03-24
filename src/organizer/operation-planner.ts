@@ -39,8 +39,8 @@ function getOperationMetadata(
  * Computes the destination filename for a scanned file.
  * @param file - The scanned file being planned.
  * @param config - The active organizer configuration.
- * @returns The filename that should be used after naming normalization.
- * @param baseDirectory TODO: describe parameter
+ * @param baseDirectory - The base directory used for relative target folders.
+ * @returns The directory where the file should be placed.
  */
 function getTargetDirectory(
   file: Readonly<IScannedFile>,

@@ -63,10 +63,10 @@ function createTelemetryWrapper(
   originalMethodRef: Readonly<ICommandExecutionRef>
 ): CommandExecution {
   /**
-   * executeWithTelemetry TODO: describe
-   * @param this TODO: describe parameter
-   * @param args TODO: describe parameter
-   * @returns TODO: describe return value
+   * Executes the wrapped command and appends telemetry metadata.
+   * @param this - Invocation context.
+   * @param args - Command arguments.
+   * @returns Command result with telemetry suffix.
    */
   async function executeWithTelemetry(
     this: object,
@@ -93,9 +93,6 @@ function isCommandExecution(value: unknown): value is CommandExecution {
  * Checks whether a descriptor value can be wrapped as a command method.
  * @param value - Descriptor value.
  * @returns True when the value is a callable command method.
- * @param originalMethod TODO: describe parameter
- * @param context TODO: describe parameter
- * @param args TODO: describe parameter
  */
 function isCommandResult(value: unknown): value is ICommandResult {
   return (
@@ -109,11 +106,11 @@ function isCommandResult(value: unknown): value is ICommandResult {
 
 /**
  * Checks whether an unknown value matches ICommandResult.
- * @param value - Value to check.
- * @returns True when value matches ICommandResult shape.
- * @param originalMethod TODO: describe parameter
- * @param context TODO: describe parameter
- * @param args TODO: describe parameter
+ * @param commandName - Command name used in telemetry text.
+ * @param originalMethodRef - Command method reference to execute.
+ * @param context - Invocation context.
+ * @param args - Command arguments.
+ * @returns Command result with telemetry metadata.
  */
 async function runTelemetryCommand(
   commandName: string,

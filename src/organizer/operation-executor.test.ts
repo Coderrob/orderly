@@ -298,8 +298,8 @@ describe('OperationExecutor', () => {
     it('should handle non-Error exceptions', () => {
       mockFileSystemUtils.hasPath.mockReturnValue(false);
       mockFileSystemUtils.renameSync.mockImplementation(() => {
-        // eslint-disable-next-line @typescript-eslint/no-throw-literal
-        throw { message: 'Custom error' } as any;
+        class NonErrorThrown {}
+        throw new NonErrorThrown();
       });
 
       const result = executor.execute(testOperations);

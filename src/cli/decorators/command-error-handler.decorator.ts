@@ -56,10 +56,10 @@ function createErrorHandledWrapper(
   originalMethodRef: Readonly<ICommandMethodRef>
 ): CommandMethod {
   /**
-   * executeWithErrorHandling TODO: describe
-   * @param this TODO: describe parameter
-   * @param args TODO: describe parameter
-   * @returns TODO: describe return value
+   * Executes the wrapped command and normalizes thrown errors.
+   * @param this - Invocation context.
+   * @param args - Command arguments.
+   * @returns Successful or failed command result.
    */
   async function executeWithErrorHandling(
     this: object,
@@ -100,41 +100,24 @@ function createErrorHandlerMethodDecorator(errorPrefix: string): MethodDecorator
  * Creates a method decorator that applies command error handling.
  * @param errorPrefix - Message prefix used for command failures.
  * @returns Decorator implementation.
- * @param originalMethod TODO: describe parameter
- * @param context TODO: describe parameter
- * @param args TODO: describe parameter
  */
 export function HandleCommandErrors(errorPrefix: string): MethodDecorator {
   return createErrorHandlerMethodDecorator(errorPrefix);
 }
 
 /**
- * Invokes a command method with an explicit context.
- * @param commandMethod - Command method to execute.
- * @param context - Invocation context.
- * @param args - Command arguments.
- * @returns Command execution result.
- */
-/**
- * Wraps a command handler method with consistent CLI error handling.
- * Converts thrown sync/async errors into a standard ICommandResult payload.
- * @param errorPrefix - Message prefix used for command failures
- * @returns A method decorator that converts thrown errors into failed command results.
- * @param originalMethod TODO: describe parameter
- * @param context TODO: describe parameter
- * @param args TODO: describe parameter
+ * Checks whether a descriptor value can be wrapped as a command method.
+ * @param value - Descriptor value.
+ * @returns True when the value is a callable command method.
  */
 function isCommandMethod(value: unknown): value is CommandMethod {
   return typeof value === 'function';
 }
 
 /**
- * Checks whether a descriptor value can be wrapped as a command method.
+ * Checks whether an unknown value matches ICommandResult.
  * @param value - Descriptor value.
- * @returns True when the value is a callable command method.
- * @param originalMethod TODO: describe parameter
- * @param context TODO: describe parameter
- * @param args TODO: describe parameter
+ * @returns True when value matches ICommandResult shape.
  */
 function isCommandResult(value: unknown): value is ICommandResult {
   return (
@@ -147,12 +130,12 @@ function isCommandResult(value: unknown): value is ICommandResult {
 }
 
 /**
- * Checks whether an unknown value matches ICommandResult.
- * @param value - Value to check.
- * @returns True when value matches ICommandResult shape.
- * @param originalMethod TODO: describe parameter
- * @param context TODO: describe parameter
- * @param args TODO: describe parameter
+ * Executes a command and maps thrown errors to a failed result payload.
+ * @param errorPrefix - Message prefix for command failures.
+ * @param originalMethodRef - Original command method reference.
+ * @param context - Invocation context.
+ * @param args - Command arguments.
+ * @returns Successful or failed command result.
  */
 async function runErrorHandledCommand(
   errorPrefix: string,

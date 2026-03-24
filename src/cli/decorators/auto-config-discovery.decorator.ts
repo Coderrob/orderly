@@ -30,6 +30,21 @@ interface IAutoConfigMethodRef<TOptions extends IAutoConfigOptions> {
 }
 
 /**
+ * Applies auto-config behavior to the decorated descriptor.
+ * @param _target - Decorated class prototype.
+ * @param _propertyKey - Decorated method key.
+ * @param descriptor - Original descriptor.
+ * @returns Updated descriptor with auto-config behavior.
+ */
+function applyAutoConfigDescriptor<TOptions extends IAutoConfigOptions>(
+  _target: object,
+  _propertyKey: string | symbol,
+  descriptor: Readonly<PropertyDescriptor>
+): PropertyDescriptor {
+  return createAutoConfigDescriptor<TOptions>(descriptor);
+}
+
+/**
  * Builds an auto-config context for a target directory.
  * @param service - Auto-config capable command instance.
  * @param directory - Command directory argument.
@@ -93,10 +108,10 @@ function createAutoConfigWrapper<TOptions extends IAutoConfigOptions>(
 
 /**
  * Creates a wrapper function that injects auto-discovery context.
- * @param originalMethod - Original decorated method.
- * @returns Wrapped method.
- * @param _propertyKey TODO: describe parameter
- * @param descriptor TODO: describe parameter
+ * @param service - Auto-config capable command instance.
+ * @param options - Command options.
+ * @param targetDir - Resolved target directory.
+ * @returns Config override options and discovered config path.
  */
 function discoverConfigOption<TOptions extends IAutoConfigOptions>(
   service: Readonly<IConfigDiscoveryCapable>,
@@ -125,17 +140,16 @@ function executeWrappedAutoConfigMethod<TOptions extends IAutoConfigOptions>(
   directory: string,
   options: Readonly<TOptions>
 ): unknown {
-  const autoConfigContext = zResolveAutoConfigContext(context, directory, options);
+  const autoConfigContext = resolveAutoConfigContext(context, directory, options);
   return invokeAutoConfigMethod(methodRef, context, { autoConfigContext, directory, options });
 }
 
 /**
- * Builds config override options with optional discovered config path.
- * @param service - Auto-config capable command instance.
- * @param options - Command options.
- * @param targetDir - Resolved target directory.
- * @returns Config override options and discovered config path.
- * @param options TODO: describe parameter
+ * Invokes an auto-config method with explicit context and arguments.
+ * @param methodRef - Decorated method reference to invoke.
+ * @param context - Invocation context.
+ * @param args - Wrapped invocation arguments.
+ * @returns Original method return value.
  */
 function invokeAutoConfigMethod<TOptions extends IAutoConfigOptions>(
   methodRef: Readonly<IAutoConfigMethodRef<TOptions>>,
@@ -165,18 +179,24 @@ function isAutoConfigDisabled<TOptions extends IAutoConfigOptions>(
 }
 
 /**
- * Invokes an auto-config method with explicit context and arguments.
- * @param method - Decorated method to invoke.
- * @param context - Invocation context.
- * @param directory - Command directory argument.
- * @param options - Command options.
- * @param autoConfigContext - Optional auto-config context.
- * @returns Original method return value.
+ * Checks whether a descriptor value matches the auto-config method signature.
+ * @param value - Descriptor value.
+ * @returns True when the value is a compatible method.
  */
 function isAutoConfigMethod<TOptions extends IAutoConfigOptions>(
   value: unknown
 ): value is AutoConfigMethod<TOptions> {
   return typeof value === 'function';
+}
+
+/**
+ * Checks whether an unknown value supports config discovery behavior.
+ * @param value - Value to check.
+ * @returns True when value is config-discovery capable.
+ */
+function isConfigDiscoveryCapable(value: unknown): value is IConfigDiscoveryCapable {
+  if (!value || typeof value !== 'object') return false;
+  return 'configService' in value && 'directoryValidator' in value;
 }
 
 /**
@@ -186,30 +206,7 @@ function isAutoConfigMethod<TOptions extends IAutoConfigOptions>(
  * @param options - Command options.
  * @returns Auto-config context when discovery is available.
  */
-function isConfigDiscoveryCapable(value: unknown): value is IConfigDiscoveryCapable {
-  if (!value || typeof value !== 'object') return false;
-  return 'configService' in value && 'directoryValidator' in value;
-}
-
-/**
- * Checks whether a descriptor value matches the auto-config method signature.
- * @param value - Descriptor value.
- * @returns True when the value is a compatible method.
- * @param directory TODO: describe parameter
- * @param options TODO: describe parameter
- */
-export function WithAutoConfigDiscovery<TOptions extends IAutoConfigOptions>(): MethodDecorator {
-  return zWrapAutoConfigDescriptor<TOptions>;
-}
-
-/**
- * Checks whether an unknown value supports config discovery behavior.
- * @param value - Value to check.
- * @returns True when value is config-discovery capable.
- * @param directory TODO: describe parameter
- * @param options TODO: describe parameter
- */
-function zResolveAutoConfigContext<TOptions extends IAutoConfigOptions>(
+function resolveAutoConfigContext<TOptions extends IAutoConfigOptions>(
   context: unknown,
   directory: string,
   options: Readonly<TOptions>
@@ -222,14 +219,7 @@ function zResolveAutoConfigContext<TOptions extends IAutoConfigOptions>(
 /**
  * Decorates command execute methods with shared auto-config discovery behavior.
  * @returns A method decorator that resolves target-directory config files before execution.
- * @param context TODO: describe parameter
- * @param directory TODO: describe parameter
- * @param options TODO: describe parameter
  */
-function zWrapAutoConfigDescriptor<TOptions extends IAutoConfigOptions>(
-  _target: object,
-  _propertyKey: string | symbol,
-  descriptor: Readonly<PropertyDescriptor>
-): PropertyDescriptor {
-  return createAutoConfigDescriptor<TOptions>(descriptor);
+export function WithAutoConfigDiscovery<TOptions extends IAutoConfigOptions>(): MethodDecorator {
+  return applyAutoConfigDescriptor<TOptions>;
 }

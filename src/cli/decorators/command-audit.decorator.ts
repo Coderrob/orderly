@@ -52,7 +52,7 @@ function createAuditDescriptor(
 /**
  * Wraps a command method with audit metadata behavior.
  * @param commandName - Name of the command being audited.
- * @param originalMethod - Original command method.
+ * @param originalMethodRef - Original command method reference.
  * @returns Command method with audit metadata appended.
  */
 function createAuditedWrapper(
@@ -60,10 +60,10 @@ function createAuditedWrapper(
   originalMethodRef: Readonly<ICommandExecutionRef>
 ): CommandExecution {
   /**
-   * executeWithAudit TODO: describe
-   * @param this TODO: describe parameter
-   * @param args TODO: describe parameter
-   * @returns TODO: describe return value
+   * Executes the wrapped command and appends audit metadata.
+   * @param this - Invocation context.
+   * @param args - Command arguments.
+   * @returns Command result with audit suffix.
    */
   async function executeWithAudit(
     this: object,
@@ -75,12 +75,9 @@ function createAuditedWrapper(
 }
 
 /**
- * Executes a command and appends audit correlation metadata.
+ * Creates a method decorator that applies audit metadata behavior.
  * @param commandName - Name of the command being audited.
- * @param originalMethod - Original command method.
- * @param context - Invocation context.
- * @param args - Command arguments.
- * @returns Command result with audit metadata.
+ * @returns Method decorator implementation.
  */
 function createAuditMethodDecorator(commandName: string): MethodDecorator {
   /**
@@ -101,24 +98,17 @@ function createAuditMethodDecorator(commandName: string): MethodDecorator {
 }
 
 /**
- * Creates a method decorator that applies audit metadata behavior.
- * @param commandName - Name of the command being audited.
- * @returns Method decorator implementation.
- * @param originalMethod TODO: describe parameter
- * @param context TODO: describe parameter
- * @param args TODO: describe parameter
+ * Creates a short random token for audit run ids.
+ * @returns Random token suffix.
  */
 function createRandomToken(): string {
   return crypto.randomUUID().replaceAll('-', '').slice(0, RANDOM_TOKEN_LENGTH);
 }
 
 /**
- * Creates a short random token for audit run ids.
- * @returns Random token suffix.
- * @param commandName TODO: describe parameter
- * @param originalMethod TODO: describe parameter
- * @param context TODO: describe parameter
- * @param args TODO: describe parameter
+ * Creates a correlation id for a command invocation.
+ * @param commandName - Name of the command being audited.
+ * @returns Correlation id composed from command name, monotonic token, and random suffix.
  */
 function createRunId(commandName: string): string {
   const randomPart = createRandomToken();
@@ -127,12 +117,9 @@ function createRunId(commandName: string): string {
 }
 
 /**
- * Adds a correlation id to command results for easier audit tracing.
- * @param commandName - Name of the command being audited.
- * @returns A correlation id composed from the command name, timestamp token, and random suffix.
- * @param originalMethod TODO: describe parameter
- * @param context TODO: describe parameter
- * @param args TODO: describe parameter
+ * Checks whether a descriptor value can be wrapped as a command method.
+ * @param value - Descriptor value.
+ * @returns True when the value is a callable command method.
  */
 function isCommandExecution(value: unknown): value is CommandExecution {
   return typeof value === 'function';
@@ -142,9 +129,6 @@ function isCommandExecution(value: unknown): value is CommandExecution {
  * Checks whether a descriptor value can be wrapped as a command method.
  * @param value - Descriptor value.
  * @returns True when the value is a callable command method.
- * @param originalMethod TODO: describe parameter
- * @param context TODO: describe parameter
- * @param args TODO: describe parameter
  */
 function isCommandResult(value: unknown): value is ICommandResult {
   return (
@@ -158,11 +142,11 @@ function isCommandResult(value: unknown): value is ICommandResult {
 
 /**
  * Checks whether an unknown value matches ICommandResult.
- * @param value - Value to check.
- * @returns True when value matches ICommandResult shape.
- * @param originalMethod TODO: describe parameter
- * @param context TODO: describe parameter
- * @param args TODO: describe parameter
+ * @param commandName - Name of the command being audited.
+ * @param originalMethodRef - Original command method reference.
+ * @param context - Invocation context.
+ * @param args - Command arguments.
+ * @returns Command result with audit metadata.
  */
 async function runAuditedCommand(
   commandName: string,

@@ -19,6 +19,21 @@ interface ICliAutoConfigMethodRef<TOptions extends ICliAutoConfigOptions> {
 }
 
 /**
+ * Applies CLI auto-config behavior to the decorated descriptor.
+ * @param _target - Decorated class prototype.
+ * @param _propertyKey - Decorated method key.
+ * @param descriptor - Original descriptor.
+ * @returns Updated descriptor with auto-config behavior.
+ */
+function applyCliAutoConfigDescriptor<TOptions extends ICliAutoConfigOptions>(
+  _target: object,
+  _propertyKey: string | symbol,
+  descriptor: Readonly<PropertyDescriptor>
+): PropertyDescriptor {
+  return createCliAutoConfigDescriptor<TOptions>(descriptor);
+}
+
+/**
  * Creates a wrapper descriptor for CLI auto-config behavior.
  * @param descriptor - Original method descriptor.
  * @returns Updated descriptor with auto-config behavior.
@@ -61,10 +76,10 @@ function createCliAutoConfigWrapper<TOptions extends ICliAutoConfigOptions>(
 
 /**
  * Creates a wrapper function that injects auto-discovered config path.
- * @param originalMethod - Original decorated method.
- * @returns Wrapped method.
- * @param _propertyKey TODO: describe parameter
- * @param descriptor TODO: describe parameter
+ * @param service - CLI service with config discovery capability.
+ * @param directory - Command directory argument.
+ * @param options - Command options.
+ * @returns Discovered config and merged options.
  */
 function discoverCliConfigOption<TOptions extends ICliAutoConfigOptions>(
   service: Readonly<ICliAutoConfigCapable>,
@@ -96,7 +111,7 @@ function executeWrappedCliAutoConfigMethod<TOptions extends ICliAutoConfigOption
   directory: string,
   options: Readonly<TOptions>
 ): unknown {
-  const discovery = zResolveCliDiscovery(context, directory, options);
+  const discovery = resolveCliDiscovery(context, directory, options);
   return invokeCliAutoConfigMethod(methodRef, context, {
     autoDiscoveredConfig: discovery.autoDiscoveredConfig,
     directory,
@@ -105,12 +120,11 @@ function executeWrappedCliAutoConfigMethod<TOptions extends ICliAutoConfigOption
 }
 
 /**
- * Resolves discovered config path and options for CLI handlers.
- * @param service - CLI service with config discovery capability.
- * @param directory - Command directory argument.
- * @param options - Command options.
- * @returns Discovered config and merged options.
- * @param options TODO: describe parameter
+ * Invokes a CLI auto-config method with explicit context and arguments.
+ * @param methodRef - Decorated method reference to invoke.
+ * @param context - Invocation context.
+ * @param args - Wrapped invocation arguments.
+ * @returns Original method return value.
  */
 function invokeCliAutoConfigMethod<TOptions extends ICliAutoConfigOptions>(
   methodRef: Readonly<ICliAutoConfigMethodRef<TOptions>>,
@@ -129,13 +143,9 @@ function invokeCliAutoConfigMethod<TOptions extends ICliAutoConfigOptions>(
 }
 
 /**
- * Invokes a CLI auto-config method with explicit context and arguments.
- * @param method - Decorated method to invoke.
- * @param context - Invocation context.
- * @param directory - Command directory argument.
- * @param options - Command options.
- * @param autoDiscoveredConfig - Optional discovered config path.
- * @returns Original method return value.
+ * Checks whether an unknown value supports CLI config discovery behavior.
+ * @param value - Value to check.
+ * @returns True when value can discover config files.
  */
 function isCliAutoConfigCapable(value: unknown): value is ICliAutoConfigCapable {
   return !!value && typeof value === 'object' && 'findConfigInDirectory' in value;
@@ -153,11 +163,9 @@ function isCliAutoConfigDisabled<TOptions extends ICliAutoConfigOptions>(
 }
 
 /**
- * Resolves CLI config discovery output for a handler invocation.
- * @param context - Invocation context.
- * @param directory - Command directory argument.
- * @param options - Command options.
- * @returns Discovered config and effective config options.
+ * Checks whether a descriptor value matches the CLI auto-config method signature.
+ * @param value - Descriptor value.
+ * @returns True when the value is a compatible method.
  */
 function isCliAutoConfigMethod<TOptions extends ICliAutoConfigOptions>(
   value: unknown
@@ -166,26 +174,13 @@ function isCliAutoConfigMethod<TOptions extends ICliAutoConfigOptions>(
 }
 
 /**
- * Checks whether an unknown value supports CLI config discovery behavior.
- * @param value - Value to check.
- * @returns True when value can discover config files.
- * @param directory TODO: describe parameter
- * @param options TODO: describe parameter
+ * Resolves CLI config discovery output for a handler invocation.
+ * @param context - Invocation context.
+ * @param directory - Command directory argument.
+ * @param options - Command options.
+ * @returns Discovered config and effective config options.
  */
-export function WithCliAutoConfigDiscovery<
-  TOptions extends ICliAutoConfigOptions
->(): MethodDecorator {
-  return zWrapCliAutoConfigDescriptor<TOptions>;
-}
-
-/**
- * Checks whether a descriptor value matches the CLI auto-config method signature.
- * @param value - Descriptor value.
- * @returns True when the value is a compatible method.
- * @param directory TODO: describe parameter
- * @param options TODO: describe parameter
- */
-function zResolveCliDiscovery<TOptions extends ICliAutoConfigOptions>(
+function resolveCliDiscovery<TOptions extends ICliAutoConfigOptions>(
   context: unknown,
   directory: string,
   options: Readonly<TOptions>
@@ -196,16 +191,11 @@ function zResolveCliDiscovery<TOptions extends ICliAutoConfigOptions>(
 }
 
 /**
- * Decorates CliService command handlers with target-directory config auto-discovery.
+ * Decorates CLI command handlers with target-directory config auto-discovery.
  * @returns A method decorator that injects any auto-discovered config path into the handler call.
- * @param context TODO: describe parameter
- * @param directory TODO: describe parameter
- * @param options TODO: describe parameter
  */
-function zWrapCliAutoConfigDescriptor<TOptions extends ICliAutoConfigOptions>(
-  _target: object,
-  _propertyKey: string | symbol,
-  descriptor: Readonly<PropertyDescriptor>
-): PropertyDescriptor {
-  return createCliAutoConfigDescriptor<TOptions>(descriptor);
+export function WithCliAutoConfigDiscovery<
+  TOptions extends ICliAutoConfigOptions
+>(): MethodDecorator {
+  return applyCliAutoConfigDescriptor<TOptions>;
 }
