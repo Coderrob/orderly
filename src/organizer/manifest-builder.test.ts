@@ -29,6 +29,8 @@ describe('ManifestBuilder', () => {
       operations: testOperations,
       successful: 1,
       failed: 1,
+      skipped: 0,
+      skippedOperations: [],
       errors: testErrors
     };
   });
@@ -44,6 +46,7 @@ describe('ManifestBuilder', () => {
       expect(manifest.totalOperations).toBe(2);
       expect(manifest.successful).toBe(1);
       expect(manifest.failed).toBe(1);
+      expect(manifest.skipped).toBe(0);
       expect(manifest.generatedAt).toBeDefined();
       expect(new Date(manifest.generatedAt)).toBeInstanceOf(Date);
     });
@@ -74,6 +77,31 @@ describe('ManifestBuilder', () => {
       expect(successEntry?.error).toBeUndefined();
     });
 
+    it('should mark skipped operations correctly', () => {
+      const skippedResult: IOrganizationResult = {
+        operations: testOperations,
+        successful: 1,
+        failed: 0,
+        skipped: 1,
+        errors: [],
+        skippedOperations: [
+          {
+            file: '/source/File2.txt',
+            reason: 'Skipping /source/File2.txt due to collision resolution strategy'
+          }
+        ]
+      };
+
+      const manifest = builder.build(skippedResult, []);
+
+      const skippedEntry = manifest.entries.find(
+        entry => entry.operation.originalPath === '/source/File2.txt'
+      );
+      expect(manifest.skipped).toBe(1);
+      expect(skippedEntry?.status).toBe('skipped');
+      expect(skippedEntry?.error).toContain('Skipping /source/File2.txt');
+    });
+
     it('should include operation details in entries', () => {
       const manifest = builder.build(testResult, testErrors);
 
@@ -93,6 +121,8 @@ describe('ManifestBuilder', () => {
         operations: [],
         successful: 0,
         failed: 0,
+        skipped: 0,
+        skippedOperations: [],
         errors: []
       };
 
@@ -107,6 +137,8 @@ describe('ManifestBuilder', () => {
         operations: testOperations,
         successful: 2,
         failed: 0,
+        skipped: 0,
+        skippedOperations: [],
         errors: []
       };
 
@@ -115,6 +147,43 @@ describe('ManifestBuilder', () => {
       expect(manifest.successful).toBe(2);
       expect(manifest.failed).toBe(0);
       expect(manifest.entries.every(e => e.status === 'success')).toBe(true);
+    });
+
+    it('should default skipped operations to an empty array when omitted', () => {
+      const resultWithoutSkippedOperations = {
+        operations: testOperations,
+        successful: 2,
+        failed: 0,
+        skipped: 0,
+        errors: []
+      } as IOrganizationResult;
+
+      const manifest = builder.build(resultWithoutSkippedOperations, []);
+
+      expect(manifest.entries).toHaveLength(2);
+      expect(manifest.entries.every(entry => entry.status === 'success')).toBe(true);
+    });
+
+    it('should prioritize skipped status over matching errors for the same file', () => {
+      const skippedResult: IOrganizationResult = {
+        operations: testOperations,
+        successful: 0,
+        failed: 1,
+        skipped: 1,
+        errors: [],
+        skippedOperations: [{ file: '/source/file1.txt', reason: 'Skipped intentionally' }]
+      };
+
+      const manifest = builder.build(skippedResult, [
+        { file: '/source/file1.txt', error: 'Should not win over skipped' }
+      ]);
+
+      const entry = manifest.entries.find(
+        item => item.operation.originalPath === '/source/file1.txt'
+      );
+
+      expect(entry?.status).toBe('skipped');
+      expect(entry?.error).toBe('Skipped intentionally');
     });
   });
 });

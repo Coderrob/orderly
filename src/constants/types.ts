@@ -15,4 +15,11 @@ export interface IFileCategory {
 /**
  * All supported file categories.
  */
-export type FileCategoryName = 'images' | 'documents' | 'videos' | 'audio' | 'archives' | 'code';
+export enum FileCategoryName {
+  Images = 'images',
+  Documents = 'documents',
+  Videos = 'videos',
+  Audio = 'audio',
+  Archives = 'archives',
+  Code = 'code'
+}

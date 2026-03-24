@@ -45,7 +45,7 @@ describe('OperationPlanner', () => {
   describe('plan', () => {
     it('should return empty array when no files need operations', () => {
       const file: IScannedFile = { ...testFile, targetFolder: undefined };
-      mockNamingUtils.needsRename.mockReturnValue(false);
+      mockNamingUtils.shouldRename.mockReturnValue(false);
 
       const result = planner.plan([file]);
 
@@ -53,7 +53,7 @@ describe('OperationPlanner', () => {
     });
 
     it('should plan move operation when file needs to be moved', () => {
-      mockNamingUtils.needsRename.mockReturnValue(false);
+      mockNamingUtils.shouldRename.mockReturnValue(false);
 
       const result = planner.plan([testFile]);
 
@@ -64,7 +64,7 @@ describe('OperationPlanner', () => {
 
     it('should plan rename operation when file needs to be renamed', () => {
       const file: IScannedFile = { ...testFile, targetFolder: undefined };
-      mockNamingUtils.needsRename.mockReturnValue(true);
+      mockNamingUtils.shouldRename.mockReturnValue(true);
       mockNamingUtils.applyNamingConvention.mockReturnValue('test-file.txt');
 
       const result = planner.plan([file]);
@@ -75,7 +75,7 @@ describe('OperationPlanner', () => {
     });
 
     it('should plan move-rename operation when file needs both', () => {
-      mockNamingUtils.needsRename.mockReturnValue(true);
+      mockNamingUtils.shouldRename.mockReturnValue(true);
       mockNamingUtils.applyNamingConvention.mockReturnValue('test-file.txt');
 
       const result = planner.plan([testFile]);
@@ -91,7 +91,7 @@ describe('OperationPlanner', () => {
         testFile,
         { ...testFile, originalPath: '/base/dir/File2.txt', filename: 'File2.txt' }
       ];
-      mockNamingUtils.needsRename.mockReturnValue(false);
+      mockNamingUtils.shouldRename.mockReturnValue(false);
 
       const result = planner.plan(files);
 
@@ -101,7 +101,7 @@ describe('OperationPlanner', () => {
     it('should use target directory when configured', () => {
       const configWithTarget = { ...testConfig, targetDirectory: '/output' };
       const plannerWithTarget = new OperationPlanner(configWithTarget, testBaseDirectory);
-      mockNamingUtils.needsRename.mockReturnValue(false);
+      mockNamingUtils.shouldRename.mockReturnValue(false);
 
       const result = plannerWithTarget.plan([testFile]);
 
@@ -112,7 +112,7 @@ describe('OperationPlanner', () => {
 
     it('should use base directory when target directory is not configured', () => {
       // config already has targetDirectory undefined by default
-      mockNamingUtils.needsRename.mockReturnValue(false);
+      mockNamingUtils.shouldRename.mockReturnValue(false);
 
       const result = planner.plan([testFile]);
 
@@ -128,7 +128,7 @@ describe('OperationPlanner', () => {
         filename: 'test-file.txt',
         targetFolder: 'documents'
       };
-      mockNamingUtils.needsRename.mockReturnValue(false);
+      mockNamingUtils.shouldRename.mockReturnValue(false);
 
       const result = planner.plan([file]);
 

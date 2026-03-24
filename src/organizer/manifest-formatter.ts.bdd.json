@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\organizer\\manifest-formatter.ts",
+  "module": {
+    "name": "manifest-formatter",
+    "description": "Behavioral contract for D:\\orderly\\src\\organizer\\manifest-formatter.ts",
+    "exports": ["IManifestFormatter", "ManifestFormatter"]
+  },
+  "specifications": [
+    {
+      "feature": "Source contract for manifest-formatter",
+      "scenarios": [
+        {
+          "name": "should satisfy the documented module contract",
+          "given": "the module is imported by consumers",
+          "when": "its public API is used according to the source definition",
+          "then": "the documented behavior should remain consistent"
+        }
+      ]
+    }
+  ]
+}

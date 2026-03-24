@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\types\\output.ts",
+  "module": {
+    "name": "output",
+    "description": "Behavioral contract for D:\\orderly\\src\\types\\output.ts",
+    "exports": ["IOutputWriter", "OutputFormat"]
+  },
+  "specifications": [
+    {
+      "feature": "Source contract for output",
+      "scenarios": [
+        {
+          "name": "should satisfy the documented module contract",
+          "given": "the module is imported by consumers",
+          "when": "its public API is used according to the source definition",
+          "then": "the documented behavior should remain consistent"
+        }
+      ]
+    }
+  ]
+}

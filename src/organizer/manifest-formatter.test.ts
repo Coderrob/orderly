@@ -34,6 +34,7 @@ describe('ManifestFormatter', () => {
       totalOperations: 2,
       successful: 1,
       failed: 1,
+      skipped: 0,
       entries: testEntries
     };
   });
@@ -56,6 +57,7 @@ describe('ManifestFormatter', () => {
       expect(result).toContain('**Total Operations:** 2');
       expect(result).toContain('**Successful:** 1');
       expect(result).toContain('**Failed:** 1');
+      expect(result).toContain('**Skipped:** 0');
     });
 
     it('should format successful operation with checkmark', () => {
@@ -72,6 +74,32 @@ describe('ManifestFormatter', () => {
 
       expect(result).toContain('### ✗ RENAME');
       expect(result).toContain('**Error:** File locked');
+    });
+
+    it('should format skipped operation distinctly', () => {
+      const skippedManifest: Manifest = {
+        ...testManifest,
+        skipped: 1,
+        entries: [
+          {
+            timestamp: '2024-01-01T00:00:00.000Z',
+            operation: {
+              type: FileOperationType.MOVE,
+              originalPath: '/source/file3.txt',
+              newPath: '/target/file3.txt',
+              reason: 'Moving to target'
+            },
+            status: OperationStatus.SKIPPED,
+            error: 'Skipped by collision strategy'
+          }
+        ]
+      };
+
+      const result = formatter.format(skippedManifest);
+
+      expect(result).toContain('**Skipped:** 1');
+      expect(result).toContain('### ↷ MOVE');
+      expect(result).toContain('**Error:** Skipped by collision strategy');
     });
 
     it('should format operations section when entries exist', () => {

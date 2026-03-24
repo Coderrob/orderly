@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\cli\\services\\manifest.service.ts",
+  "module": {
+    "name": "manifest.service",
+    "description": "Behavioral contract for D:\\orderly\\src\\cli\\services\\manifest.service.ts",
+    "exports": ["ManifestService"]
+  },
+  "specifications": [
+    {
+      "feature": "Source contract for manifest.service",
+      "scenarios": [
+        {
+          "name": "should satisfy the documented module contract",
+          "given": "the module is imported by consumers",
+          "when": "its public API is used according to the source definition",
+          "then": "the documented behavior should remain consistent"
+        }
+      ]
+    }
+  ]
+}

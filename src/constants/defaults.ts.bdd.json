@@ -1,0 +1,37 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\constants\\defaults.ts",
+  "module": {
+    "name": "defaults",
+    "description": "Behavioral contract for D:\\orderly\\src\\constants\\defaults.ts",
+    "exports": [
+      "CONFIG_FILE_NAMES",
+      "ConfigFileName",
+      "DEFAULT_DRY_RUN",
+      "DEFAULT_GENERATE_MANIFEST",
+      "DEFAULT_INCLUDE_HIDDEN",
+      "DEFAULT_LOG_FILE",
+      "DEFAULT_LOG_LEVEL",
+      "DEFAULT_MANIFEST_DIR",
+      "DEFAULT_MANIFEST_FILE",
+      "DEFAULT_MANIFEST_MD",
+      "DEFAULT_NAMING_CONVENTION",
+      "MAX_FILENAME_LENGTH",
+      "RESERVED_NAMES"
+    ]
+  },
+  "specifications": [
+    {
+      "feature": "Source contract for defaults",
+      "scenarios": [
+        {
+          "name": "should satisfy the documented module contract",
+          "given": "the module is imported by consumers",
+          "when": "its public API is used according to the source definition",
+          "then": "the documented behavior should remain consistent"
+        }
+      ]
+    }
+  ]
+}

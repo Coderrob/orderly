@@ -12,7 +12,7 @@ export interface IFileOrganizer {
    * @param files - Array of scanned files to process
    * @returns Array of planned file operations
    */
-  planOperations(files: IScannedFile[]): IFileOperation[];
+  planOperations(files: readonly IScannedFile[]): IFileOperation[];
 
   /**
    * Executes the planned file operations.
@@ -32,7 +32,7 @@ export interface IOperationPlanner {
    * @param files - Array of scanned files
    * @returns Array of planned operations
    */
-  plan(files: IScannedFile[]): IFileOperation[];
+  plan(files: readonly IScannedFile[]): IFileOperation[];
 }
 
 /**
@@ -45,5 +45,5 @@ export interface IOperationExecutor {
    * @param operations - Array of operations to execute
    * @returns Result with success/failure counts
    */
-  execute(operations: IFileOperation[]): IOrganizationResult;
+  execute(operations: readonly IFileOperation[]): IOrganizationResult;
 }

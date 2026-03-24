@@ -20,6 +20,8 @@ export interface IOrganizeOptions {
   dedupe?: boolean;
   /** Action to take on duplicates (skip, report, replace) */
   dedupeAction?: string;
+  /** Commander negated option `--no-auto-config` surfaces as `autoConfig: false` */
+  autoConfig?: boolean;
 }
 
 /**
@@ -38,6 +40,8 @@ export interface IScanOptions {
   config?: string;
   /** Log level (debug, info, warn, error) */
   logLevel?: string;
+  /** Commander negated option `--no-auto-config` surfaces as `autoConfig: false` */
+  autoConfig?: boolean;
 }
 
 /**
@@ -113,6 +117,13 @@ export interface IConfigService {
    * @returns Loaded and merged configuration
    */
   loadWithOverrides(options: IOrganizeOptions): OrderlyConfig;
+
+  /**
+   * Searches for a config file in the target directory.
+   * @param directory - Directory to search in
+   * @returns Path to config file if found, null otherwise
+   */
+  findConfigInDirectory(directory: string): string | null;
 }
 
 /**

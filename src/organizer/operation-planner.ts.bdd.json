@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\organizer\\operation-planner.ts",
+  "module": {
+    "name": "operation-planner",
+    "description": "Behavioral contract for D:\\orderly\\src\\organizer\\operation-planner.ts",
+    "exports": ["OperationPlanner"]
+  },
+  "specifications": [
+    {
+      "feature": "Source contract for operation-planner",
+      "scenarios": [
+        {
+          "name": "should satisfy the documented module contract",
+          "given": "the module is imported by consumers",
+          "when": "its public API is used according to the source definition",
+          "then": "the documented behavior should remain consistent"
+        }
+      ]
+    }
+  ]
+}

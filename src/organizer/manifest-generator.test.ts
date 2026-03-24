@@ -37,6 +37,8 @@ describe('ManifestGenerator', () => {
       operations: [],
       successful: 1,
       failed: 0,
+      skipped: 0,
+      skippedOperations: [],
       errors: []
     };
     testErrors = [];
@@ -45,6 +47,7 @@ describe('ManifestGenerator', () => {
       totalOperations: 1,
       successful: 1,
       failed: 0,
+      skipped: 0,
       entries: []
     };
 
@@ -62,7 +65,10 @@ describe('ManifestGenerator', () => {
       const result = generator.generate(testResult, testErrors);
 
       expect(builderInstance.build).toHaveBeenCalledWith(testResult, testErrors);
-      expect(result).toBe(testManifest);
+      expect(result).toEqual({
+        ...testManifest,
+        operations: [...testManifest.entries]
+      });
     });
   });
 

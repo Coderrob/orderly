@@ -8,12 +8,14 @@ import {
 import { IDedupeConfig } from '../dedupe/types';
 import { LogLevel } from '../types/logging';
 
-export interface CategoryRule {
+export interface ICategoryRule {
   name: string;
   extensions: ReadonlyExtensionList;
   patterns?: string[];
   targetFolder?: string;
 }
+
+export type CategoryRule = ICategoryRule;
 
 export enum ConfigFormat {
   JSON = 'json',
@@ -27,14 +29,30 @@ export enum NamingConventionType {
   PASCAL_CASE = 'PascalCase'
 }
 
-export interface NamingConvention {
+export enum CollisionResolutionStrategy {
+  SKIP = 'skip',
+  KEEP_BOTH = 'keep-both',
+  REPLACE = 'replace'
+}
+
+export interface INamingConvention {
   type: NamingConventionType;
   lowercase?: boolean;
 }
 
-export interface OrderlyConfig {
-  categories: CategoryRule[];
-  namingConvention: NamingConvention;
+export type NamingConvention = INamingConvention;
+
+export interface ICollisionResolutionConfig {
+  strategy: CollisionResolutionStrategy;
+  renamePattern?: string;
+  maxAttempts?: number;
+}
+
+export type CollisionResolutionConfig = ICollisionResolutionConfig;
+
+export interface IOrderlyConfig {
+  categories: ICategoryRule[];
+  namingConvention: INamingConvention;
   excludePatterns: string[];
   includeHidden: boolean;
   dryRun: boolean;
@@ -43,10 +61,13 @@ export interface OrderlyConfig {
   logFile?: string;
   targetDirectory?: string;
   dedupe?: IDedupeConfig;
+  collisionResolution?: ICollisionResolutionConfig;
 }
 
+export type OrderlyConfig = IOrderlyConfig;
+
 export const DEFAULT_CONFIG: OrderlyConfig = {
-  categories: DEFAULT_CATEGORIES as CategoryRule[],
+  categories: Array.from(DEFAULT_CATEGORIES),
   namingConvention: {
     type: NamingConventionType.KEBAB_CASE,
     lowercase: true

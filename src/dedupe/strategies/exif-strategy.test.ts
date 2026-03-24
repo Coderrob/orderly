@@ -50,11 +50,11 @@ describe('ExifStrategy', () => {
 
   describe('supports', () => {
     it('should support EXIF-compatible image files', () => {
-      expect(strategy.supports(mockImageFile)).toBe(true);
+      expect(strategy.canProcess(mockImageFile)).toBe(true);
     });
 
     it('should not support non-image files', () => {
-      expect(strategy.supports(mockTextFile)).toBe(false);
+      expect(strategy.canProcess(mockTextFile)).toBe(false);
     });
 
     it('should normalize uppercase extensions from filename', () => {
@@ -64,7 +64,7 @@ describe('ExifStrategy', () => {
         extension: '.JPG'
       };
 
-      expect(strategy.supports(file)).toBe(true);
+      expect(strategy.canProcess(file)).toBe(true);
     });
 
     it('should use filename extension over provided extension field', () => {
@@ -74,7 +74,7 @@ describe('ExifStrategy', () => {
         extension: '.txt'
       };
 
-      expect(strategy.supports(file)).toBe(true);
+      expect(strategy.canProcess(file)).toBe(true);
     });
 
     it('should return false when filename has no extension', () => {
@@ -84,7 +84,7 @@ describe('ExifStrategy', () => {
         extension: ''
       };
 
-      expect(strategy.supports(file)).toBe(false);
+      expect(strategy.canProcess(file)).toBe(false);
     });
 
     it('should support EXIF-compatible extensions', () => {
@@ -96,7 +96,7 @@ describe('ExifStrategy', () => {
           filename: `test${ext}`,
           extension: ext
         };
-        expect(strategy.supports(file)).toBe(true);
+        expect(strategy.canProcess(file)).toBe(true);
       });
     });
 
@@ -109,7 +109,7 @@ describe('ExifStrategy', () => {
           filename: `test${ext}`,
           extension: ext
         };
-        expect(strategy.supports(file)).toBe(false);
+        expect(strategy.canProcess(file)).toBe(false);
       });
     });
   });

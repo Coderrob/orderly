@@ -34,6 +34,17 @@ try {
   console.log(chalk.yellow('  ⚠ Warning: npm install had issues'));
 }
 
+// Step 2b: Set up ripgrep binary in node_modules/.bin
+console.log(chalk.cyan('\nStep 2b: Setting up ripgrep (rg) binary...'));
+try {
+  execSync('node scripts/setup-rg.js', { stdio: 'pipe' });
+  console.log(chalk.green('  ✓ ripgrep wrappers created in node_modules/.bin/'));
+  console.log(chalk.gray('  Use "rg" directly in npm scripts or add'));
+  console.log(chalk.gray('  node_modules/@vscode/ripgrep/bin to your shell PATH'));
+} catch (error) {
+  console.log(chalk.yellow('  ⚠ ripgrep setup skipped: ' + (error.message || 'unknown error')));
+}
+
 // Step 3: Clean build artifacts
 console.log(chalk.cyan('\nStep 3: Cleaning build artifacts...'));
 try {

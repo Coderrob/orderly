@@ -12,39 +12,51 @@ export type { IFileOperation, IOrganizationResult, IFileError } from './types';
 export type { IFileOrganizer } from './interfaces';
 
 export class FileOrganizer implements IFileOrganizer {
-  private readonly planner: OperationPlanner;
-  private readonly executor: OperationExecutor;
-
   /**
-   *
-   * @param config
-   * @param logger
-   * @param baseDirectory
+   * Creates a new FileOrganizer instance
+   * @param config - Configuration containing naming convention, target directory, and execution settings
+   * @param logger - Logger instance for recording organization operations
+   * @param baseDirectory - Base directory for relative path calculations
    */
   constructor(
-    private readonly config: OrderlyConfig,
-    private readonly logger: Logger,
-    baseDirectory: string
-  ) {
-    this.planner = new OperationPlanner(config, baseDirectory);
-    this.executor = new OperationExecutor(logger, config.dryRun);
-  }
+    private readonly config: Readonly<OrderlyConfig>,
+    private readonly logger: Readonly<Logger>,
+    private readonly baseDirectory: string
+  ) {}
 
   /**
-   *
-   * @param files
+   * Plans file operations for a list of scanned files
+   * @param files - Array of scanned files to plan operations for
+   * @returns Array of planned file operations (move, rename, or move-rename)
    */
-  planOperations(files: IScannedFile[]): IFileOperation[] {
-    const operations = this.planner.plan(files);
+  planOperations(files: readonly IScannedFile[]): IFileOperation[] {
+    const operations = this.createPlanner().plan(files);
     this.logger.info(`Planned ${operations.length} operations`);
     return operations;
   }
 
   /**
-   *
-   * @param operations
+   * Executes a list of file operations
+   * @param operations - Array of file operations to execute
+   * @returns Organization result containing success/failure counts and any errors
    */
-  executeOperations(operations: IFileOperation[]): IOrganizationResult {
-    return this.executor.execute(operations);
+  executeOperations(operations: readonly IFileOperation[]): IOrganizationResult {
+    return this.createExecutor().execute(operations);
+  }
+
+  /**
+   * Creates an operation planner for the current organizer configuration.
+   * @returns Planner configured for this organizer instance.
+   */
+  private createPlanner(): OperationPlanner {
+    return new OperationPlanner(this.config, this.baseDirectory);
+  }
+
+  /**
+   * Creates an operation executor for the current organizer configuration.
+   * @returns Executor configured for this organizer instance.
+   */
+  private createExecutor(): OperationExecutor {
+    return new OperationExecutor(this.logger, this.config.dryRun, this.config);
   }
 }

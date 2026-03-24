@@ -1,21 +1,20 @@
-import { DedupeService } from './dedupe-service';
-import { NameStrategy, SizeStrategy, Sha256Strategy } from './strategies';
-import { Sha256Hasher } from './hashers';
 import { IScannedFile } from '../scanner/interfaces';
-import { DedupeAction } from './types';
+
+import { Sha256Hasher } from './hashers';
+import type { IDedupeStrategy } from './interfaces';
+import { NameStrategy, Sha256Strategy, SizeStrategy } from './strategies';
+import { DedupeAction, DedupeMode } from './types';
+import { DedupeService } from './dedupe-service';
 
 describe('DedupeService', () => {
   let service: DedupeService;
-  let strategies: any[];
+  let strategies: IDedupeStrategy[];
   let mockFiles: IScannedFile[];
 
   beforeEach(() => {
-    // Create mock strategies
     strategies = [new NameStrategy(), new SizeStrategy(), new Sha256Strategy(new Sha256Hasher())];
-
     service = new DedupeService(strategies);
 
-    // Create mock files
     mockFiles = [
       {
         filename: 'file1.txt',
@@ -46,7 +45,9 @@ describe('DedupeService', () => {
 
   describe('constructor', () => {
     it('should store strategies', () => {
-      expect((service as any).strategies).toBe(strategies);
+      expect((service as unknown as { strategies: readonly IDedupeStrategy[] }).strategies).toBe(
+        strategies
+      );
     });
   });
 
@@ -61,7 +62,6 @@ describe('DedupeService', () => {
     });
 
     it('should return empty result when no duplicates found', async () => {
-      // Mock strategies to return unique keys
       const nameStrategy = strategies[0] as NameStrategy;
       const sizeStrategy = strategies[1] as SizeStrategy;
       const sha256Strategy = strategies[2] as Sha256Strategy;
@@ -71,7 +71,7 @@ describe('DedupeService', () => {
         .mockImplementation(async (file: IScannedFile) => file.filename);
       jest
         .spyOn(sizeStrategy, 'getKey')
-        .mockImplementation(async (file: IScannedFile) => String(file.size + Math.random()));
+        .mockImplementation(async (file: IScannedFile) => `${file.size}-${file.filename}`);
       jest
         .spyOn(sha256Strategy, 'getKey')
         .mockImplementation(async (file: IScannedFile) => `hash-${file.filename}`);
@@ -85,7 +85,6 @@ describe('DedupeService', () => {
     });
 
     it('should find duplicates by name', async () => {
-      // Modify files to have same name but different sizes
       mockFiles[0].filename = 'duplicate.txt';
       mockFiles[0].size = 100;
       mockFiles[1].filename = 'duplicate.txt';
@@ -103,21 +102,19 @@ describe('DedupeService', () => {
     });
 
     it('should find duplicates by size', async () => {
-      // Modify files to have same size
       mockFiles[0].size = 500;
       mockFiles[1].size = 500;
       mockFiles[2].size = 300;
 
       const result = await service.findDuplicates(mockFiles);
 
-      expect(result.groups.some(g => g.strategy === 'size')).toBe(true);
-      const sizeGroup = result.groups.find(g => g.strategy === 'size');
+      expect(result.groups.some(group => group.strategy === 'size')).toBe(true);
+      const sizeGroup = result.groups.find(group => group.strategy === 'size');
       expect(sizeGroup?.key).toBe('500');
       expect(sizeGroup?.files).toHaveLength(2);
     });
 
-    it('should handle multiple strategies finding duplicates', async () => {
-      // Setup files with same name and size
+    it('should merge duplicate pairs that match across multiple strategies in ANY mode', async () => {
       mockFiles[0].filename = 'same.txt';
       mockFiles[0].size = 400;
       mockFiles[1].filename = 'same.txt';
@@ -127,9 +124,55 @@ describe('DedupeService', () => {
 
       const result = await service.findDuplicates(mockFiles);
 
-      expect(result.groups).toHaveLength(2); // One for name, one for size
-      expect(result.groups.some(g => g.strategy === 'name')).toBe(true);
-      expect(result.groups.some(g => g.strategy === 'size')).toBe(true);
+      expect(result.groups).toHaveLength(1);
+      expect(result.groups[0].files).toEqual([mockFiles[0], mockFiles[1]]);
+      expect(result.groups[0].strategies).toEqual(expect.arrayContaining(['name', 'size']));
+    });
+
+    it('should require all applicable strategies to match in ALL mode', async () => {
+      const sizeOnly = {
+        name: 'size',
+        priority: 1,
+        canProcess: jest.fn().mockReturnValue(true),
+        getKey: jest
+          .fn()
+          .mockImplementation(async (file: IScannedFile) =>
+            file.size === 100 ? 'same-size' : file.size.toString()
+          )
+      } satisfies IDedupeStrategy;
+      const hashOnly = {
+        name: 'sha256',
+        priority: 2,
+        canProcess: jest.fn().mockReturnValue(true),
+        getKey: jest.fn().mockImplementation(async (file: IScannedFile) => `hash-${file.filename}`)
+      } satisfies IDedupeStrategy;
+
+      const allModeService = new DedupeService([sizeOnly, hashOnly], DedupeMode.ALL);
+      const result = await allModeService.findDuplicates(mockFiles);
+
+      expect(result.groups).toHaveLength(0);
+    });
+
+    it('should ignore unsupported strategies when evaluating ALL mode', async () => {
+      const nameStrategy = {
+        name: 'name',
+        priority: 1,
+        canProcess: jest.fn().mockReturnValue(true),
+        getKey: jest.fn().mockResolvedValue('duplicate')
+      } satisfies IDedupeStrategy;
+      const imageOnlyStrategy = {
+        name: 'image-dimensions',
+        priority: 2,
+        canProcess: jest.fn().mockReturnValue(false),
+        getKey: jest.fn()
+      } satisfies IDedupeStrategy;
+
+      const allModeService = new DedupeService([nameStrategy, imageOnlyStrategy], DedupeMode.ALL);
+      const result = await allModeService.findDuplicates(mockFiles.slice(0, 2));
+
+      expect(result.groups).toHaveLength(1);
+      expect(result.groups[0].files).toEqual([mockFiles[0], mockFiles[1]]);
+      expect(result.groups[0].strategy).toBe('name');
     });
 
     it('should sort strategies used alphabetically', async () => {
@@ -145,7 +188,17 @@ describe('DedupeService', () => {
   });
 
   describe('applyAction', () => {
-    let mockResult: any;
+    let mockResult: {
+      groups: Array<{
+        key: string;
+        strategy: string;
+        files: IScannedFile[];
+        primary: IScannedFile;
+      }>;
+      totalFiles: number;
+      totalDuplicates: number;
+      strategiesUsed: string[];
+    };
 
     beforeEach(() => {
       mockResult = {
@@ -168,7 +221,7 @@ describe('DedupeService', () => {
         const outcome = await service.applyAction(mockResult, DedupeAction.SKIP);
 
         expect(outcome.action).toBe(DedupeAction.SKIP);
-        expect(outcome.skipped).toHaveLength(1); // Only the duplicate, not primary
+        expect(outcome.skipped).toHaveLength(1);
         expect(outcome.skipped[0]).toBe(mockFiles[1]);
         expect(outcome.replaced).toHaveLength(0);
         expect(outcome.reported).toHaveLength(0);
@@ -184,7 +237,7 @@ describe('DedupeService', () => {
 
         const outcome = await service.applyAction(mockResult, DedupeAction.SKIP);
 
-        expect(outcome.skipped).toHaveLength(2); // One from each group
+        expect(outcome.skipped).toHaveLength(2);
       });
     });
 
@@ -213,9 +266,35 @@ describe('DedupeService', () => {
     });
 
     it('should throw error for unsupported action', async () => {
-      await expect(service.applyAction(mockResult, 'invalid' as any)).rejects.toThrow(
+      await expect(service.applyAction(mockResult, 'invalid' as never)).rejects.toThrow(
         'Unsupported dedupe action: invalid'
       );
+    });
+  });
+
+  describe('private methods', () => {
+    it('should treat ANY mode as non-duplicate when no strategies matched', () => {
+      expect(service['isDuplicatePair']([], 2)).toBe(false);
+    });
+
+    it('should skip pair matches when either file is missing a strategy key', () => {
+      const result = service['findPairMatches']('/left', '/right', [
+        {
+          strategy: 'name',
+          keysByPath: new Map([['/left', 'same']])
+        }
+      ]);
+
+      expect(result).toEqual({ applicableStrategies: 0, matched: [] });
+    });
+
+    it('should not union indexes already in the same set', () => {
+      const parents = [0, 0, 2];
+
+      const result = service['union'](parents, 0, 1);
+
+      expect(result).toEqual([0, 0, 2]);
+      expect(parents).toEqual([0, 0, 2]);
     });
   });
 });

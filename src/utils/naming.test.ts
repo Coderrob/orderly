@@ -198,7 +198,7 @@ describe('NamingUtils', () => {
     });
   });
 
-  describe('needsRename', () => {
+  describe('shouldRename', () => {
     it.each([
       ['test-file.txt', NamingConventionType.KEBAB_CASE, false],
       ['Test File.txt', NamingConventionType.KEBAB_CASE, true],
@@ -209,28 +209,28 @@ describe('NamingUtils', () => {
     ])('should return correct result for "%s" with %s convention', (filename, type, expected) => {
       const convention: NamingConvention = { type, lowercase: true };
 
-      const result = NamingUtils.needsRename(filename, convention);
+      const result = NamingUtils.shouldRename(filename, convention);
 
       expect(result).toBe(expected);
     });
 
     it('should return false for empty filename', () => {
-      const result = NamingUtils.needsRename('', testConvention);
+      const result = NamingUtils.shouldRename('', testConvention);
       expect(result).toBe(false);
     });
 
     it('should return false for filename without extension', () => {
-      const result = NamingUtils.needsRename('testfile', testConvention);
+      const result = NamingUtils.shouldRename('testfile', testConvention);
       expect(result).toBe(false);
     });
 
     it('should return true for filename with only extension starting with dot', () => {
-      const result = NamingUtils.needsRename('.txt', testConvention);
+      const result = NamingUtils.shouldRename('.txt', testConvention);
       expect(result).toBe(true);
     });
 
     it('should handle filename with multiple dots', () => {
-      const result = NamingUtils.needsRename('test.file.name.txt', testConvention);
+      const result = NamingUtils.shouldRename('test.file.name.txt', testConvention);
       expect(result).toBe(true);
     });
   });
@@ -271,9 +271,9 @@ describe('NamingUtils', () => {
       });
     });
 
-    describe('needsRename', () => {
+    describe('shouldRename', () => {
       it('should delegate to static method', () => {
-        const result = namingUtils.needsRename('Test File.txt', testConvention);
+        const result = namingUtils.shouldRename('Test File.txt', testConvention);
         expect(result).toBe(true);
       });
     });

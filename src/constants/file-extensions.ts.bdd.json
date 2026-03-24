@@ -1,0 +1,31 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\constants\\file-extensions.ts",
+  "module": {
+    "name": "file-extensions",
+    "description": "Behavioral contract for D:\\orderly\\src\\constants\\file-extensions.ts",
+    "exports": [
+      "ARCHIVE_EXTENSIONS",
+      "AUDIO_EXTENSIONS",
+      "CODE_EXTENSIONS",
+      "DEFAULT_CATEGORIES",
+      "DOCUMENT_EXTENSIONS",
+      "IMAGE_EXTENSIONS",
+      "VIDEO_EXTENSIONS"
+    ]
+  },
+  "specifications": [
+    {
+      "feature": "Source contract for file-extensions",
+      "scenarios": [
+        {
+          "name": "should satisfy the documented module contract",
+          "given": "the module is imported by consumers",
+          "when": "its public API is used according to the source definition",
+          "then": "the documented behavior should remain consistent"
+        }
+      ]
+    }
+  ]
+}

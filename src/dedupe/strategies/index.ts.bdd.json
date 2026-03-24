@@ -1,0 +1,31 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\dedupe\\strategies\\index.ts",
+  "module": {
+    "name": "index",
+    "description": "Behavioral contract for D:\\orderly\\src\\dedupe\\strategies\\index.ts",
+    "exports": [
+      "ExifStrategy",
+      "FileAttributesStrategy",
+      "FilePropertiesStrategy",
+      "ImageDimensionsStrategy",
+      "NameStrategy",
+      "Sha256Strategy",
+      "SizeStrategy"
+    ]
+  },
+  "specifications": [
+    {
+      "feature": "Source contract for index",
+      "scenarios": [
+        {
+          "name": "should satisfy the documented module contract",
+          "given": "the module is imported by consumers",
+          "when": "its public API is used according to the source definition",
+          "then": "the documented behavior should remain consistent"
+        }
+      ]
+    }
+  ]
+}

@@ -32,14 +32,14 @@ describe('FileSystemUtils', () => {
     jest.clearAllMocks();
   });
 
-  describe('exists', () => {
+  describe('hasPath', () => {
     it.each([
       [true, 'file exists'],
       [false, 'file does not exist']
     ])('should return %s when %s', expected => {
       jest.mocked(fs.existsSync).mockReturnValue(expected);
 
-      const result = FileSystemUtils.existsSync(testPath);
+      const result = FileSystemUtils.hasPath(testPath);
 
       expect(result).toBe(expected);
       expect(fs.existsSync).toHaveBeenCalledWith(testPath);
@@ -139,6 +139,15 @@ describe('FileSystemUtils', () => {
     });
   });
 
+  describe('unlink', () => {
+    it('should delete a file', () => {
+      FileSystemUtils.unlinkSync(testPath);
+
+      expect(fs.unlinkSync).toHaveBeenCalledTimes(1);
+      expect(fs.unlinkSync).toHaveBeenNthCalledWith(1, testPath);
+    });
+  });
+
   describe('stat', () => {
     it('should return file stats', () => {
       const mockStats = { size: 1024, isFile: () => true } as fs.Stats;
@@ -153,11 +162,11 @@ describe('FileSystemUtils', () => {
   });
 
   describe('instance methods', () => {
-    describe('existsSync', () => {
+    describe('hasPath', () => {
       it('should delegate to static method', () => {
         jest.mocked(fs.existsSync).mockReturnValue(true);
 
-        const result = fileSystemUtils.existsSync(testPath);
+        const result = fileSystemUtils.hasPath(testPath);
 
         expect(result).toBe(true);
         expect(fs.existsSync).toHaveBeenCalledWith(testPath);
@@ -214,6 +223,14 @@ describe('FileSystemUtils', () => {
         fileSystemUtils.renameSync(oldPath, newPath);
 
         expect(fs.renameSync).toHaveBeenCalledWith(oldPath, newPath);
+      });
+    });
+
+    describe('unlinkSync', () => {
+      it('should delegate to static method', () => {
+        fileSystemUtils.unlinkSync(testPath);
+
+        expect(fs.unlinkSync).toHaveBeenCalledWith(testPath);
       });
     });
 

@@ -5,9 +5,11 @@ export enum LogLevel {
   ERROR = 'error'
 }
 
-export interface LogEntry {
+export interface ILogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
   details?: unknown;
 }
+
+export type LogEntry = ILogEntry;

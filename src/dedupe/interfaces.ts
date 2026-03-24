@@ -19,7 +19,7 @@ export interface IDedupeService {
    * @param files - Scanned files to check for duplicates
    * @returns Grouped duplicates with metadata
    */
-  findDuplicates(files: IScannedFile[]): Promise<IDedupeResult>;
+  findDuplicates(files: readonly IScannedFile[]): Promise<IDedupeResult>;
 
   /**
    * Applies the configured action to duplicate groups.
@@ -47,7 +47,7 @@ export interface IDedupeStrategy {
    * @param file - File to check
    * @returns True if strategy applies to this file type
    */
-  supports(file: IScannedFile): boolean;
+  canProcess(file: Readonly<IScannedFile>): boolean;
 
   /**
    * Generates a comparable key for the file.
@@ -55,7 +55,7 @@ export interface IDedupeStrategy {
    * @param file - File to generate key for
    * @returns Key string or null if unable to process
    */
-  getKey(file: IScannedFile): Promise<string | null>;
+  getKey(file: Readonly<IScannedFile>): Promise<string | null>;
 }
 
 /**

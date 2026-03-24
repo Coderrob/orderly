@@ -3,6 +3,9 @@ import * as path from 'node:path';
 import { ConfigLoader } from '../../config/config-loader';
 import { DEFAULT_CONFIG } from '../../config/types';
 import { ExitCode, ConfigFileFormat, CLI_CONSTANTS, COMMAND_MESSAGES } from '../constants';
+import { WithCommandAudit } from '../decorators/command-audit.decorator';
+import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
+import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
 import type { IInitOptions, IInitHandler, ICommandResult } from '../interfaces';
 
 /**
@@ -14,35 +17,42 @@ export class InitHandler implements IInitHandler {
    * @param options - Init command options
    * @returns Command result
    */
-  execute(options: IInitOptions): Promise<ICommandResult> {
-    try {
-      const format = options.format || CLI_CONSTANTS.DEFAULT_CONFIG_FORMAT;
-      const configPath = this.getConfigPath(format);
+  @WithCommandAudit('init')
+  @WithCommandTelemetry('init')
+  @HandleCommandErrors(COMMAND_MESSAGES.INIT_FAILED)
+  execute(options: Readonly<IInitOptions>): Promise<ICommandResult> {
+    const format = options.format || CLI_CONSTANTS.DEFAULT_CONFIG_FORMAT;
+    const configPath = this.getConfigPath(format);
+    return this.hasExistingConfig(configPath)
+      ? Promise.resolve(this.buildFailureResult(configPath))
+      : this.createConfig(configPath);
+  }
 
-      // Check if config already exists
-      if (this.configExists(configPath)) {
-        return Promise.resolve({
-          success: false,
-          exitCode: ExitCode.ERROR,
-          message: `${COMMAND_MESSAGES.CONFIG_EXISTS}${configPath}`
-        });
-      }
+  /**
+   * Creates the config file and returns a success result.
+   * @param configPath - Path where the config file will be written.
+   * @returns Success result payload.
+   */
+  private createConfig(configPath: string): Promise<ICommandResult> {
+    ConfigLoader.save(DEFAULT_CONFIG, configPath);
+    return Promise.resolve({
+      success: true,
+      exitCode: ExitCode.SUCCESS,
+      message: `${COMMAND_MESSAGES.CONFIG_CREATED}${configPath}`
+    });
+  }
 
-      // Save default configuration
-      ConfigLoader.save(DEFAULT_CONFIG, configPath);
-
-      return Promise.resolve({
-        success: true,
-        exitCode: ExitCode.SUCCESS,
-        message: `${COMMAND_MESSAGES.CONFIG_CREATED}${configPath}`
-      });
-    } catch (error) {
-      return Promise.resolve({
-        success: false,
-        exitCode: ExitCode.ERROR,
-        message: `${COMMAND_MESSAGES.INIT_FAILED}${error instanceof Error ? error.message : String(error)}`
-      });
-    }
+  /**
+   * Builds the failure result used when a config file already exists.
+   * @param configPath - Existing config file path.
+   * @returns Failure result payload.
+   */
+  private buildFailureResult(configPath: string): ICommandResult {
+    return {
+      success: false,
+      exitCode: ExitCode.ERROR,
+      message: `${COMMAND_MESSAGES.CONFIG_EXISTS}${configPath}`
+    };
   }
 
   /**
@@ -51,17 +61,20 @@ export class InitHandler implements IInitHandler {
    * @returns Configuration file path
    */
   private getConfigPath(format: ConfigFileFormat | string): string {
-    const formatLower = typeof format === 'string' ? format.toLowerCase() : format;
-    const extension = formatLower === 'yaml' || formatLower === 'yml' ? 'yaml' : 'json';
+    const formatLower = String(format).toLowerCase();
+    const extension =
+      formatLower === `${ConfigFileFormat.YAML}` || formatLower === `${ConfigFileFormat.YML}`
+        ? ConfigFileFormat.YAML
+        : ConfigFileFormat.JSON;
     return path.resolve(`${CLI_CONSTANTS.CONFIG_PREFIX}${extension}`);
   }
 
   /**
    * Checks if a configuration file already exists.
    * @param configPath - Path to check
-   * @returns True if the file exists
+   * @returns True if the file exists.
    */
-  private configExists(configPath: string): boolean {
+  private hasExistingConfig(configPath: string): boolean {
     try {
       ConfigLoader.load(configPath);
       return true;

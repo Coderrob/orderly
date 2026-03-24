@@ -6,31 +6,12 @@
 import type { IOrderlyError } from '../errors';
 
 /**
- * Returns true when the provided value is a non-null object.
- * Excludes arrays.
+ * Returns true when the provided value is an array.
  * @param value The value to check
- * @returns True when the value is a non-null object; otherwise false.
+ * @returns True when the value is an array; otherwise false.
  */
-export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/**
- * Returns true when the provided value is a string primitive.
- * @param value The value to check
- * @returns True when the value is a string; otherwise false.
- */
-export function isString(value: unknown): value is string {
-  return typeof value === 'string';
-}
-
-/**
- * Returns true when the provided value is a number.
- * @param value The value to check
- * @returns True when the value is a number; otherwise false.
- */
-export function isNumber(value: unknown): value is number {
-  return typeof value === 'number';
+export function isArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
 }
 
 /**
@@ -43,21 +24,41 @@ export function isBoolean(value: unknown): value is boolean {
 }
 
 /**
- * Returns true when the provided value is an array.
- * @param value The value to check
- * @returns True when the value is an array; otherwise false.
- */
-export function isArray(value: unknown): value is unknown[] {
-  return Array.isArray(value);
-}
-
-/**
  * Returns true when the provided value is null or undefined.
  * @param value The value to check
  * @returns True when the value is null or undefined; otherwise false.
  */
 export function isNullOrUndefined(value: unknown): value is null | undefined {
   return value === null || value === undefined;
+}
+
+/**
+ * Returns true when the provided value is a number.
+ * @param value The value to check
+ * @returns True when the value is a number; otherwise false.
+ */
+export function isNumber(value: unknown): value is number {
+  return typeof value === 'number';
+}
+
+/**
+ * Returns true when the provided value is a non-null object.
+ * Excludes arrays.
+ * @param value The value to check
+ * @returns True when the value is a non-null object; otherwise false.
+ */
+export function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Type guard for IOrderlyError instances.
+ * Enables type-safe error handling for Orderly-specific errors.
+ * @param error The error to check
+ * @returns True when the error is an IOrderlyError; otherwise false.
+ */
+export function isOrderlyError(error: unknown): error is IOrderlyError {
+  return error instanceof Error && 'code' in error && 'category' in error;
 }
 
 /**
@@ -81,11 +82,10 @@ export function isPrimitive(
 }
 
 /**
- * Type guard for IOrderlyError instances.
- * Enables type-safe error handling for Orderly-specific errors.
- * @param error The error to check
- * @returns True when the error is an IOrderlyError; otherwise false.
+ * Returns true when the provided value is a string primitive.
+ * @param value The value to check
+ * @returns True when the value is a string; otherwise false.
  */
-export function isOrderlyError(error: unknown): error is IOrderlyError {
-  return error instanceof Error && 'code' in error && 'category' in error;
+export function isString(value: unknown): value is string {
+  return typeof value === 'string';
 }

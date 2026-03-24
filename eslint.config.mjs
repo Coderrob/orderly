@@ -1,10 +1,15 @@
 // @ts-check
 import eslint from '@eslint/js';
+import zeroTolerance from '@coderrob/eslint-plugin-zero-tolerance';
 import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
 import jsdocPlugin from 'eslint-plugin-jsdoc';
 
-export default tseslint.config(
+const zeroToleranceStrictConfig = Array.isArray(zeroTolerance.configs.strict)
+  ? zeroTolerance.configs.strict
+  : [zeroTolerance.configs.strict];
+
+export default [
   {
     ignores: [
       'dist/**',
@@ -18,6 +23,7 @@ export default tseslint.config(
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
+  ...zeroToleranceStrictConfig,
   {
     plugins: {
       import: importPlugin,
@@ -55,6 +61,7 @@ export default tseslint.config(
       ],
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-require-imports': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -66,18 +73,14 @@ export default tseslint.config(
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
 
-      // JSDoc requirements (temporarily disabled - requires manual implementation)
-      // TODO: Add JSDoc comments to all functions with @param and @returns tags
-      'jsdoc/require-jsdoc': 'off',
-      'jsdoc/require-param': 'off',
-      'jsdoc/require-returns': 'off',
       'jsdoc/require-param-type': 'off', // TypeScript handles this
       'jsdoc/require-returns-type': 'off', // TypeScript handles this
 
       // Complexity rules (SOLID and Clean Code)
       complexity: ['error', 10],
       'max-depth': ['error', 3],
-      'max-lines-per-function': ['error', { max: 50, skipBlankLines: true, skipComments: true }],
+      'zero-tolerance/max-function-lines': ['error', { max: 20 }],
+      'max-lines-per-function': ['error', { max: 25, skipBlankLines: true, skipComments: true }],
       'max-params': ['error', 5],
       'max-lines': ['warn', { max: 300, skipBlankLines: true, skipComments: true }],
       'max-nested-callbacks': ['error', 3],
@@ -104,4 +107,4 @@ export default tseslint.config(
       '@typescript-eslint/require-await': 'error'
     }
   }
-);
+];

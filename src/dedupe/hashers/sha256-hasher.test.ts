@@ -16,6 +16,27 @@ describe('Sha256Hasher', () => {
   let mockStream: any;
   let mockHash: any;
 
+  const setAsyncStreamChunks = (chunks: readonly Buffer[]): void => {
+    mockStream = {
+      async *[Symbol.asyncIterator](): AsyncGenerator<Buffer, void, unknown> {
+        for (const chunk of chunks) {
+          yield chunk;
+        }
+      }
+    };
+    (createReadStream as jest.Mock).mockReturnValue(mockStream);
+  };
+
+  const setAsyncStreamError = (error: Error): void => {
+    mockStream = {
+      async *[Symbol.asyncIterator](): AsyncGenerator<Buffer, void, unknown> {
+        yield Buffer.from('');
+        throw error;
+      }
+    };
+    (createReadStream as jest.Mock).mockReturnValue(mockStream);
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -26,12 +47,9 @@ describe('Sha256Hasher', () => {
     };
 
     // Setup mock stream
-    mockStream = {
-      on: jest.fn()
-    };
+    setAsyncStreamChunks([Buffer.from('test data')]);
 
     // Mock the modules
-    (createReadStream as jest.Mock).mockReturnValue(mockStream);
     (createHash as jest.Mock).mockReturnValue(mockHash);
 
     hasher = new Sha256Hasher();
@@ -41,23 +59,12 @@ describe('Sha256Hasher', () => {
     it('should create read stream for the file path', async () => {
       const filePath = '/path/to/file.txt';
 
-      // Setup stream events
-      mockStream.on.mockImplementation((event: string, callback: Function) => {
-        if (event === 'data') callback(Buffer.from('test data'));
-        if (event === 'end') callback();
-      });
-
       await hasher.sha256(filePath);
 
       expect(createReadStream).toHaveBeenCalledWith(filePath);
     });
 
     it('should create SHA-256 hash', async () => {
-      mockStream.on.mockImplementation((event: string, callback: Function) => {
-        if (event === 'data') callback(Buffer.from('test data'));
-        if (event === 'end') callback();
-      });
-
       await hasher.sha256('/path/to/file.txt');
 
       expect(createHash).toHaveBeenCalledWith('sha256');
@@ -65,10 +72,7 @@ describe('Sha256Hasher', () => {
 
     it('should update hash with file data', async () => {
       const testData = Buffer.from('test data');
-      mockStream.on.mockImplementation((event: string, callback: Function) => {
-        if (event === 'data') callback(testData);
-        if (event === 'end') callback();
-      });
+      setAsyncStreamChunks([testData]);
 
       await hasher.sha256('/path/to/file.txt');
 
@@ -78,11 +82,7 @@ describe('Sha256Hasher', () => {
     it('should return hex-encoded hash', async () => {
       const expectedHash = 'mocked-hash';
       mockHash.digest.mockReturnValue(expectedHash);
-
-      mockStream.on.mockImplementation((event: string, callback: Function) => {
-        if (event === 'data') callback(Buffer.from('test'));
-        if (event === 'end') callback();
-      });
+      setAsyncStreamChunks([Buffer.from('test')]);
 
       const result = await hasher.sha256('/path/to/file.txt');
 
@@ -92,16 +92,7 @@ describe('Sha256Hasher', () => {
 
     it('should handle multiple data chunks', async () => {
       const chunks = [Buffer.from('chunk1'), Buffer.from('chunk2')];
-
-      mockStream.on.mockImplementation((event: string, callback: Function) => {
-        if (event === 'data') {
-          for (const chunk of chunks) {
-            callback(chunk);
-          }
-        } else if (event === 'end') {
-          callback();
-        }
-      });
+      setAsyncStreamChunks(chunks);
 
       await hasher.sha256('/path/to/file.txt');
 
@@ -112,12 +103,22 @@ describe('Sha256Hasher', () => {
 
     it('should reject on stream error', async () => {
       const error = new Error('Stream error');
-
-      mockStream.on.mockImplementation((event: string, callback: Function) => {
-        if (event === 'error') callback(error);
-      });
+      setAsyncStreamError(error);
 
       await expect(hasher.sha256('/path/to/file.txt')).rejects.toThrow('Stream error');
+    });
+
+    it('should skip non-Buffer and non-string chunks without updating the hash', async () => {
+      mockStream = {
+        async *[Symbol.asyncIterator](): AsyncGenerator<unknown, void, unknown> {
+          yield 42 as unknown; // non-Buffer, non-string chunk
+        }
+      };
+      (createReadStream as jest.Mock).mockReturnValue(mockStream);
+
+      await hasher.sha256('/path/to/file.txt');
+
+      expect(mockHash.update).not.toHaveBeenCalled();
     });
   });
 });

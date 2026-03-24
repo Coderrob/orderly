@@ -23,7 +23,7 @@ describe('DirectoryValidator', () => {
     mockFs.statSync.mockReturnValue({
       isDirectory: () => true
     } as any);
-    mockFs.readdirSync.mockReturnValue([]);
+    mockFs.accessSync.mockImplementation(() => undefined);
   });
 
   describe('validate', () => {
@@ -38,7 +38,7 @@ describe('DirectoryValidator', () => {
       expect(mockPath.resolve).toHaveBeenCalledWith(directory);
       expect(mockFs.existsSync).toHaveBeenCalledWith(resolvedPath);
       expect(mockFs.statSync).toHaveBeenCalledWith(resolvedPath);
-      expect(mockFs.readdirSync).toHaveBeenCalledWith(resolvedPath);
+      expect(mockFs.accessSync).toHaveBeenCalledWith(resolvedPath, fs.constants.R_OK);
       expect(result).toBe(resolvedPath);
     });
 
@@ -49,7 +49,7 @@ describe('DirectoryValidator', () => {
         validator.validate('nonexistent');
       }).toThrow('Directory does not exist: nonexistent');
       expect(mockFs.statSync).not.toHaveBeenCalled();
-      expect(mockFs.readdirSync).not.toHaveBeenCalled();
+      expect(mockFs.accessSync).not.toHaveBeenCalled();
     });
 
     it('should handle absolute paths correctly', () => {
@@ -57,7 +57,7 @@ describe('DirectoryValidator', () => {
       mockPath.resolve.mockReturnValue(absolutePath);
       mockFs.existsSync.mockReturnValue(true);
       mockFs.statSync.mockReturnValue({ isDirectory: () => true } as any);
-      mockFs.readdirSync.mockReturnValue([]);
+      mockFs.accessSync.mockImplementation(() => undefined);
 
       const result = validator.validate(absolutePath);
 
@@ -73,17 +73,17 @@ describe('DirectoryValidator', () => {
       expect(() => {
         validator.validate('file.txt');
       }).toThrow('Path is not a directory: file.txt');
-      expect(mockFs.readdirSync).not.toHaveBeenCalled();
+      expect(mockFs.accessSync).not.toHaveBeenCalled();
     });
 
     it('should throw error when directory is not accessible', () => {
-      mockFs.readdirSync.mockImplementation(() => {
-        throw new Error('Permission denied');
+      mockFs.accessSync.mockImplementation(() => {
+        throw new Error('EACCES');
       });
 
       expect(() => {
         validator.validate('inaccessible');
-      }).toThrow('Directory is not accessible: inaccessible');
+      }).toThrow('EACCES');
     });
 
     it('should rethrow stat errors', () => {
@@ -94,7 +94,7 @@ describe('DirectoryValidator', () => {
       expect(() => {
         validator.validate('stat-fails');
       }).toThrow('Stat failed');
-      expect(mockFs.readdirSync).not.toHaveBeenCalled();
+      expect(mockFs.accessSync).not.toHaveBeenCalled();
     });
 
     it('should rethrow resolve errors', () => {
@@ -107,7 +107,7 @@ describe('DirectoryValidator', () => {
       }).toThrow('Resolve failed');
       expect(mockFs.existsSync).not.toHaveBeenCalled();
       expect(mockFs.statSync).not.toHaveBeenCalled();
-      expect(mockFs.readdirSync).not.toHaveBeenCalled();
+      expect(mockFs.accessSync).not.toHaveBeenCalled();
     });
 
     it('should resolve relative paths', () => {
