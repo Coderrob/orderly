@@ -179,8 +179,8 @@ describe('Organize Command Integration Tests', () => {
       // Verify manifest content
       const manifestContent = testEnv.readFile(manifestPath);
       const manifest = JSON.parse(manifestContent);
-      expect(manifest).toHaveProperty('operations');
-      expect(Array.isArray(manifest.operations)).toBe(true);
+      expect(manifest).toHaveProperty('entries');
+      expect(Array.isArray(manifest.entries)).toBe(true);
     });
 
     it('should not generate manifest when not requested', async () => {

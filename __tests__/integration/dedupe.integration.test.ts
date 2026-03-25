@@ -5,7 +5,7 @@ import { OrganizeHandler } from '../../src/cli/commands/organize.command';
 import { ConfigService } from '../../src/cli/services/config.service';
 import { DirectoryValidator } from '../../src/cli/services/directory-validator.service';
 import { ManifestService } from '../../src/cli/services/manifest.service';
-import { DedupeAction } from '../../src/dedupe/types';
+import { DedupeAction, DedupeMode } from '../../src/dedupe/types';
 import { TestEnvironmentSetup, TestAssertions, createTestConfig } from '../helpers';
 
 /**
@@ -13,6 +13,22 @@ import { TestEnvironmentSetup, TestAssertions, createTestConfig } from '../helpe
  * These tests verify duplicate detection and handling with before/after validation.
  */
 describe('Dedupe Integration Tests', () => {
+  const HASH_STRATEGY = {
+    mode: DedupeMode.ANY,
+    size: false,
+    sha256: true
+  } as const;
+  const METADATA_STRATEGY = {
+    mode: DedupeMode.ALL,
+    size: true,
+    sha256: false
+  } as const;
+  const COMBINED_STRATEGY = {
+    mode: DedupeMode.ANY,
+    size: true,
+    sha256: true
+  } as const;
+
   let testEnv: TestEnvironmentSetup;
   let testDir: string;
   let organizeHandler: OrganizeHandler;
@@ -45,7 +61,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -85,7 +101,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -117,7 +133,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -150,7 +166,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -178,7 +194,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'metadata',
+          strategy: METADATA_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -203,7 +219,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'metadata',
+          strategy: METADATA_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -237,7 +253,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'combined',
+          strategy: COMBINED_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -264,7 +280,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: true,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.REPORT
         }
       });
@@ -296,7 +312,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.REPORT
         }
       });
@@ -324,7 +340,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -351,7 +367,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.REPLACE
         }
       });
@@ -385,7 +401,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -419,7 +435,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -452,7 +468,7 @@ describe('Dedupe Integration Tests', () => {
         generateManifest: true,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -477,7 +493,7 @@ describe('Dedupe Integration Tests', () => {
 
       const manifestContent = testEnv.readFile(manifestPath);
       const manifest = JSON.parse(manifestContent);
-      expect(manifest).toHaveProperty('operations');
+      expect(manifest).toHaveProperty('entries');
     });
   });
 
@@ -489,7 +505,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -520,7 +536,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -545,7 +561,7 @@ describe('Dedupe Integration Tests', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });

@@ -25,15 +25,6 @@ interface IOptionalStrategyDefinition {
 }
 
 /**
- * Type guard for runtime dedupe strategy config objects.
- * @param strategy - Runtime strategy config value.
- * @returns True when the value is a dedupe strategy config.
- */
-function isDedupeStrategyConfig(strategy: unknown): strategy is IDedupeStrategyConfig {
-  return !!strategy && typeof strategy === 'object' && 'mode' in strategy;
-}
-
-/**
  * Factory for creating dedupe strategies.
  * Follows the Factory Pattern to encapsulate strategy creation logic.
  */
@@ -59,20 +50,11 @@ export class DedupeStrategyFactory {
    * @returns A dedupe service configured with the resolved default strategies and mode.
    */
   static createDedupeService(config?: Readonly<Pick<IDedupeConfig, 'strategy'>>): DedupeService {
-    const strategyConfig = this.getStrategyConfig(config?.strategy);
+    const strategyConfig = config?.strategy;
     return new DedupeService(
       this.createDefaultStrategies(strategyConfig),
       strategyConfig?.mode ?? DedupeMode.ANY
     );
-  }
-
-  /**
-   * Normalizes runtime config so legacy string strategy values do not break dedupe construction.
-   * @param strategy - Runtime strategy config value
-   * @returns Parsed strategy config when present, otherwise undefined
-   */
-  private static getStrategyConfig(strategy: unknown): IDedupeStrategyConfig | undefined {
-    return isDedupeStrategyConfig(strategy) ? strategy : undefined;
   }
 
   /**

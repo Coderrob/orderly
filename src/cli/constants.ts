@@ -44,6 +44,10 @@ interface ICommandMessages {
   readonly CONFIG_EXISTS: string;
   readonly CONFIG_CREATED: string;
   readonly CONFIG_AUTO_DISCOVERED: string;
+  readonly CLEAN_FAILED: string;
+  readonly CLEAN_SUCCESS: string;
+  readonly DEDUPE_FAILED: string;
+  readonly DEDUPE_SUCCESS: string;
   readonly INIT_FAILED: string;
   readonly FILES_FOUND: string;
   readonly OPERATIONS_PLANNED: string;
@@ -87,6 +91,10 @@ export const COMMAND_MESSAGES: ICommandMessages = {
   CONFIG_EXISTS: 'Configuration file already exists: ',
   CONFIG_CREATED: 'Created configuration file: ',
   CONFIG_AUTO_DISCOVERED: 'Using config file found in target directory: ',
+  CLEAN_FAILED: 'Clean failed: ',
+  CLEAN_SUCCESS: 'Scanned {0} directories, removed {1}, skipped {2}',
+  DEDUPE_FAILED: 'Dedupe failed: ',
+  DEDUPE_SUCCESS: 'Scanned {0} files, found {1} duplicate groups affecting {2} files',
   INIT_FAILED: 'Init failed: ',
   FILES_FOUND: 'Found {0} files to process',
   OPERATIONS_PLANNED: 'Planned {0} operations',

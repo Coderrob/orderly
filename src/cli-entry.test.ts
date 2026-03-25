@@ -1,16 +1,16 @@
 describe('CLI entrypoint', () => {
-  it('should create the CLI service and parse arguments', () => {
+  it('should create the root command and parse arguments', () => {
     const parse = jest.fn();
-    const CliService = jest.fn().mockImplementation(() => ({ parse }));
+    const createRootCommand = jest.fn().mockReturnValue({ parse });
 
     jest.isolateModules(() => {
-      jest.doMock('./cli/cli.service', () => ({ CliService }));
+      jest.doMock('./cli/root-command', () => ({ createRootCommand }));
       require('./cli');
     });
 
-    expect(CliService).toHaveBeenCalledTimes(1);
+    expect(createRootCommand).toHaveBeenCalledTimes(1);
     expect(parse).toHaveBeenCalledTimes(1);
     jest.resetModules();
-    jest.dontMock('./cli/cli.service');
+    jest.dontMock('./cli/root-command');
   });
 });

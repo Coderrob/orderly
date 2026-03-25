@@ -71,7 +71,7 @@ npm install -g orderly
 Or use directly with npx:
 
 ```bash
-npx orderly organize
+npx orderly files organize
 ```
 
 ## Quick Start
@@ -79,30 +79,52 @@ npx orderly organize
 1. **Initialize a configuration file**:
 
    ```bash
-   orderly init
+   orderly config init
    ```
 
 2. **Scan a directory** to see what would be organized:
 
    ```bash
-   orderly scan ./my-folder
+   orderly files scan ./my-folder
    ```
 
 3. **Organize files** (dry run first):
 
    ```bash
-   orderly organize ./my-folder --dry-run
+   orderly files organize ./my-folder --dry-run
    ```
 
-4. **Apply the organization**:
+4. **Inspect duplicates** before changing files, if needed:
 
    ```bash
-   orderly organize ./my-folder
+   orderly files dedupe ./my-folder
+   ```
+
+5. **Clean empty folders after organizing, if needed**:
+
+   ```bash
+   orderly files clean ./my-folder --dry-run
+   ```
+
+6. **Apply the organization**:
+
+   ```bash
+   orderly files organize ./my-folder
    ```
 
 ## Commands
 
-### `orderly organize [directory]`
+Canonical grouped commands:
+
+```bash
+orderly files scan [directory]
+orderly files organize [directory]
+orderly files dedupe [directory]
+orderly files clean [directory]
+orderly config init
+```
+
+### `orderly files organize [directory]`
 
 Organize files in the specified directory (defaults to current directory).
 
@@ -121,16 +143,16 @@ Organize files in the specified directory (defaults to current directory).
 
 ```bash
 # Organize current directory with dry run
-orderly organize --dry-run
+orderly files organize --dry-run
 
 # Organize specific directory with custom config
-orderly organize ./downloads -c ./my-config.yml
+orderly files organize ./downloads -c ./my-config.yml
 
 # Organize and output to a different location
-orderly organize ./messy-folder -o ./organized-folder
+orderly files organize ./messy-folder -o ./organized-folder
 ```
 
-### `orderly scan [directory]`
+### `orderly files scan [directory]`
 
 Scan a directory and display what would be organized without making changes.
 
@@ -145,10 +167,56 @@ Scan a directory and display what would be organized without making changes.
 **Example:**
 
 ```bash
-orderly scan ./downloads
+orderly files scan ./downloads
 ```
 
-### `orderly init`
+### `orderly files clean [directory]`
+
+Remove empty folders beneath the target directory without removing the root directory itself.
+
+**Options:**
+
+- `--dry-run` - Preview directories that would be removed
+- `--include-hidden` - Allow deleting empty hidden directories
+- `--remove-orderly-dir` - Allow deleting an empty `.orderly` directory
+- `-l, --log-level <level>` - Set log level
+- `-c, --config <path>` - Path to config file
+
+**Examples:**
+
+```bash
+# Preview empty folder cleanup
+orderly files clean ./downloads --dry-run
+
+# Remove empty hidden folders too
+orderly files clean ./downloads --include-hidden
+```
+
+### `orderly files dedupe [directory]`
+
+Find duplicate files without running organization.
+
+**Options:**
+
+- `-c, --config <path>` - Path to config file
+- `-l, --log-level <level>` - Set log level
+- `-d, --dry-run` - Preview replacement behavior without deleting files
+- `--action <action>` - Dedupe action (`skip`, `report`, or `replace`)
+- `--report-json <path>` - Write a JSON dedupe report
+- `--report-markdown <path>` - Write a Markdown dedupe report
+- `--no-auto-config` - Disable auto-discovery of config files in target directory
+
+**Examples:**
+
+```bash
+# Generate default reports in .orderly/
+orderly files dedupe ./downloads
+
+# Replace duplicates after review
+orderly files dedupe ./downloads --action replace
+```
+
+### `orderly config init`
 
 Initialize a new configuration file.
 
@@ -159,7 +227,7 @@ Initialize a new configuration file.
 **Example:**
 
 ```bash
-orderly init --format json
+orderly config init --format json
 ```
 
 ## Configuration
@@ -304,10 +372,10 @@ All operations are logged to `.orderly/orderly.log` for full auditability.
 
 ```bash
 # Preview what would happen
-orderly scan ~/Downloads
+orderly files scan ~/Downloads
 
 # Apply organization
-orderly organize ~/Downloads
+orderly files organize ~/Downloads
 ```
 
 ### Example 2: Custom Organization
@@ -331,13 +399,13 @@ namingConvention:
 Then run:
 
 ```bash
-orderly organize ./media-files
+orderly files organize ./media-files
 ```
 
 ### Example 3: Organize with Custom Output Directory
 
 ```bash
-orderly organize ./source-folder -o ./organized-output
+orderly files organize ./source-folder -o ./organized-output
 ```
 
 ## Development
@@ -361,7 +429,7 @@ npm install
 npm run build
 
 # Run locally
-npm run dev -- organize ./test-folder
+npm run dev -- files organize ./test-folder
 ```
 
 ### Testing

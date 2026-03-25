@@ -1,4 +1,5 @@
 import { NamingConventionType } from '../../src/config/types';
+import { DedupeAction, DedupeMode, type IDedupeStrategyConfig } from '../../src/dedupe/types';
 
 /**
  * Helper to create valid test configurations that match OrderlyConfig structure
@@ -20,8 +21,9 @@ export interface ITestConfig {
   }>;
   dedupe?: {
     enabled: boolean;
-    strategy: string;
-    action: string;
+    recursive?: boolean;
+    strategy: IDedupeStrategyConfig;
+    action: DedupeAction;
   };
 }
 
@@ -56,6 +58,16 @@ export function createTestConfig(overrides?: Partial<ITestConfig>): ITestConfig 
         targetFolder: 'code'
       }
     ],
+    dedupe: {
+      enabled: false,
+      recursive: true,
+      strategy: {
+        mode: DedupeMode.ANY,
+        size: true,
+        sha256: true
+      },
+      action: DedupeAction.SKIP
+    },
     ...overrides
   };
 }

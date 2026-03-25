@@ -1,14 +1,18 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 
+import { EmptyDirectoryCleaner } from '../../src/cleaner';
 import { InitHandler } from '../../src/cli/commands/init.command';
+import { CleanHandler } from '../../src/cli/commands/clean.command';
+import { DedupeHandler } from '../../src/cli/commands/dedupe.command';
 import { OrganizeHandler } from '../../src/cli/commands/organize.command';
 import { ScanHandler } from '../../src/cli/commands/scan.command';
 import { ConfigService } from '../../src/cli/services/config.service';
 import { DirectoryValidator } from '../../src/cli/services/directory-validator.service';
 import { ManifestService } from '../../src/cli/services/manifest.service';
 import { ExitCode } from '../../src/cli/constants';
-import { DedupeAction } from '../../src/dedupe/types';
+import { DedupeReportWriter } from '../../src/dedupe';
+import { DedupeAction, DedupeMode } from '../../src/dedupe/types';
 import { NamingConventionType, CollisionResolutionStrategy } from '../../src/config/types';
 import { TestEnvironmentSetup, TestAssertions, createTestConfig } from '../helpers';
 
@@ -20,9 +24,17 @@ import { TestEnvironmentSetup, TestAssertions, createTestConfig } from '../helpe
  * outcomes across a range of user workflows.
  */
 describe('CLI Integration Tests — Common Scenarios', () => {
+  const HASH_STRATEGY = {
+    mode: DedupeMode.ANY,
+    size: false,
+    sha256: true
+  } as const;
+
   let testEnv: TestEnvironmentSetup;
   let testDir: string;
   let initHandler: InitHandler;
+  let cleanHandler: CleanHandler;
+  let dedupeHandler: DedupeHandler;
   let scanHandler: ScanHandler;
   let organizeHandler: OrganizeHandler;
   let configService: ConfigService;
@@ -35,6 +47,12 @@ describe('CLI Integration Tests — Common Scenarios', () => {
     configService = new ConfigService();
     directoryValidator = new DirectoryValidator();
     manifestService = new ManifestService();
+    cleanHandler = new CleanHandler(new EmptyDirectoryCleaner(), configService, directoryValidator);
+    dedupeHandler = new DedupeHandler(
+      configService,
+      directoryValidator,
+      new DedupeReportWriter()
+    );
     initHandler = new InitHandler();
     scanHandler = new ScanHandler(configService, directoryValidator);
     organizeHandler = new OrganizeHandler(configService, directoryValidator, manifestService);
@@ -506,12 +524,12 @@ describe('CLI Integration Tests — Common Scenarios', () => {
       TestAssertions.assertFileExists(manifestJson);
       TestAssertions.assertFileExists(manifestMd);
 
-      // JSON manifest should be parseable and contain operations
+      // JSON manifest should be parseable and contain entries
       const raw = testEnv.readFile(manifestJson);
       const manifest = JSON.parse(raw);
-      expect(manifest).toHaveProperty('operations');
-      expect(Array.isArray(manifest.operations)).toBe(true);
-      expect(manifest.operations.length).toBeGreaterThan(0);
+      expect(manifest).toHaveProperty('entries');
+      expect(Array.isArray(manifest.entries)).toBe(true);
+      expect(manifest.entries.length).toBeGreaterThan(0);
     });
 
     it('should not generate manifests when manifest option is false', async () => {
@@ -557,7 +575,7 @@ describe('CLI Integration Tests — Common Scenarios', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.SKIP
         }
       });
@@ -586,7 +604,7 @@ describe('CLI Integration Tests — Common Scenarios', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.REPLACE
         }
       });
@@ -620,7 +638,7 @@ describe('CLI Integration Tests — Common Scenarios', () => {
         dryRun: false,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.REPORT
         }
       });
@@ -650,7 +668,7 @@ describe('CLI Integration Tests — Common Scenarios', () => {
         dryRun: true,
         dedupe: {
           enabled: true,
-          strategy: 'hash',
+          strategy: HASH_STRATEGY,
           action: DedupeAction.REPLACE
         }
       });
@@ -677,7 +695,75 @@ describe('CLI Integration Tests — Common Scenarios', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Scenario 13: deeply nested directory structures
+  // Scenario 13: clean empty directories
+  // ---------------------------------------------------------------------------
+  describe('Empty-directory cleanup', () => {
+    it('should remove empty directories without deleting the root', async () => {
+      fs.mkdirSync(path.join(testDir, 'empty', 'nested'), { recursive: true });
+      testEnv.createFile(path.join(testDir, 'keep', 'file.txt'), 'content');
+
+      const result = await cleanHandler.execute(testDir, {});
+
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(ExitCode.SUCCESS);
+      TestAssertions.assertFileExists(path.join(testDir, 'keep', 'file.txt'));
+      TestAssertions.assertDirExists(testDir);
+      TestAssertions.assertDirNotExists(path.join(testDir, 'empty'));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Scenario 14: standalone dedupe command
+  // ---------------------------------------------------------------------------
+  describe('Standalone dedupe workflow', () => {
+    it('should generate standalone dedupe reports', async () => {
+      const configPath = path.join(testDir, '.orderly.config.json');
+      const config = createTestConfig({
+        dryRun: false,
+        dedupe: {
+          enabled: true,
+          strategy: HASH_STRATEGY,
+          action: DedupeAction.REPORT
+        }
+      });
+      testEnv.createFile(configPath, JSON.stringify(config, null, 2));
+      testEnv.createFile(path.join(testDir, 'a.txt'), 'same');
+      testEnv.createFile(path.join(testDir, 'b.txt'), 'same');
+
+      const result = await dedupeHandler.execute(testDir, { config: configPath });
+
+      expect(result.success).toBe(true);
+      TestAssertions.assertFileExists(path.join(testDir, '.orderly', 'dedupe-report.json'));
+      TestAssertions.assertFileExists(path.join(testDir, '.orderly', 'dedupe-report.md'));
+    });
+
+    it('should delete duplicate files when replace action is requested', async () => {
+      const configPath = path.join(testDir, '.orderly.config.json');
+      const config = createTestConfig({
+        dryRun: false,
+        dedupe: {
+          enabled: true,
+          strategy: HASH_STRATEGY,
+          action: DedupeAction.REPLACE
+        }
+      });
+      testEnv.createFile(configPath, JSON.stringify(config, null, 2));
+      testEnv.createFile(path.join(testDir, 'a.txt'), 'same');
+      testEnv.createFile(path.join(testDir, 'b.txt'), 'same');
+
+      const result = await dedupeHandler.execute(testDir, { config: configPath, action: 'replace' });
+
+      expect(result.success).toBe(true);
+      expect(testEnv.countFiles(testDir)).toBeGreaterThanOrEqual(2);
+      const remainingDuplicates = ['a.txt', 'b.txt'].filter(filename =>
+        fs.existsSync(path.join(testDir, filename))
+      );
+      expect(remainingDuplicates.length).toBe(1);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Scenario 15: deeply nested directory structures
   // ---------------------------------------------------------------------------
   describe('Deeply nested source structures', () => {
     it('should recursively collect and organize files from nested folders', async () => {
@@ -708,7 +794,7 @@ describe('CLI Integration Tests — Common Scenarios', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Scenario 14: scan with multiple config discovery formats
+  // Scenario 16: scan with multiple config discovery formats
   // ---------------------------------------------------------------------------
   describe('Scan with auto-discovered config', () => {
     it('should apply exclude patterns from auto-discovered config during scan', async () => {
@@ -728,7 +814,7 @@ describe('CLI Integration Tests — Common Scenarios', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Scenario 15: error handling
+  // Scenario 17: error handling
   // ---------------------------------------------------------------------------
   describe('Error handling', () => {
     it('should return failure result for non-existent organize target', async () => {
