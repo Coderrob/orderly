@@ -1,3 +1,4 @@
+import type { ICleanOptions, ICleanResult } from '../cleaner/interfaces';
 import type { OrderlyConfig } from '../config/types';
 import type { ILogger } from '../logger/interfaces';
 import type { IOrganizationResult } from '../organizer/types';
@@ -108,6 +109,13 @@ export interface IInitHandler {
 }
 
 /**
+ * Interface for the clean command handler.
+ */
+export interface ICleanHandler extends ICommandHandler<ICleanOptions> {
+  execute(directory: string, options: ICleanOptions): Promise<ICommandResult>;
+}
+
+/**
  * Interface for config loading service.
  */
 export interface IConfigService {
@@ -149,4 +157,17 @@ export interface IManifestService {
    * @param outputDir - Directory to save manifest files
    */
   saveManifests(result: IOrganizationResult, outputDir: string): void;
+}
+
+/**
+ * Interface for empty-directory cleaning services.
+ */
+export interface ICleanerService {
+  /**
+   * Removes empty directories beneath a validated root directory.
+   * @param rootDirectory - Absolute root directory to clean.
+   * @param options - Cleaning options.
+   * @returns Structured clean result.
+   */
+  clean(rootDirectory: string, options: ICleanOptions): ICleanResult;
 }

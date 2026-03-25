@@ -1,11 +1,14 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\cli\\interfaces.ts",
+  "sourceFile": "src//cli//interfaces.ts",
   "module": {
     "name": "interfaces",
-    "description": "Behavioral contract for D:\\orderly\\src\\cli\\interfaces.ts",
+    "description": "Behavioral contract for src//cli//interfaces.ts",
     "exports": [
+      "ICleanHandler",
+      "ICleanOptions",
+      "ICleanerService",
       "ICommandContext",
       "ICommandHandler",
       "ICommandResult",

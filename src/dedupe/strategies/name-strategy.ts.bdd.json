@@ -1,10 +1,10 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\dedupe\\strategies\\name-strategy.ts",
+  "sourceFile": "src//dedupe//strategies//name-strategy.ts",
   "module": {
     "name": "name-strategy",
-    "description": "Behavioral contract for D:\\orderly\\src\\dedupe\\strategies\\name-strategy.ts",
+    "description": "Behavioral contract for src//dedupe//strategies//name-strategy.ts",
     "exports": ["NameStrategy"]
   },
   "specifications": [

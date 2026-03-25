@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "src//cli//options//shared-arguments.ts",
+  "module": {
+    "name": "shared-arguments",
+    "description": "Behavioral contract for src//cli//options//shared-arguments.ts",
+    "exports": ["addDirectoryArgument"]
+  },
+  "specifications": [
+    {
+      "feature": "Shared CLI arguments",
+      "scenarios": [
+        {
+          "name": "should apply the standard directory argument to a command",
+          "given": "a commander command instance",
+          "when": "the helper is applied",
+          "then": "the command should receive the repository standard directory argument"
+        }
+      ]
+    }
+  ]
+}

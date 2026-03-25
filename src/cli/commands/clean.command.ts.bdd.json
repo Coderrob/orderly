@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "src//cli//commands//clean.command.ts",
+  "module": {
+    "name": "clean.command",
+    "description": "Behavioral contract for src//cli//commands//clean.command.ts",
+    "exports": ["CleanHandler"]
+  },
+  "specifications": [
+    {
+      "feature": "Clean command handling",
+      "scenarios": [
+        {
+          "name": "should validate a target directory and report empty-directory cleanup results",
+          "given": "a clean command request",
+          "when": "the handler executes",
+          "then": "it should delegate to the cleaner service and return a structured command result"
+        }
+      ]
+    }
+  ]
+}

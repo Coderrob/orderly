@@ -1,0 +1,30 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "src//cleaner//index.ts",
+  "module": {
+    "name": "index",
+    "description": "Behavioral contract for src//cleaner//index.ts",
+    "exports": [
+      "EmptyDirectoryCleaner",
+      "ICleanError",
+      "ICleanOptions",
+      "ICleanResult",
+      "IEmptyDirectoryCleaner",
+      "IRemovedDirectory"
+    ]
+  },
+  "specifications": [
+    {
+      "feature": "Cleaner module exports",
+      "scenarios": [
+        {
+          "name": "should re-export the cleaner public API",
+          "given": "the index module is imported",
+          "when": "consumers access the cleaner exports",
+          "then": "the exported cleaner types and implementations should remain available"
+        }
+      ]
+    }
+  ]
+}

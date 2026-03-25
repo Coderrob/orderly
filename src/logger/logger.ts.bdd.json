@@ -1,10 +1,10 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\logger\\logger.ts",
+  "sourceFile": "src//logger//logger.ts",
   "module": {
     "name": "logger",
-    "description": "Behavioral contract for D:\\orderly\\src\\logger\\logger.ts",
+    "description": "Behavioral contract for src//logger//logger.ts",
     "exports": ["Logger"]
   },
   "specifications": [

@@ -1,10 +1,10 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\constants\\index.ts",
+  "sourceFile": "src//constants//index.ts",
   "module": {
     "name": "index",
-    "description": "Behavioral contract for D:\\orderly\\src\\constants\\index.ts",
+    "description": "Behavioral contract for src//constants//index.ts",
     "exports": [
       "ARCHIVE_EXTENSIONS",
       "AUDIO_EXTENSIONS",

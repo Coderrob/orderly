@@ -1,10 +1,10 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\dedupe\\metadata\\metadata-extractor.ts",
+  "sourceFile": "src//dedupe//metadata//metadata-extractor.ts",
   "module": {
     "name": "metadata-extractor",
-    "description": "Behavioral contract for D:\\orderly\\src\\dedupe\\metadata\\metadata-extractor.ts",
+    "description": "Behavioral contract for src//dedupe//metadata//metadata-extractor.ts",
     "exports": ["MetadataExtractor"]
   },
   "specifications": [

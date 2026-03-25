@@ -1,6 +1,8 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 
+import { EmptyDirectoryCleaner } from '../../src/cleaner/empty-directory-cleaner';
+import { CleanHandler } from '../../src/cli/commands/clean.command';
 import { InitHandler } from '../../src/cli/commands/init.command';
 import { OrganizeHandler } from '../../src/cli/commands/organize.command';
 import { ScanHandler } from '../../src/cli/commands/scan.command';
@@ -25,6 +27,7 @@ describe('CLI Integration Tests — Common Scenarios', () => {
   let initHandler: InitHandler;
   let scanHandler: ScanHandler;
   let organizeHandler: OrganizeHandler;
+  let cleanHandler: CleanHandler;
   let configService: ConfigService;
   let directoryValidator: DirectoryValidator;
   let manifestService: ManifestService;
@@ -38,6 +41,7 @@ describe('CLI Integration Tests — Common Scenarios', () => {
     initHandler = new InitHandler();
     scanHandler = new ScanHandler(configService, directoryValidator);
     organizeHandler = new OrganizeHandler(configService, directoryValidator, manifestService);
+    cleanHandler = new CleanHandler(directoryValidator, new EmptyDirectoryCleaner());
 
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -724,6 +728,35 @@ describe('CLI Integration Tests — Common Scenarios', () => {
       const result = await scanHandler.execute(testDir, {});
       expect(result.success).toBe(true);
       expect(result.message).toContain('1 file');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Scenario 16: clean empty directories
+  // ---------------------------------------------------------------------------
+  describe('Empty-directory cleaning', () => {
+    it('should remove nested empty directories without removing the root', async () => {
+      fs.mkdirSync(path.join(testDir, 'empty', 'child'), { recursive: true });
+      testEnv.createFile(path.join(testDir, 'keep', 'file.txt'), 'content');
+
+      const result = await cleanHandler.execute(testDir, {});
+
+      expect(result.success).toBe(true);
+      expect(result.exitCode).toBe(ExitCode.SUCCESS);
+      TestAssertions.assertDirExists(testDir);
+      TestAssertions.assertDirExists(path.join(testDir, 'keep'));
+      TestAssertions.assertFileExists(path.join(testDir, 'keep', 'file.txt'));
+      expect(fs.existsSync(path.join(testDir, 'empty'))).toBe(false);
+    });
+
+    it('should preview empty directory removals in dry-run mode', async () => {
+      fs.mkdirSync(path.join(testDir, 'empty', 'child'), { recursive: true });
+
+      const result = await cleanHandler.execute(testDir, { dryRun: true });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Dry run');
+      expect(fs.existsSync(path.join(testDir, 'empty', 'child'))).toBe(true);
     });
   });
 

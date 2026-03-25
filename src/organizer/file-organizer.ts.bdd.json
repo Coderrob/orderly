@@ -1,10 +1,10 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\organizer\\file-organizer.ts",
+  "sourceFile": "src//organizer//file-organizer.ts",
   "module": {
     "name": "file-organizer",
-    "description": "Behavioral contract for D:\\orderly\\src\\organizer\\file-organizer.ts",
+    "description": "Behavioral contract for src//organizer//file-organizer.ts",
     "exports": ["FileOperationType", "FileOrganizer"]
   },
   "specifications": [

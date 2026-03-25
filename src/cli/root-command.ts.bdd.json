@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "src//cli//root-command.ts",
+  "module": {
+    "name": "root-command",
+    "description": "Behavioral contract for src//cli//root-command.ts",
+    "exports": ["createRootCommand", "IRootCommandDependencies"]
+  },
+  "specifications": [
+    {
+      "feature": "Root CLI composition",
+      "scenarios": [
+        {
+          "name": "should build the repository command tree from injected handlers",
+          "given": "the root command factory is invoked",
+          "when": "dependencies are provided",
+          "then": "the grouped commands and aliases should be registered on a single root command"
+        }
+      ]
+    }
+  ]
+}

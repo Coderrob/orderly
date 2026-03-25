@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "src//cli//result//command-result-runner.ts",
+  "module": {
+    "name": "command-result-runner",
+    "description": "Behavioral contract for src//cli//result//command-result-runner.ts",
+    "exports": ["createCommandAction", "createDirectoryCommandAction", "runCommandResult"]
+  },
+  "specifications": [
+    {
+      "feature": "Command result execution",
+      "scenarios": [
+        {
+          "name": "should execute handlers and apply command output consistently",
+          "given": "a command action callback created from a handler",
+          "when": "the callback runs",
+          "then": "the message and exit code should be applied consistently"
+        }
+      ]
+    }
+  ]
+}

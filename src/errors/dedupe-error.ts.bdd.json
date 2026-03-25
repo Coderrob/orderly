@@ -1,10 +1,10 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\errors\\dedupe-error.ts",
+  "sourceFile": "src//errors//dedupe-error.ts",
   "module": {
     "name": "dedupe-error",
-    "description": "Behavioral contract for D:\\orderly\\src\\errors\\dedupe-error.ts",
+    "description": "Behavioral contract for src//errors//dedupe-error.ts",
     "exports": ["HashingError", "MetadataReadError", "StrategyError"]
   },
   "specifications": [

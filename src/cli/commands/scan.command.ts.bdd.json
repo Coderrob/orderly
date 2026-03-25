@@ -1,10 +1,10 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\cli\\commands\\scan.command.ts",
+  "sourceFile": "src//cli//commands//scan.command.ts",
   "module": {
     "name": "scan.command",
-    "description": "Behavioral contract for D:\\orderly\\src\\cli\\commands\\scan.command.ts",
+    "description": "Behavioral contract for src//cli//commands//scan.command.ts",
     "exports": ["ScanHandler"]
   },
   "specifications": [

@@ -1,11 +1,11 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\cli\\commands\\index.ts",
+  "sourceFile": "src//cli//commands//index.ts",
   "module": {
     "name": "index",
-    "description": "Behavioral contract for D:\\orderly\\src\\cli\\commands\\index.ts",
-    "exports": ["InitHandler", "OrganizeHandler", "ScanHandler"]
+    "description": "Behavioral contract for src//cli//commands//index.ts",
+    "exports": ["CleanHandler", "InitHandler", "OrganizeHandler", "ScanHandler"]
   },
   "specifications": [
     {

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "src//cli//options//shared-options.ts",
+  "module": {
+    "name": "shared-options",
+    "description": "Behavioral contract for src//cli//options//shared-options.ts",
+    "exports": [
+      "addAutoConfigOption",
+      "addConfigOption",
+      "addDryRunOption",
+      "addFormatOption",
+      "addLogLevelOption",
+      "addManifestOption"
+    ]
+  },
+  "specifications": [
+    {
+      "feature": "Shared CLI options",
+      "scenarios": [
+        {
+          "name": "should apply the repository standard options to commander commands",
+          "given": "a commander command instance",
+          "when": "a shared option helper is used",
+          "then": "the command should receive the documented option contract"
+        }
+      ]
+    }
+  ]
+}

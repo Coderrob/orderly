@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "src//cli//command-groups//config.command-group.ts",
+  "module": {
+    "name": "config.command-group",
+    "description": "Behavioral contract for src//cli//command-groups//config.command-group.ts",
+    "exports": ["registerConfigCommandGroup", "registerInitCommand"]
+  },
+  "specifications": [
+    {
+      "feature": "Config command group wiring",
+      "scenarios": [
+        {
+          "name": "should register config-oriented commands on a commander root",
+          "given": "a commander command tree",
+          "when": "the config group is registered",
+          "then": "the expected config commands should be attached"
+        }
+      ]
+    }
+  ]
+}

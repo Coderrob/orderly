@@ -1,10 +1,10 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\config\\config-loader.ts",
+  "sourceFile": "src//config//config-loader.ts",
   "module": {
     "name": "config-loader",
-    "description": "Behavioral contract for D:\\orderly\\src\\config\\config-loader.ts",
+    "description": "Behavioral contract for src//config//config-loader.ts",
     "exports": ["ConfigLoader", "IConfigLoader"]
   },
   "specifications": [

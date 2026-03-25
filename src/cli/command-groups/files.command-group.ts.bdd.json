@@ -1,0 +1,28 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "src//cli//command-groups//files.command-group.ts",
+  "module": {
+    "name": "files.command-group",
+    "description": "Behavioral contract for src//cli//command-groups//files.command-group.ts",
+    "exports": [
+      "registerCleanCommand",
+      "registerFilesCommandGroup",
+      "registerOrganizeCommand",
+      "registerScanCommand"
+    ]
+  },
+  "specifications": [
+    {
+      "feature": "Files command group wiring",
+      "scenarios": [
+        {
+          "name": "should register file-oriented commands on a commander root",
+          "given": "a commander command tree",
+          "when": "the files group is registered",
+          "then": "scan, organize, and clean should be attached consistently"
+        }
+      ]
+    }
+  ]
+}

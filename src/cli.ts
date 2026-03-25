@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
-import { CliService } from './cli/cli.service';
+import { createRootCommand } from './cli/root-command';
 
-// Create and run the CLI service
-const cliService = new CliService();
-cliService.parse();
+// Create and run the root CLI command
+createRootCommand().parse();

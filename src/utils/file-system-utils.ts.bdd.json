@@ -1,10 +1,10 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\utils\\file-system-utils.ts",
+  "sourceFile": "src//utils//file-system-utils.ts",
   "module": {
     "name": "file-system-utils",
-    "description": "Behavioral contract for D:\\orderly\\src\\utils\\file-system-utils.ts",
+    "description": "Behavioral contract for src//utils//file-system-utils.ts",
     "exports": ["FileSystemUtils", "IFileSystemUtils"]
   },
   "specifications": [

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "src//cleaner//empty-directory-cleaner.ts",
+  "module": {
+    "name": "empty-directory-cleaner",
+    "description": "Behavioral contract for src//cleaner//empty-directory-cleaner.ts",
+    "exports": ["EmptyDirectoryCleaner"]
+  },
+  "specifications": [
+    {
+      "feature": "Empty directory cleanup",
+      "scenarios": [
+        {
+          "name": "should remove empty directories beneath a root",
+          "given": "a root directory containing removable empty subdirectories",
+          "when": "the cleaner runs",
+          "then": "it should report and remove only the eligible empty directories"
+        }
+      ]
+    }
+  ]
+}

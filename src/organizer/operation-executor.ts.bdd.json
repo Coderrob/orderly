@@ -1,10 +1,10 @@
 {
   "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "D:\\orderly\\src\\organizer\\operation-executor.ts",
+  "sourceFile": "src//organizer//operation-executor.ts",
   "module": {
     "name": "operation-executor",
-    "description": "Behavioral contract for D:\\orderly\\src\\organizer\\operation-executor.ts",
+    "description": "Behavioral contract for src//organizer//operation-executor.ts",
     "exports": ["OperationExecutor"]
   },
   "specifications": [

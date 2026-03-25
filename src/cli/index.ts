@@ -1,5 +1,8 @@
 export * from './commands/index.js';
+export * from './root-command.js';
 export type {
+  ICleanHandler,
+  ICleanerService,
   ICommandContext,
   ICommandHandler,
   ICommandResult,
