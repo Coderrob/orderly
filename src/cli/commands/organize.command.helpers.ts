@@ -4,6 +4,7 @@ import { DedupeAction } from '../../dedupe';
 import type { IDedupeResult } from '../../dedupe/types';
 import { Logger } from '../../logger/logger';
 import type { IScannedFile } from '../../scanner/interfaces';
+import { Clock } from '../../utils/clock';
 import { FileSystemUtils } from '../../utils/file-system-utils';
 
 export interface IDedupeActionContext {
@@ -112,7 +113,7 @@ export function handleReplacedDuplicates(
   if (options.deleteDuplicates) {
     for (const file of replacedFiles) {
       if (options.quarantineDir) {
-        const destinationPath = path.join(options.quarantineDir, path.basename(file.originalPath));
+        const destinationPath = resolveQuarantinePath(file.originalPath, options.quarantineDir);
         FileSystemUtils.mkdirSync(path.dirname(destinationPath));
         FileSystemUtils.renameSync(file.originalPath, destinationPath);
       } else {
@@ -125,6 +126,19 @@ export function handleReplacedDuplicates(
     `${options.deleteDuplicates ? (options.quarantineDir ? 'Quarantined' : 'Removed') : 'Would remove'} ${replacedFiles.length} duplicate files before organization`
   );
   return [...filteredFiles];
+}
+
+/**
+ * Resolves a unique quarantine destination path for organize dedupe replacement.
+ * @param filePath - Duplicate file path.
+ * @param quarantineDir - Quarantine directory.
+ * @returns Collision-safe quarantine destination path.
+ */
+function resolveQuarantinePath(filePath: string, quarantineDir: string): string {
+  const destinationPath = path.join(quarantineDir, path.basename(filePath));
+  return FileSystemUtils.hasPath(destinationPath)
+    ? path.join(quarantineDir, `${Clock.nowMonotonicToken()}-${path.basename(filePath)}`)
+    : destinationPath;
 }
 
 /**

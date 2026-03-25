@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 
 import { Logger } from '../../logger/logger';
+import { Clock } from '../../utils/clock';
 import { FileSystemUtils } from '../../utils/file-system-utils';
 import {
   buildDedupeActionContext,
@@ -8,8 +9,15 @@ import {
   handleSkippedDuplicates
 } from './organize.command.helpers';
 
+jest.mock('../../utils/clock', () => ({
+  Clock: {
+    nowMonotonicToken: jest.fn().mockReturnValue('token')
+  }
+}));
+
 jest.mock('../../utils/file-system-utils', () => ({
   FileSystemUtils: {
+    hasPath: jest.fn().mockReturnValue(false),
     mkdirSync: jest.fn(),
     renameSync: jest.fn(),
     unlinkSync: jest.fn()
@@ -45,6 +53,7 @@ describe('organize.command.helpers', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(FileSystemUtils.hasPath).mockReturnValue(false);
   });
 
   it('should filter skipped and replaced files when building dedupe action context', () => {
@@ -100,6 +109,23 @@ describe('organize.command.helpers', () => {
       path.join('/target/.orderly/quarantine', 'b.txt')
     );
     expect(logger.info).toHaveBeenCalledWith('Quarantined 1 duplicate files before organization');
+  });
+
+  it('should create a unique quarantine filename when the destination already exists', () => {
+    jest.mocked(FileSystemUtils.hasPath).mockReturnValue(true);
+
+    handleReplacedDuplicates(
+      [fileA],
+      [fileB],
+      { deleteDuplicates: true, quarantineDir: '/target/.orderly/quarantine' },
+      logger
+    );
+
+    expect(Clock.nowMonotonicToken).toHaveBeenCalled();
+    expect(FileSystemUtils.renameSync).toHaveBeenCalledWith(
+      '/target/b.txt',
+      path.join('/target/.orderly/quarantine', 'token-b.txt')
+    );
   });
 
   it('should only log planned removals during dry-run replacement handling', () => {

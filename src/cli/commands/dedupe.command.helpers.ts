@@ -65,9 +65,7 @@ export interface IFilePathSource {
  * @param options - Dedupe command options.
  * @returns Config override object.
  */
-export function createDedupeConfigOverrides(
-  options: Readonly<IDedupeCommandOptions>
-): Readonly<{
+export function createDedupeConfigOverrides(options: Readonly<IDedupeCommandOptions>): Readonly<{
   config?: string;
   dedupe?: boolean;
   dedupeAction?: string;
@@ -163,8 +161,8 @@ export function resolveDedupeConfig(
   preset?: string
 ): Readonly<IDedupeConfig> {
   const resolvedAction = resolveAction(action) ?? dedupeConfig?.action ?? DedupeAction.REPORT;
-  const strategy =
-    resolveStrategyPreset(preset) ?? dedupeConfig?.strategy ?? { mode: DedupeMode.ANY };
+  const strategy = resolveStrategyPreset(preset) ??
+    dedupeConfig?.strategy ?? { mode: DedupeMode.ANY };
 
   return {
     enabled: true,

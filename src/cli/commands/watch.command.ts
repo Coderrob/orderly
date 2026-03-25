@@ -188,7 +188,8 @@ function executeScheduledCycle(runCycleState: Readonly<IRunCycleState>): void {
     return;
   }
 
-  void runCycleState.executeCycle(runCycleState.directory, runCycleState.options)
+  void runCycleState
+    .executeCycle(runCycleState.directory, runCycleState.options)
     .then(handleExecutedCycle.bind(null, runCycleState))
     .catch(runCycleState.reject);
 }

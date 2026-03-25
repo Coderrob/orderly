@@ -161,9 +161,7 @@ function hasManifestOperation(
 
   const operation = value.operation;
   return (
-    isObjectRecord(operation) &&
-    hasNewPathString(operation) &&
-    hasOriginalPathString(operation)
+    isObjectRecord(operation) && hasNewPathString(operation) && hasOriginalPathString(operation)
   );
 }
 
@@ -226,7 +224,9 @@ function isManifestEntryLike(value: unknown): value is IManifestEntryLike {
  * @returns True when the value exposes manifest entries.
  */
 function isManifestLike(value: unknown): value is IManifestLike {
-  return isObjectRecord(value) && hasEntriesArray(value) && value.entries.every(isManifestEntryLike);
+  return (
+    isObjectRecord(value) && hasEntriesArray(value) && value.entries.every(isManifestEntryLike)
+  );
 }
 
 /**

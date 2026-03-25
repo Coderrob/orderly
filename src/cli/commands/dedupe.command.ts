@@ -199,7 +199,9 @@ export class DedupeHandler implements IDedupeHandler {
    * @param commandContext - Dedupe command context.
    * @returns Failure result when the action is unsafe; otherwise undefined.
    */
-  private validateReplaceSafety(commandContext: Readonly<IDeleteSafetyContext>): ICommandResult | undefined {
+  private validateReplaceSafety(
+    commandContext: Readonly<IDeleteSafetyContext>
+  ): ICommandResult | undefined {
     return validateReplaceSafety(commandContext);
   }
 
