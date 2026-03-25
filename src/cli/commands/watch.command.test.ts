@@ -15,8 +15,21 @@ describe('WatchHandler', () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('should run the requested number of watch cycles', async () => {
-    const result = await handler.execute('/tmp', { cycles: '2', interval: '1' });
+    jest.useFakeTimers();
+
+    const resultPromise = handler.execute('/tmp', { cycles: '2', interval: '1' });
+
+    await Promise.resolve();
+    expect(mockOrganizeHandler.execute).toHaveBeenCalledTimes(1);
+
+    await jest.advanceTimersByTimeAsync(1000);
+
+    const result = await resultPromise;
 
     expect(result.success).toBe(true);
     expect(mockOrganizeHandler.execute).toHaveBeenCalledTimes(2);

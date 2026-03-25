@@ -86,7 +86,7 @@ Initialize a new configuration file.
 
 Options:
 
-- `-f, --format <format>`: Config file format (`json` or `yaml`, default: `yaml`)
+- `-f, --format <format>`: Config file format (`json`, `yaml`, or `yml`, default: `yaml`)
 - `-t, --template <template>`: Starter template (`downloads`, `media-library`, `developer-workspace`, or `photos-only`)
 
 Examples:
@@ -114,7 +114,7 @@ orderly config validate --directory ./downloads
 
 ### `orderly files scan [directory]`
 
-Scan a directory and display what would be organized without making changes.
+Scan a directory and display what would be organized without making changes. The directory defaults to the current working directory.
 
 Options:
 
@@ -161,7 +161,7 @@ If `--dedupe-action replace` is used outside dry-run mode, you must also provide
 
 ### `orderly files dedupe [directory]`
 
-Find duplicate files without running organization.
+Find duplicate files without running organization. The directory defaults to the current working directory.
 
 Options:
 
@@ -188,7 +188,7 @@ If `--action replace` is used outside dry-run mode, you must also provide `--con
 
 ### `orderly files clean [directory]`
 
-Remove empty folders beneath the target directory without removing the root directory itself.
+Remove empty folders beneath the target directory without removing the root directory itself. The directory defaults to the current working directory.
 
 Options:
 
@@ -224,7 +224,7 @@ orderly files revert --manifest ./.orderly/manifest.json
 
 ### `orderly files watch [directory]`
 
-Repeatedly organize a directory on a polling interval.
+Repeatedly organize a directory on a polling interval. The directory defaults to the current working directory.
 
 Options:
 
@@ -238,8 +238,8 @@ Options:
 - `--clean-empty-dirs`: Remove empty directories after organization completes
 - `--confirm-replace`: Explicitly confirm destructive dedupe replacement
 - `--quarantine-dir <path>`: Move replaced duplicate files into a quarantine directory
-- `--interval <seconds>`: Polling interval in seconds
-- `--cycles <count>`: Number of cycles before exiting; `0` means continuous
+- `--interval <seconds>`: Polling interval in seconds (default: `5`)
+- `--cycles <count>`: Number of cycles before exiting; `0` means continuous (default: `0`)
 - `--no-auto-config`: Disable auto-discovery of config files in the target directory
 
 Example:
@@ -298,7 +298,7 @@ excludePatterns:
 
 includeHidden: false
 dryRun: false
-generateManifest: true
+generateManifest: false
 logLevel: info
 
 dedupe:
@@ -351,6 +351,8 @@ Preview changes without applying them.
 #### `generateManifest`
 
 Generate JSON and Markdown manifests of all operations.
+
+For CLI `files organize` and `files watch`, manifest generation is enabled by default unless you pass `--no-manifest`.
 
 #### `dedupe`
 
@@ -465,6 +467,7 @@ orderly files watch ./downloads --dry-run --interval 10 --cycles 3
 git clone https://github.com/Coderrob/orderly.git
 cd orderly
 npm install
+npm run setup:rg
 npm run build
 npm run dev -- files organize ./test-folder --dry-run
 ```

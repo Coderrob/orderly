@@ -124,6 +124,19 @@ export class RevertHandler implements IRevertHandler {
 }
 
 /**
+ * Appends one manifest entry while iterating from right to left.
+ * @param reversedEntries - Accumulated reversed entries.
+ * @param entry - Entry being appended.
+ * @returns Updated reversed entries.
+ */
+function appendReversedEntry(
+  reversedEntries: readonly IManifestEntryLike[],
+  entry: Readonly<IManifestEntryLike>
+): readonly IManifestEntryLike[] {
+  return [...reversedEntries, entry];
+}
+
+/**
  * Returns whether a parsed value looks like a manifest payload.
  * @param value - Parsed JSON value.
  * @returns True when the value exposes manifest entries.
@@ -156,11 +169,5 @@ function parseManifestJson(manifestContent: string): unknown {
  * @returns Reversed entries.
  */
 function reverseEntries(entries: readonly IManifestEntryLike[]): readonly IManifestEntryLike[] {
-  let reversedEntries: readonly IManifestEntryLike[] = [];
-
-  for (const entry of entries) {
-    reversedEntries = [entry, ...reversedEntries];
-  }
-
-  return reversedEntries;
+  return entries.reduceRight<readonly IManifestEntryLike[]>(appendReversedEntry, []);
 }
