@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//dedupe//strategies//exif-strategy.ts",
+  "sourceFile": "src/dedupe/strategies/exif-strategy.ts",
   "module": {
     "name": "exif-strategy",
-    "description": "Behavioral contract for src//dedupe//strategies//exif-strategy.ts",
+    "description": "Behavioral contract for src/dedupe/strategies/exif-strategy.ts",
     "exports": ["ExifStrategy"]
   },
   "specifications": [

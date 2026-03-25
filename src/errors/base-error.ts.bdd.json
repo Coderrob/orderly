@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//errors//base-error.ts",
+  "sourceFile": "src/errors/base-error.ts",
   "module": {
     "name": "base-error",
-    "description": "Behavioral contract for src//errors//base-error.ts",
+    "description": "Behavioral contract for src/errors/base-error.ts",
     "exports": ["OrderlyError"]
   },
   "specifications": [

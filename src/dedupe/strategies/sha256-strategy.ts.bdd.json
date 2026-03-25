@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//dedupe//strategies//sha256-strategy.ts",
+  "sourceFile": "src/dedupe/strategies/sha256-strategy.ts",
   "module": {
     "name": "sha256-strategy",
-    "description": "Behavioral contract for src//dedupe//strategies//sha256-strategy.ts",
+    "description": "Behavioral contract for src/dedupe/strategies/sha256-strategy.ts",
     "exports": ["Sha256Strategy"]
   },
   "specifications": [

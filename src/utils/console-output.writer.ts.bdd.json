@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//utils//console-output.writer.ts",
+  "sourceFile": "src/utils/console-output.writer.ts",
   "module": {
     "name": "console-output.writer",
-    "description": "Behavioral contract for src//utils//console-output.writer.ts",
+    "description": "Behavioral contract for src/utils/console-output.writer.ts",
     "exports": ["ConsoleOutputWriter"]
   },
   "specifications": [

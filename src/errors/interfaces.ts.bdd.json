@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//errors//interfaces.ts",
+  "sourceFile": "src/errors/interfaces.ts",
   "module": {
     "name": "interfaces",
-    "description": "Behavioral contract for src//errors//interfaces.ts",
+    "description": "Behavioral contract for src/errors/interfaces.ts",
     "exports": ["ErrorCategory", "ErrorCode", "IOrderlyError"]
   },
   "specifications": [

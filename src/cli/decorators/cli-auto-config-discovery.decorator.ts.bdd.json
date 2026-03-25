@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//cli//decorators//cli-auto-config-discovery.decorator.ts",
+  "sourceFile": "src/cli/decorators/cli-auto-config-discovery.decorator.ts",
   "module": {
     "name": "cli-auto-config-discovery.decorator",
-    "description": "Behavioral contract for src//cli//decorators//cli-auto-config-discovery.decorator.ts",
+    "description": "Behavioral contract for src/cli/decorators/cli-auto-config-discovery.decorator.ts",
     "exports": ["WithCliAutoConfigDiscovery"]
   },
   "specifications": [

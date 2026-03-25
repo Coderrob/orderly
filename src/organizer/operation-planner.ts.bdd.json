@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//organizer//operation-planner.ts",
+  "sourceFile": "src/organizer/operation-planner.ts",
   "module": {
     "name": "operation-planner",
-    "description": "Behavioral contract for src//organizer//operation-planner.ts",
+    "description": "Behavioral contract for src/organizer/operation-planner.ts",
     "exports": ["OperationPlanner"]
   },
   "specifications": [

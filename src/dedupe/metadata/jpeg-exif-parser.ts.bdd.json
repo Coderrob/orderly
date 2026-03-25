@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//dedupe//metadata//jpeg-exif-parser.ts",
+  "sourceFile": "src/dedupe/metadata/jpeg-exif-parser.ts",
   "module": {
     "name": "jpeg-exif-parser",
-    "description": "Behavioral contract for src//dedupe//metadata//jpeg-exif-parser.ts",
+    "description": "Behavioral contract for src/dedupe/metadata/jpeg-exif-parser.ts",
     "exports": ["extractExifFromJpeg"]
   },
   "specifications": [

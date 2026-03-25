@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//cli//options//shared-options.ts",
+  "sourceFile": "src/cli/options/shared-options.ts",
   "module": {
     "name": "shared-options",
-    "description": "Behavioral contract for src//cli//options//shared-options.ts",
+    "description": "Behavioral contract for src/cli/options/shared-options.ts",
     "exports": [
       "addAutoConfigOption",
       "addConfigOption",

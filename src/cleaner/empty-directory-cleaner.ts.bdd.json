@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//cleaner//empty-directory-cleaner.ts",
+  "sourceFile": "src/cleaner/empty-directory-cleaner.ts",
   "module": {
     "name": "empty-directory-cleaner",
-    "description": "Behavioral contract for src//cleaner//empty-directory-cleaner.ts",
+    "description": "Behavioral contract for src/cleaner/empty-directory-cleaner.ts",
     "exports": ["EmptyDirectoryCleaner"]
   },
   "specifications": [

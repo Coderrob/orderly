@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//errors//file-operation-error.ts",
+  "sourceFile": "src/errors/file-operation-error.ts",
   "module": {
     "name": "file-operation-error",
-    "description": "Behavioral contract for src//errors//file-operation-error.ts",
+    "description": "Behavioral contract for src/errors/file-operation-error.ts",
     "exports": ["DirectoryNotFoundError", "FileExistsError", "PermissionDeniedError"]
   },
   "specifications": [

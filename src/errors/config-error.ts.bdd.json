@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//errors//config-error.ts",
+  "sourceFile": "src/errors/config-error.ts",
   "module": {
     "name": "config-error",
-    "description": "Behavioral contract for src//errors//config-error.ts",
+    "description": "Behavioral contract for src/errors/config-error.ts",
     "exports": ["ConfigNotFoundError", "ConfigParseError", "UnsupportedConfigFormatError"]
   },
   "specifications": [

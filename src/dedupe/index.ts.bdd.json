@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//dedupe//index.ts",
+  "sourceFile": "src/dedupe/index.ts",
   "module": {
     "name": "index",
-    "description": "Behavioral contract for src//dedupe//index.ts",
+    "description": "Behavioral contract for src/dedupe/index.ts",
     "exports": ["DedupeAction", "DedupeMode", "DedupeService"]
   },
   "specifications": [

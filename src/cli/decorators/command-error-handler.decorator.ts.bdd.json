@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//cli//decorators//command-error-handler.decorator.ts",
+  "sourceFile": "src/cli/decorators/command-error-handler.decorator.ts",
   "module": {
     "name": "command-error-handler.decorator",
-    "description": "Behavioral contract for src//cli//decorators//command-error-handler.decorator.ts",
+    "description": "Behavioral contract for src/cli/decorators/command-error-handler.decorator.ts",
     "exports": ["HandleCommandErrors"]
   },
   "specifications": [

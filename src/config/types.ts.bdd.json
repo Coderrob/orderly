@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//config//types.ts",
+  "sourceFile": "src/config/types.ts",
   "module": {
     "name": "types",
-    "description": "Behavioral contract for src//config//types.ts",
+    "description": "Behavioral contract for src/config/types.ts",
     "exports": [
       "CategoryRule",
       "CollisionResolutionConfig",

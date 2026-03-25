@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//utils//json.parser.ts",
+  "sourceFile": "src/utils/json.parser.ts",
   "module": {
     "name": "json.parser",
-    "description": "Behavioral contract for src//utils//json.parser.ts",
+    "description": "Behavioral contract for src/utils/json.parser.ts",
     "exports": ["formatJson", "IJsonWriteResult", "parseJsonFile", "safeJsonParse", "writeJsonFile"]
   },
   "specifications": [

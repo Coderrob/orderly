@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//scanner//interfaces.ts",
+  "sourceFile": "src/scanner/interfaces.ts",
   "module": {
     "name": "interfaces",
-    "description": "Behavioral contract for src//scanner//interfaces.ts",
+    "description": "Behavioral contract for src/scanner/interfaces.ts",
     "exports": ["IFileScanner", "IScannedFile"]
   },
   "specifications": [

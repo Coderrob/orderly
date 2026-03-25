@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//cli//cli.service.ts",
+  "sourceFile": "src/cli/cli.service.ts",
   "module": {
     "name": "cli.service",
-    "description": "Behavioral contract for src//cli//cli.service.ts",
+    "description": "Behavioral contract for src/cli/cli.service.ts",
     "exports": ["CliService"]
   },
   "specifications": [

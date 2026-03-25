@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//cli//options//shared-arguments.ts",
+  "sourceFile": "src/cli/options/shared-arguments.ts",
   "module": {
     "name": "shared-arguments",
-    "description": "Behavioral contract for src//cli//options//shared-arguments.ts",
+    "description": "Behavioral contract for src/cli/options/shared-arguments.ts",
     "exports": ["addDirectoryArgument"]
   },
   "specifications": [

@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//organizer//interfaces.ts",
+  "sourceFile": "src/organizer/interfaces.ts",
   "module": {
     "name": "interfaces",
-    "description": "Behavioral contract for src//organizer//interfaces.ts",
+    "description": "Behavioral contract for src/organizer/interfaces.ts",
     "exports": ["IFileOrganizer", "IOperationExecutor", "IOperationPlanner"]
   },
   "specifications": [

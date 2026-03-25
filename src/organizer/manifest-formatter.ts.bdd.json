@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//organizer//manifest-formatter.ts",
+  "sourceFile": "src/organizer/manifest-formatter.ts",
   "module": {
     "name": "manifest-formatter",
-    "description": "Behavioral contract for src//organizer//manifest-formatter.ts",
+    "description": "Behavioral contract for src/organizer/manifest-formatter.ts",
     "exports": ["IManifestFormatter", "ManifestFormatter"]
   },
   "specifications": [

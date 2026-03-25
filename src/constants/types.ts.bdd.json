@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//constants//types.ts",
+  "sourceFile": "src/constants/types.ts",
   "module": {
     "name": "types",
-    "description": "Behavioral contract for src//constants//types.ts",
+    "description": "Behavioral contract for src/constants/types.ts",
     "exports": ["FileCategoryName", "IFileCategory", "ReadonlyExtensionList"]
   },
   "specifications": [

@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//dedupe//dedupe-service.ts",
+  "sourceFile": "src/dedupe/dedupe-service.ts",
   "module": {
     "name": "dedupe-service",
-    "description": "Behavioral contract for src//dedupe//dedupe-service.ts",
+    "description": "Behavioral contract for src/dedupe/dedupe-service.ts",
     "exports": ["DedupeService"]
   },
   "specifications": [

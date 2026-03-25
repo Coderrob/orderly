@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//cli//result//command-result-runner.ts",
+  "sourceFile": "src/cli/result/command-result-runner.ts",
   "module": {
     "name": "command-result-runner",
-    "description": "Behavioral contract for src//cli//result//command-result-runner.ts",
+    "description": "Behavioral contract for src/cli/result/command-result-runner.ts",
     "exports": ["createCommandAction", "createDirectoryCommandAction", "runCommandResult"]
   },
   "specifications": [

@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//cli//constants.ts",
+  "sourceFile": "src/cli/constants.ts",
   "module": {
     "name": "constants",
-    "description": "Behavioral contract for src//cli//constants.ts",
+    "description": "Behavioral contract for src/cli/constants.ts",
     "exports": [
       "CLI_CONSTANTS",
       "COMMAND_MESSAGES",

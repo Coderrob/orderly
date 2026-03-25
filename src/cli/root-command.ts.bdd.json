@@ -1,10 +1,10 @@
 {
-  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "$schema": "https:/coderrob.com/schemas/bdd-spec.schema.json",
   "schemaVersion": "1.0.0",
-  "sourceFile": "src//cli//root-command.ts",
+  "sourceFile": "src/cli/root-command.ts",
   "module": {
     "name": "root-command",
-    "description": "Behavioral contract for src//cli//root-command.ts",
+    "description": "Behavioral contract for src/cli/root-command.ts",
     "exports": ["createRootCommand", "IRootCommandDependencies"]
   },
   "specifications": [
