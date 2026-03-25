@@ -59,6 +59,10 @@ export class DedupeReportWriter implements IDedupeReportWriter {
  * @returns Reclaimable bytes.
  */
 function calculateGroupWastedBytes(group: Readonly<IDuplicateGroup>): number {
+  if (!group.primary || group.files.length <= 1) {
+    return 0;
+  }
+
   return group.files.reduce(sumFileSizes, 0) - (group.primary?.size ?? 0);
 }
 

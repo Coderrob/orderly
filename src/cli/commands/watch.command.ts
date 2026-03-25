@@ -132,6 +132,15 @@ export class WatchHandler implements IWatchHandler {
 }
 
 /**
+ * Converts an unsuccessful cycle result into a scheduler error.
+ * @param cycleResult - Command result returned by one organize cycle.
+ * @returns Error describing the failed watch cycle.
+ */
+function createCycleFailure(cycleResult: Readonly<ICommandResult>): Error {
+  return new Error(cycleResult.message);
+}
+
+/**
  * Creates the mutable state object used by the watch scheduler.
  * @param runOptions - Cycle execution options.
  * @param executeCycle - Organize-cycle executor.
@@ -155,6 +164,15 @@ function createRunCycleState(
     intervalMs: runOptions.intervalSeconds * SECOND_TO_MILLISECOND,
     options: runOptions.options
   };
+}
+
+/**
+ * Handles one successful cycle and schedules the next delayed execution.
+ * @param runCycleState - Immutable cycle state snapshot.
+ * @returns Next cycle state snapshot.
+ */
+function createSuccessfulCycleState(runCycleState: Readonly<IRunCycleState>): IRunCycleState {
+  return createUpdatedRunCycleState(runCycleState);
 }
 
 /**
@@ -197,15 +215,19 @@ function executeScheduledCycle(runCycleState: Readonly<IRunCycleState>): void {
 /**
  * Handles the completed cycle and schedules the next delay when needed.
  * @param runCycleState - Immutable cycle state snapshot.
+ * @param cycleResult - Result returned by the completed organize cycle.
  */
-function handleExecutedCycle(runCycleState: Readonly<IRunCycleState>): void {
-  const nextRunCycleState = createUpdatedRunCycleState(runCycleState);
-  if (
-    nextRunCycleState.hasReachedCycleLimit(
-      nextRunCycleState.completedCycles,
-      nextRunCycleState.cycleLimit
-    )
-  ) {
+function handleExecutedCycle(
+  runCycleState: Readonly<IRunCycleState>,
+  cycleResult: Readonly<ICommandResult>
+): void {
+  if (!cycleResult.success) {
+    handleFailedCycleResult(runCycleState, cycleResult);
+    return;
+  }
+
+  const nextRunCycleState = createSuccessfulCycleState(runCycleState);
+  if (nextRunCycleState.hasReachedCycleLimit(nextRunCycleState.completedCycles, nextRunCycleState.cycleLimit)) {
     nextRunCycleState.resolve(nextRunCycleState.completedCycles);
     return;
   }
@@ -213,6 +235,18 @@ function handleExecutedCycle(runCycleState: Readonly<IRunCycleState>): void {
   delay(nextRunCycleState.intervalMs)
     .then(scheduleDelayedCycle.bind(null, nextRunCycleState))
     .catch(nextRunCycleState.reject);
+}
+
+/**
+ * Rejects the scheduler when an organize cycle returns an unsuccessful result.
+ * @param runCycleState - Immutable cycle state snapshot.
+ * @param cycleResult - Result returned by the completed organize cycle.
+ */
+function handleFailedCycleResult(
+  runCycleState: Readonly<IRunCycleState>,
+  cycleResult: Readonly<ICommandResult>
+): void {
+  runCycleState.reject(createCycleFailure(cycleResult));
 }
 
 /**

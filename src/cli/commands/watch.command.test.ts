@@ -43,6 +43,21 @@ describe('WatchHandler', () => {
     expect(mockOrganizeHandler.execute).toHaveBeenCalledTimes(1);
   });
 
+  it('should stop and return a failed result when an organize cycle is unsuccessful', async () => {
+    mockOrganizeHandler.execute.mockResolvedValueOnce({
+      success: false,
+      exitCode: 1,
+      message: 'Organization failed: denied'
+    });
+
+    const result = await handler.execute('/tmp', { cycles: '2', interval: '1' });
+
+    expect(result.success).toBe(false);
+    expect(result.exitCode).toBe(1);
+    expect(result.message).toContain('Watch failed: Organization failed: denied');
+    expect(mockOrganizeHandler.execute).toHaveBeenCalledTimes(1);
+  });
+
   it('should default invalid cycle counts to continuous mode in the private helper', () => {
     expect((handler as any).resolveCycleLimit('-1')).toBe(0);
     expect((handler as any).resolveCycleLimit('invalid')).toBe(0);

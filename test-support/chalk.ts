@@ -1,4 +1,5 @@
 interface IChalkLike {
+  bold(value: string): string;
   blue(value: string): string;
   gray(value: string): string;
   green(value: string): string;
@@ -16,6 +17,7 @@ function passthrough(value: string): string {
 }
 
 const chalk: IChalkLike = {
+  bold: passthrough,
   blue: passthrough,
   gray: passthrough,
   green: passthrough,

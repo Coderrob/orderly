@@ -115,5 +115,6 @@ describe('DedupeReportWriter', () => {
     const markdown = fs.readFileSync(outputPath, 'utf8');
     expect(markdown).toContain('- Strategies used: none');
     expect(markdown).toContain('- Primary: `n/a`');
+    expect(markdown).toContain('- Reclaimable bytes: 0');
   });
 });
