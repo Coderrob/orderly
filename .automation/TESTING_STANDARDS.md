@@ -38,7 +38,7 @@ describe('MyService', () => {
     mockDependency = {
       method: jest.fn()
     } as jest.Mocked<DependencyType>;
-    
+
     testValue = 'test-value';
     service = new MyService(mockDependency);
   });
@@ -52,10 +52,10 @@ describe('MyService', () => {
     it('should return expected result when input is valid', () => {
       // Arrange (Apply)
       mockDependency.method.mockReturnValue('mocked-result');
-      
+
       // Act (Action)
       const result = service.publicMethod(testValue);
-      
+
       // Assert
       expect(result).toBe('expected-result');
       expect(mockDependency.method).toHaveBeenCalledWith(testValue);
@@ -268,7 +268,7 @@ jest.mock('path');
 describe('FileSystemUtils', () => {
   const mockFs = fs as jest.Mocked<typeof fs>;
   const mockPath = path as jest.Mocked<typeof path>;
-  
+
   let testPath: string;
   let testContent: string;
 
@@ -285,11 +285,11 @@ describe('FileSystemUtils', () => {
     it.each([
       [true, 'exists'],
       [false, 'does not exist']
-    ])('should return %s when file %s', (expected) => {
+    ])('should return %s when file %s', expected => {
       mockFs.existsSync.mockReturnValue(expected);
-      
+
       const result = FileSystemUtils.exists(testPath);
-      
+
       expect(result).toBe(expected);
       expect(mockFs.existsSync).toHaveBeenCalledWith(testPath);
     });
@@ -298,9 +298,9 @@ describe('FileSystemUtils', () => {
   describe('readFile', () => {
     it('should read and return file content', () => {
       mockFs.readFileSync.mockReturnValue(testContent);
-      
+
       const result = FileSystemUtils.readFile(testPath);
-      
+
       expect(result).toBe(testContent);
       expect(mockFs.readFileSync).toHaveBeenCalledWith(testPath, 'utf8');
     });
@@ -322,7 +322,7 @@ jest.mock('../utils/config-parser');
 describe('ConfigLoader', () => {
   const mockFileSystemUtils = FileSystemUtils as jest.Mocked<typeof FileSystemUtils>;
   const mockConfigParser = ConfigParser as jest.Mocked<typeof ConfigParser>;
-  
+
   let testConfigPath: string;
   let testConfig: any;
 
@@ -339,9 +339,9 @@ describe('ConfigLoader', () => {
     it('should load config from specified path', () => {
       mockFileSystemUtils.exists.mockReturnValue(true);
       mockConfigParser.parse.mockReturnValue(testConfig);
-      
+
       const result = ConfigLoader.load(testConfigPath);
-      
+
       expect(result).toMatchObject(testConfig);
       expect(mockFileSystemUtils.exists).toHaveBeenCalledWith(testConfigPath);
       expect(mockConfigParser.parse).toHaveBeenCalledWith(testConfigPath);
@@ -349,7 +349,7 @@ describe('ConfigLoader', () => {
 
     it('should throw error when config file not found', () => {
       mockFileSystemUtils.exists.mockReturnValue(false);
-      
+
       expect(() => ConfigLoader.load(testConfigPath)).toThrow('Config file not found');
     });
   });
@@ -366,11 +366,7 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
   testMatch: ['**/*.spec.ts'],
-  collectCoverageFrom: [
-    'src/**/*.ts',
-    '!src/**/*.spec.ts',
-    '!src/index.ts'
-  ],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/index.ts'],
   coverageThreshold: {
     global: {
       branches: 90,
@@ -392,10 +388,7 @@ module.exports = {
   "compilerOptions": {
     "types": ["jest", "node"]
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.spec.ts"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.spec.ts"]
 }
 ```
 
@@ -406,12 +399,12 @@ module.exports = {
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test:coverage": "jest --runInBand --coverage",
     "test:ci": "jest --coverage --ci --maxWorkers=2",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint src --ext .ts --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
     "quality": "npm run lint && npm run format:check && npm run test:coverage",
     "duplication": "jscpd src --threshold 1",
     "complexity": "sonarqube-scanner",

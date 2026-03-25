@@ -73,6 +73,24 @@ describe('DedupeStrategyFactory', () => {
   });
 
   describe('createDedupeService', () => {
+    it('should default to ANY mode with default strategies when no config is provided', () => {
+      const service = DedupeStrategyFactory.createDedupeService();
+
+      expect(service).toBeInstanceOf(DedupeService);
+
+      const internal = service as unknown as {
+        mode: DedupeMode;
+        strategies: Array<{ name: string }>;
+      };
+
+      expect(internal.mode).toBe(DedupeMode.ANY);
+      expect(internal.strategies.map(strategy => strategy.name)).toEqual([
+        'size',
+        'name',
+        'sha256'
+      ]);
+    });
+
     it('should create service in configured mode', () => {
       const service = DedupeStrategyFactory.createDedupeService({
         strategy: {
@@ -89,17 +107,6 @@ describe('DedupeStrategyFactory', () => {
 
       expect(internal.mode).toBe(DedupeMode.ALL);
       expect(internal.strategies.map(strategy => strategy.name)).toEqual(['size', 'name']);
-    });
-
-    it('should default to ANY mode for invalid legacy strategy values', () => {
-      const service = DedupeStrategyFactory.createDedupeService({
-        strategy: 'hash' as unknown as IDedupeStrategyConfig
-      });
-
-      expect(service).toBeInstanceOf(DedupeService);
-
-      const internal = service as unknown as { mode: DedupeMode };
-      expect(internal.mode).toBe(DedupeMode.ANY);
     });
   });
 });

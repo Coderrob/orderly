@@ -8,6 +8,7 @@ export type {
   IMetadataExtractor
 } from './interfaces.js';
 export * from './metadata/index.js';
+export * from './report/index.js';
 export * from './strategies/index.js';
 export { DedupeAction, DedupeMode } from './types.js';
 export type {

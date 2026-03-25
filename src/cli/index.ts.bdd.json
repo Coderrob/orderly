@@ -5,7 +5,17 @@
   "module": {
     "name": "index",
     "description": "Behavioral contract for D:\\orderly\\src\\cli\\index.ts",
-    "exports": []
+    "exports": [
+      "CleanHandler",
+      "DedupeHandler",
+      "InitHandler",
+      "OrganizeHandler",
+      "ScanHandler",
+      "ConfigService",
+      "DirectoryValidator",
+      "ManifestService",
+      "createRootCommand"
+    ]
   },
   "specifications": [
     {

@@ -29,8 +29,6 @@ export interface IManifest {
   failed: number;
   skipped: number;
   entries: IManifestEntry[];
-  // Backward compatibility: operations is an alias for entries
-  operations?: IManifestEntry[];
 }
 
 export type Manifest = IManifest;
@@ -55,15 +53,10 @@ export class ManifestGenerator implements IManifestGenerator {
    * Generates a manifest from organization results and errors
    * @param result - The organization result containing operations and counts
    * @param errors - Array of file errors that occurred during organization
-   * @returns A complete manifest with all operation entries and backward-compatible operations property
+   * @returns A complete manifest with all operation entries
    */
   generate(result: Readonly<IOrganizationResult>, errors: readonly IFileError[]): IManifest {
-    const manifest = this.builder.build(result, errors);
-    return {
-      ...manifest,
-      // ManifestEntry objects are shared between entries and operations; treat them as immutable.
-      operations: [...manifest.entries]
-    };
+    return this.builder.build(result, errors);
   }
 
   /**

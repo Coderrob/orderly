@@ -5,7 +5,7 @@
   "module": {
     "name": "index",
     "description": "Behavioral contract for D:\\orderly\\src\\dedupe\\index.ts",
-    "exports": ["DedupeAction", "DedupeMode", "DedupeService"]
+    "exports": ["DedupeAction", "DedupeMode", "DedupeReportWriter", "DedupeService"]
   },
   "specifications": [
     {

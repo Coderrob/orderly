@@ -1,4 +1,6 @@
+import type { IEmptyDirectoryCleaner, ICleanOptions, ICleanResult } from '../cleaner/interfaces';
 import type { OrderlyConfig } from '../config/types';
+import type { IDedupeReportWriter } from '../dedupe/interfaces';
 import type { ILogger } from '../logger/interfaces';
 import type { IOrganizationResult } from '../organizer/types';
 
@@ -40,6 +42,38 @@ export interface IScanOptions {
   config?: string;
   /** Log level (debug, info, warn, error) */
   logLevel?: string;
+  /** Commander negated option `--no-auto-config` surfaces as `autoConfig: false` */
+  autoConfig?: boolean;
+}
+
+/**
+ * Options for the clean command.
+ */
+export interface ICleanCommandOptions extends ICleanOptions {
+  /** Path to config file */
+  config?: string;
+  /** Log level (debug, info, warn, error) */
+  logLevel?: string;
+  /** Commander negated option `--no-auto-config` surfaces as `autoConfig: false` */
+  autoConfig?: boolean;
+}
+
+/**
+ * Options for the dedupe command.
+ */
+export interface IDedupeCommandOptions {
+  /** Path to config file */
+  config?: string;
+  /** Log level (debug, info, warn, error) */
+  logLevel?: string;
+  /** Preview changes without applying them */
+  dryRun?: boolean;
+  /** Dedupe action override */
+  action?: string;
+  /** Optional JSON report path */
+  reportJson?: string;
+  /** Optional Markdown report path */
+  reportMarkdown?: string;
   /** Commander negated option `--no-auto-config` surfaces as `autoConfig: false` */
   autoConfig?: boolean;
 }
@@ -108,6 +142,32 @@ export interface IInitHandler {
 }
 
 /**
+ * Interface for the clean command handler.
+ */
+export interface ICleanHandler {
+  /**
+   * Executes the clean command.
+   * @param directory - Target directory for the command
+   * @param options - Clean command options
+   * @returns Promise resolving to the command result
+   */
+  execute(directory: string, options: ICleanCommandOptions): Promise<ICommandResult>;
+}
+
+/**
+ * Interface for the dedupe command handler.
+ */
+export interface IDedupeHandler {
+  /**
+   * Executes the dedupe command.
+   * @param directory - Target directory for the command
+   * @param options - Dedupe command options
+   * @returns Promise resolving to the command result
+   */
+  execute(directory: string, options: IDedupeCommandOptions): Promise<ICommandResult>;
+}
+
+/**
  * Interface for config loading service.
  */
 export interface IConfigService {
@@ -150,3 +210,15 @@ export interface IManifestService {
    */
   saveManifests(result: IOrganizationResult, outputDir: string): void;
 }
+
+/**
+ * Interface for empty-directory cleaning service.
+ */
+export interface ICleanerService extends IEmptyDirectoryCleaner {
+  clean(rootDirectory: string, options: Readonly<ICleanOptions>): ICleanResult;
+}
+
+/**
+ * Interface for dedupe report generation service.
+ */
+export type IDedupeReportService = IDedupeReportWriter;
