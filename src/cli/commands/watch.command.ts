@@ -227,7 +227,12 @@ function handleExecutedCycle(
   }
 
   const nextRunCycleState = createSuccessfulCycleState(runCycleState);
-  if (nextRunCycleState.hasReachedCycleLimit(nextRunCycleState.completedCycles, nextRunCycleState.cycleLimit)) {
+  if (
+    nextRunCycleState.hasReachedCycleLimit(
+      nextRunCycleState.completedCycles,
+      nextRunCycleState.cycleLimit
+    )
+  ) {
     nextRunCycleState.resolve(nextRunCycleState.completedCycles);
     return;
   }
