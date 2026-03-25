@@ -129,19 +129,6 @@ export function handleReplacedDuplicates(
 }
 
 /**
- * Resolves a unique quarantine destination path for organize dedupe replacement.
- * @param filePath - Duplicate file path.
- * @param quarantineDir - Quarantine directory.
- * @returns Collision-safe quarantine destination path.
- */
-function resolveQuarantinePath(filePath: string, quarantineDir: string): string {
-  const destinationPath = path.join(quarantineDir, path.basename(filePath));
-  return FileSystemUtils.hasPath(destinationPath)
-    ? path.join(quarantineDir, `${Clock.nowMonotonicToken()}-${path.basename(filePath)}`)
-    : destinationPath;
-}
-
-/**
  * Handles duplicate skipping behavior before organization continues.
  * @param filteredFiles - Files still eligible for organization.
  * @param groupCount - Number of duplicate groups encountered.
@@ -179,4 +166,17 @@ function removeDuplicateFiles(
   }
 
   return [...uniqueFiles];
+}
+
+/**
+ * Resolves a unique quarantine destination path for organize dedupe replacement.
+ * @param filePath - Duplicate file path.
+ * @param quarantineDir - Quarantine directory.
+ * @returns Collision-safe quarantine destination path.
+ */
+function resolveQuarantinePath(filePath: string, quarantineDir: string): string {
+  const destinationPath = path.join(quarantineDir, path.basename(filePath));
+  return FileSystemUtils.hasPath(destinationPath)
+    ? path.join(quarantineDir, `${Clock.nowMonotonicToken()}-${path.basename(filePath)}`)
+    : destinationPath;
 }

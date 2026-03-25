@@ -103,6 +103,23 @@ describe('ScanHandler', () => {
     expect(output).toContain('file1.txt,.txt,uncategorized,10');
   });
 
+  it('should escape CSV fields containing commas, quotes, and newlines', () => {
+    const output = (handler as any).formatResults(
+      [
+        {
+          filename: 'report, "final"\ncopy.txt',
+          extension: '.txt',
+          size: 10,
+          category: 'docs,notes'
+        }
+      ],
+      { getCategorySummary: jest.fn().mockReturnValue(new Map()) },
+      'csv'
+    );
+
+    expect(output).toContain('"report, ""final""\ncopy.txt",.txt,"docs,notes",10');
+  });
+
   it('should fall back to table output for unknown formats', async () => {
     const config = { logLevel: 'info' as any };
     const targetDir = '/test/dir';

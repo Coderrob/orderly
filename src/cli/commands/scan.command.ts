@@ -221,14 +221,26 @@ function createSampleLine(file: Readonly<IScannedFile>, index: number): string {
 }
 
 /**
+ * Escapes one CSV field when it contains special characters.
+ * @param value - Raw field value.
+ * @returns CSV-safe field value.
+ */
+function escapeCsvField(value: string): string {
+  return /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+}
+
+/**
  * Creates a CSV row for one scanned file.
  * @param file - Scanned file.
  * @returns CSV row.
  */
 function toCsvRow(file: Readonly<IScannedFile>): string {
-  return [file.filename, file.extension, file.category ?? 'uncategorized', String(file.size)].join(
-    ','
-  );
+  return [
+    escapeCsvField(file.filename),
+    escapeCsvField(file.extension),
+    escapeCsvField(file.category ?? 'uncategorized'),
+    escapeCsvField(String(file.size))
+  ].join(',');
 }
 
 /**
