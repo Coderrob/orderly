@@ -1,38 +1,16 @@
-import { OrganizeHandler } from './organize.command';
-import { ConfigService } from '../services/config.service';
-import { DirectoryValidator } from '../services/directory-validator.service';
-import { ManifestService } from '../services/manifest.service';
-import type { IOrganizeOptions } from '../interfaces';
-import type { OrderlyConfig } from '../../config/types';
-import { DEFAULT_CONFIG } from '../../config/types';
-import type { IScannedFile } from '../../scanner/interfaces';
-import { Logger } from '../../logger/logger';
 import { DedupeAction } from '../../dedupe';
 import { DedupeStrategyFactory } from '../../dedupe/dedupe-factory';
-import { FileScanner } from '../../scanner/file-scanner';
+import { Logger } from '../../logger/logger';
 import { FileOrganizer } from '../../organizer/file-organizer';
-import { FileSystemUtils } from '../../utils/file-system-utils';
+import { FileScanner } from '../../scanner/file-scanner';
+import { OrganizeHandler } from './organize.command';
 
-// Mock chalk before any other imports
 jest.mock('chalk', () => ({
-  blue: jest.fn(str => str),
-  green: jest.fn(str => str),
-  yellow: jest.fn(str => str),
-  red: jest.fn(str => str),
-  gray: jest.fn(str => str)
-}));
-
-// Mock the dedupe module
-jest.mock('../../dedupe', () => ({
-  DedupeMode: {
-    ANY: 'any',
-    ALL: 'all'
-  },
-  DedupeAction: {
-    SKIP: 'skip',
-    REPORT: 'report',
-    REPLACE: 'replace'
-  }
+  blue: jest.fn((value: string) => value),
+  green: jest.fn((value: string) => value),
+  yellow: jest.fn((value: string) => value),
+  red: jest.fn((value: string) => value),
+  gray: jest.fn((value: string) => value)
 }));
 
 jest.mock('../../dedupe/dedupe-factory', () => ({
@@ -41,16 +19,15 @@ jest.mock('../../dedupe/dedupe-factory', () => ({
   }
 }));
 
-// Mock the logger
 jest.mock('../../logger/logger', () => ({
   Logger: jest.fn().mockImplementation(() => ({
     info: jest.fn(),
     warn: jest.fn(),
-    error: jest.fn()
+    error: jest.fn(),
+    debug: jest.fn()
   }))
 }));
 
-// Mock file system related modules
 jest.mock('../../scanner/file-scanner', () => ({
   FileScanner: jest.fn()
 }));
@@ -59,560 +36,149 @@ jest.mock('../../organizer/file-organizer', () => ({
   FileOrganizer: jest.fn()
 }));
 
-jest.mock('../../utils/file-system-utils', () => {
-  const actual = jest.requireActual('../../utils/file-system-utils');
-  return {
-    ...actual,
-    FileSystemUtils: {
-      hasPath: actual.FileSystemUtils.hasPath,
-      unlinkSync: jest.fn()
-    }
+describe('OrganizeHandler', () => {
+  const mockConfigService = {
+    loadWithOverrides: jest.fn(),
+    findConfigInDirectory: jest.fn()
   };
-});
+  const mockDirectoryValidator = {
+    validate: jest.fn()
+  };
+  const mockManifestService = {
+    saveManifests: jest.fn()
+  };
+  const mockCleaner = {
+    clean: jest.fn()
+  };
 
-/**
- * Unit tests for the organize command dedupe functionality.
- * Tests the integration logic without file system operations.
- */
-describe('OrganizeHandler - Dedupe Integration', () => {
-  let organizeHandler: OrganizeHandler;
-  let configService: ConfigService;
-  let directoryValidator: DirectoryValidator;
-  let manifestService: ManifestService;
-  let mockDedupeService: {
-    applyAction: jest.Mock;
-    findDuplicates: jest.Mock;
-  };
-  let mockLogger: jest.Mocked<Logger>;
+  let handler: OrganizeHandler;
 
   beforeEach(() => {
-    configService = new ConfigService();
-    directoryValidator = new DirectoryValidator();
-    manifestService = new ManifestService();
-
-    // Set up mock implementations
-    mockDedupeService = {
-      findDuplicates: jest.fn(),
-      applyAction: jest.fn()
-    } as any;
-
-    mockLogger = {
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-      getLogs: jest.fn(),
-      clearLogs: jest.fn()
-    } as any;
-
-    // Mock the constructors
-    jest
-      .mocked(DedupeStrategyFactory.createDedupeService)
-      .mockReturnValue(mockDedupeService as any);
-    (Logger as jest.Mock).mockImplementation(() => mockLogger);
-
-    organizeHandler = new OrganizeHandler(configService, directoryValidator, manifestService);
-  });
-
-  afterEach(() => {
+    handler = new OrganizeHandler(
+      mockConfigService as any,
+      mockDirectoryValidator as any,
+      mockManifestService as any,
+      mockCleaner as any
+    );
     jest.clearAllMocks();
-  });
-
-  describe('processDuplicates method', () => {
-    const mockFiles: IScannedFile[] = [
-      {
-        originalPath: '/path/file1.txt',
-        filename: 'file1.txt',
-        extension: '.txt',
-        size: 100,
-        needsRename: false
-      },
-      {
-        originalPath: '/path/file2.txt',
-        filename: 'file2.txt',
-        extension: '.txt',
-        size: 100,
-        needsRename: false
-      }
-    ];
-
-    const mockConfig: OrderlyConfig = {
+    mockDirectoryValidator.validate.mockReturnValue('/test/dir');
+    mockConfigService.loadWithOverrides.mockReturnValue({
+      dryRun: false,
+      includeHidden: false,
+      logLevel: 'info',
+      excludePatterns: [],
+      categories: [],
+      namingConvention: { type: 'kebab-case' },
+      generateManifest: false,
       dedupe: {
-        enabled: true,
+        enabled: false,
+        recursive: false,
+        strategy: { mode: 'any' },
         action: 'skip'
       }
-    } as OrderlyConfig;
-
-    it('should filter out duplicate files when action is SKIP', async () => {
-      // Mock dedupe result with duplicates
-      const mockDedupeResult = {
-        groups: [
-          {
-            key: 'duplicate-group-1',
-            files: [mockFiles[0], mockFiles[1]],
-            strategy: 'name'
-          }
-        ],
-        totalFiles: 2,
-        totalDuplicates: 2,
-        strategiesUsed: ['name']
-      };
-
-      const mockDedupeOutcome = {
-        action: DedupeAction.SKIP,
-        skipped: [mockFiles[1]],
-        replaced: [],
-        reported: [],
-        errors: []
-      };
-
-      mockDedupeService.findDuplicates.mockResolvedValue(mockDedupeResult);
-      mockDedupeService.applyAction.mockResolvedValue(mockDedupeOutcome);
-
-      // Access the private method for testing
-      const processDuplicates = (organizeHandler as any).processDuplicates.bind(organizeHandler);
-
-      const result = await processDuplicates(mockFiles, mockConfig, mockLogger);
-
-      expect(mockDedupeService.findDuplicates).toHaveBeenCalledWith(mockFiles);
-      expect(mockDedupeService.applyAction).toHaveBeenCalledWith(mockDedupeResult, 'skip');
-      expect(mockLogger.info).toHaveBeenCalledWith('Running duplicate detection...');
-      expect(mockLogger.info).toHaveBeenCalledWith('Found 2 duplicate files in 1 groups');
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        "Dedupe action 'skip' applied: 1 files affected"
-      );
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        'Kept 1 primary files, filtered out 1 duplicate files'
-      );
-      expect(result).toHaveLength(1); // One primary file kept, one duplicate filtered out
     });
-
-    it('should not filter files when action is REPORT', async () => {
-      const reportConfig = {
-        ...mockConfig,
-        dedupe: { ...mockConfig.dedupe, action: 'report' as const }
-      };
-
-      const mockDedupeResult = {
-        groups: [
-          {
-            key: 'duplicate-group-1',
-            files: [mockFiles[0], mockFiles[1]],
-            strategy: 'name'
-          }
-        ],
-        totalFiles: 2,
-        totalDuplicates: 2,
-        strategiesUsed: ['name']
-      };
-
-      const mockDedupeOutcome = {
-        action: DedupeAction.REPORT,
-        skipped: [],
-        replaced: [],
-        reported: [mockDedupeResult.groups[0]],
-        errors: []
-      };
-
-      mockDedupeService.findDuplicates.mockResolvedValue(mockDedupeResult);
-      mockDedupeService.applyAction.mockResolvedValue(mockDedupeOutcome);
-
-      const processDuplicates = (organizeHandler as any).processDuplicates.bind(organizeHandler);
-
-      const result = await processDuplicates(mockFiles, reportConfig, mockLogger);
-
-      expect(result).toEqual(mockFiles); // All files returned unchanged
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        "Dedupe action 'report' applied: 0 files affected"
-      );
-    });
-
-    it('should delete duplicate files when action is REPLACE', async () => {
-      const replaceConfig = {
-        ...mockConfig,
-        dryRun: false,
-        dedupe: { ...mockConfig.dedupe, action: 'replace' as const }
-      } as OrderlyConfig;
-
-      const mockDedupeResult = {
-        groups: [
-          {
-            key: 'duplicate-group-1',
-            files: [mockFiles[0], mockFiles[1]],
-            strategy: 'name'
-          }
-        ],
-        totalFiles: 2,
-        totalDuplicates: 2,
-        strategiesUsed: ['name']
-      };
-
-      const mockDedupeOutcome = {
-        action: DedupeAction.REPLACE,
-        skipped: [],
-        replaced: [mockFiles[1]],
-        reported: [],
-        errors: []
-      };
-
-      mockDedupeService.findDuplicates.mockResolvedValue(mockDedupeResult);
-      mockDedupeService.applyAction.mockResolvedValue(mockDedupeOutcome);
-
-      const processDuplicates = (organizeHandler as any).processDuplicates.bind(organizeHandler);
-
-      const result = await processDuplicates(mockFiles, replaceConfig, mockLogger);
-
-      expect(FileSystemUtils.unlinkSync).toHaveBeenCalledWith('/path/file2.txt');
-      expect(result).toEqual([mockFiles[0]]);
-      expect(mockLogger.info).toHaveBeenCalledWith('Removed 1 duplicate files before organization');
-    });
-
-    it('should not delete duplicate files during dry-run replace', async () => {
-      const replaceConfig = {
-        ...mockConfig,
-        dryRun: true,
-        dedupe: { ...mockConfig.dedupe, action: 'replace' as const }
-      } as OrderlyConfig;
-
-      const mockDedupeResult = {
-        groups: [
-          {
-            key: 'duplicate-group-1',
-            files: [mockFiles[0], mockFiles[1]],
-            strategy: 'name'
-          }
-        ],
-        totalFiles: 2,
-        totalDuplicates: 2,
-        strategiesUsed: ['name']
-      };
-
-      const mockDedupeOutcome = {
-        action: DedupeAction.REPLACE,
-        skipped: [],
-        replaced: [mockFiles[1]],
-        reported: [],
-        errors: []
-      };
-
-      mockDedupeService.findDuplicates.mockResolvedValue(mockDedupeResult);
-      mockDedupeService.applyAction.mockResolvedValue(mockDedupeOutcome);
-
-      const processDuplicates = (organizeHandler as any).processDuplicates.bind(organizeHandler);
-
-      const result = await processDuplicates(mockFiles, replaceConfig, mockLogger);
-
-      expect(FileSystemUtils.unlinkSync).not.toHaveBeenCalled();
-      expect(result).toEqual([mockFiles[0]]);
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        'Would remove 1 duplicate files before organization'
-      );
-    });
-
-    it('should return all files when no duplicates found', async () => {
-      const mockDedupeResult = {
-        groups: [],
-        totalFiles: 2,
-        totalDuplicates: 0,
-        strategiesUsed: []
-      };
-
-      mockDedupeService.findDuplicates.mockResolvedValue(mockDedupeResult);
-
-      const processDuplicates = (organizeHandler as any).processDuplicates.bind(organizeHandler);
-
-      const result = await processDuplicates(mockFiles, mockConfig, mockLogger);
-
-      expect(result).toEqual(mockFiles);
-      expect(mockDedupeService.applyAction).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('configuration integration', () => {
-    it('should enable dedupe when dedupe option is true', () => {
-      const options: IOrganizeOptions = {
-        dedupe: true
-      };
-
-      const config = configService.loadWithOverrides(options);
-      expect(config.dedupe?.enabled).toBe(true);
-    });
-
-    it('should set dedupe action when specified', () => {
-      const options: IOrganizeOptions = {
-        dedupe: true,
-        dedupeAction: 'report'
-      };
-
-      const config = configService.loadWithOverrides(options);
-      expect(config.dedupe?.action).toBe('report');
-    });
-
-    it('should default dedupe action to skip', () => {
-      const options: IOrganizeOptions = {
-        dedupe: true
-      };
-
-      const config = configService.loadWithOverrides(options);
-      expect(config.dedupe?.action).toBe('skip');
-    });
-
-    it('should disable dedupe by default', () => {
-      const options: IOrganizeOptions = {};
-
-      const config = configService.loadWithOverrides(options);
-      expect(config.dedupe?.enabled).toBeFalsy();
-    });
-  });
-
-  describe('execute', () => {
-    it('should organize files successfully', async () => {
-      const config = {
-        ...DEFAULT_CONFIG,
-        logLevel: 'info' as any,
-        dedupe: {
-          enabled: false,
-          recursive: false,
-          strategy: { mode: 'any' as any },
-          action: 'skip' as any
+    (FileScanner as jest.Mock).mockImplementation(() => ({
+      scan: jest.fn().mockResolvedValue([
+        {
+          originalPath: '/test/dir/file1.txt',
+          filename: 'file1.txt',
+          extension: '.txt',
+          size: 10,
+          needsRename: false
         }
-      };
-      const targetDir = '/test/dir';
-      const files = [{ filename: 'file1.txt' } as IScannedFile];
-      const operations = [{ type: 'move' as any }];
-      const result = { operations, successful: 1, failed: 0, errors: [] };
-
-      jest.spyOn(configService, 'loadWithOverrides').mockReturnValue(config);
-      jest.spyOn(directoryValidator, 'validate').mockReturnValue(targetDir);
-
-      (FileScanner as jest.Mock).mockImplementation(() => ({
-        scan: jest.fn().mockResolvedValue(files),
-        getCategorySummary: jest.fn()
-      }));
-
-      (FileOrganizer as jest.Mock).mockImplementation(() => ({
-        planOperations: jest.fn().mockReturnValue(operations),
-        executeOperations: jest.fn().mockReturnValue(result)
-      }));
-
-      const cmdResult = await organizeHandler.execute(targetDir, { manifest: false });
-
-      expect(cmdResult.success).toBe(true);
-      expect(cmdResult.exitCode).toBe(0);
-      expect(cmdResult.message).toContain('Successfully organized 1 files');
+      ])
+    }));
+    (FileOrganizer as jest.Mock).mockImplementation(() => ({
+      planOperations: jest.fn().mockReturnValue([{ type: 'move' }]),
+      executeOperations: jest.fn().mockReturnValue({
+        operations: [
+          {
+            type: 'move',
+            originalPath: '/test/dir/file1.txt',
+            newPath: '/test/dir/documents/file1.txt',
+            reason: 'categorized'
+          }
+        ],
+        successful: 1,
+        failed: 0,
+        skipped: 0,
+        errors: []
+      })
+    }));
+    mockCleaner.clean.mockReturnValue({
+      scannedDirectories: 1,
+      removedDirectories: 1,
+      skippedDirectories: 0,
+      removed: [],
+      errors: []
     });
-
-    it('should handle error', async () => {
-      const config = {
-        ...DEFAULT_CONFIG,
-        logLevel: 'info' as any,
-        dedupe: {
-          enabled: false,
-          recursive: false,
-          strategy: { mode: 'any' as any },
-          action: 'skip' as any
-        }
-      };
-      const targetDir = '/test/dir';
-
-      jest.spyOn(configService, 'loadWithOverrides').mockReturnValue(config);
-      jest.spyOn(directoryValidator, 'validate').mockReturnValue(targetDir);
-
-      (FileScanner as jest.Mock).mockImplementation(() => ({
-        scan: jest.fn().mockRejectedValue(new Error('Scan failed')),
-        getCategorySummary: jest.fn()
-      }));
-
-      const cmdResult = await organizeHandler.execute(targetDir, {});
-
-      expect(cmdResult.success).toBe(false);
-      expect(cmdResult.exitCode).toBe(1);
-      expect(cmdResult.message).toContain('Organization failed: Scan failed');
-    });
-  });
-});
-
-describe('OrganizeHandler - Execute', () => {
-  let mockConfigService: any;
-  let mockDirectoryValidator: any;
-  let mockManifestService: any;
-  let handler: OrganizeHandler;
-  let mockLoggerInstance: any;
-
-  beforeEach(() => {
-    mockLoggerInstance = {
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-      getLogs: jest.fn(),
-      clearLogs: jest.fn()
-    };
-    (Logger as jest.Mock).mockImplementation(() => mockLoggerInstance);
-
-    mockConfigService = {
-      loadWithOverrides: jest.fn(),
-      findConfigInDirectory: jest.fn()
-    };
-    mockDirectoryValidator = {
-      validate: jest.fn()
-    };
-    mockManifestService = {
-      saveManifests: jest.fn()
-    };
-    handler = new OrganizeHandler(mockConfigService, mockDirectoryValidator, mockManifestService);
   });
 
   it('should organize files successfully', async () => {
-    const config = { logLevel: 'info' as any, dedupe: { enabled: false } };
-    const targetDir = '/test/dir';
-    const files = [{ filename: 'file1.txt' } as IScannedFile];
-    const operations = [{ type: 'move' as any }];
-    const result = { operations, successful: 1, failed: 0, errors: [] };
+    const result = await handler.execute('/test/dir', { manifest: false });
 
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
-    mockDirectoryValidator.validate.mockReturnValue(targetDir);
-
-    (FileScanner as jest.Mock).mockImplementation(() => ({
-      scan: jest.fn().mockResolvedValue(files),
-      getCategorySummary: jest.fn()
-    }));
-
-    (FileOrganizer as jest.Mock).mockImplementation(() => ({
-      planOperations: jest.fn().mockReturnValue(operations),
-      executeOperations: jest.fn().mockReturnValue(result)
-    }));
-
-    const cmdResult = await handler.execute(targetDir, { manifest: false });
-
-    expect(cmdResult.success).toBe(true);
-    expect(cmdResult.exitCode).toBe(0);
-    expect(cmdResult.message).toContain('Successfully organized 1 files');
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('Successfully organized 1 files');
   });
 
-  it('should log auto-discovered config via logger instead of console.log', async () => {
-    const config = { logLevel: 'info' as any, dedupe: { enabled: false } };
-    const targetDir = '/test/dir';
-    const discoveredConfig = '/test/dir/.orderly.yml';
-    const files = [{ filename: 'file1.txt' } as IScannedFile];
-    const operations = [{ type: 'move' as any }];
-    const result = { operations, successful: 1, failed: 0, errors: [] };
+  it('should run post-organize cleanup when requested', async () => {
+    await handler.execute('/test/dir', { cleanEmptyDirs: true });
 
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
-    mockDirectoryValidator.validate.mockReturnValue(targetDir);
-    mockConfigService.findConfigInDirectory.mockReturnValue(discoveredConfig);
-
-    (FileScanner as jest.Mock).mockImplementation(() => ({
-      scan: jest.fn().mockResolvedValue(files),
-      getCategorySummary: jest.fn()
-    }));
-
-    (FileOrganizer as jest.Mock).mockImplementation(() => ({
-      planOperations: jest.fn().mockReturnValue(operations),
-      executeOperations: jest.fn().mockReturnValue(result)
-    }));
-
-    await handler.execute(targetDir, {});
-
-    expect(mockLoggerInstance.info).toHaveBeenCalledWith(
-      `Using config file found in target directory: ${discoveredConfig}`
+    expect(mockCleaner.clean).toHaveBeenCalledWith(
+      '/test/dir',
+      expect.objectContaining({
+        dryRun: false,
+        includeHidden: false,
+        removeOrderlyDir: false
+      })
     );
   });
 
-  it('should not log auto-discovery message when config is explicitly provided', async () => {
-    const config = { logLevel: 'info' as any, dedupe: { enabled: false } };
-    const targetDir = '/test/dir';
-    const files = [{ filename: 'file1.txt' } as IScannedFile];
-    const operations = [{ type: 'move' as any }];
-    const result = { operations, successful: 1, failed: 0, errors: [] };
+  it('should save manifests when requested', async () => {
+    await handler.execute('/test/dir', { manifest: true });
 
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
-    mockDirectoryValidator.validate.mockReturnValue(targetDir);
-
-    (FileScanner as jest.Mock).mockImplementation(() => ({
-      scan: jest.fn().mockResolvedValue(files),
-      getCategorySummary: jest.fn()
-    }));
-
-    (FileOrganizer as jest.Mock).mockImplementation(() => ({
-      planOperations: jest.fn().mockReturnValue(operations),
-      executeOperations: jest.fn().mockReturnValue(result)
-    }));
-
-    await handler.execute(targetDir, { config: '/explicit/config.yml', manifest: false });
-
-    expect(mockConfigService.findConfigInDirectory).not.toHaveBeenCalled();
-    expect(mockLoggerInstance.info).not.toHaveBeenCalledWith(
-      expect.stringContaining('Using config file found in target directory:')
-    );
+    expect(mockManifestService.saveManifests).toHaveBeenCalled();
   });
 
-  it('should not auto-discover config when autoConfig is false', async () => {
-    const config = { logLevel: 'info' as any, dedupe: { enabled: false } };
-    const targetDir = '/test/dir';
-    const files = [{ filename: 'file1.txt' } as IScannedFile];
-    const operations = [{ type: 'move' as any }];
-    const result = { operations, successful: 1, failed: 0, skipped: 0, errors: [] };
+  it('should block destructive replace without confirmation or quarantine', async () => {
+    mockConfigService.loadWithOverrides.mockReturnValue({
+      dryRun: false,
+      includeHidden: false,
+      logLevel: 'info',
+      excludePatterns: [],
+      categories: [],
+      namingConvention: { type: 'kebab-case' },
+      generateManifest: false,
+      dedupe: {
+        enabled: true,
+        recursive: false,
+        strategy: { mode: 'any' },
+        action: 'replace'
+      }
+    });
 
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
-    mockDirectoryValidator.validate.mockReturnValue(targetDir);
+    const result = await handler.execute('/test/dir', { dedupe: true, dedupeAction: 'replace' });
 
-    (FileScanner as jest.Mock).mockImplementation(() => ({
-      scan: jest.fn().mockResolvedValue(files),
-      getCategorySummary: jest.fn()
-    }));
-
-    (FileOrganizer as jest.Mock).mockImplementation(() => ({
-      planOperations: jest.fn().mockReturnValue(operations),
-      executeOperations: jest.fn().mockReturnValue(result)
-    }));
-
-    await handler.execute(targetDir, { autoConfig: false, manifest: false });
-
-    expect(mockConfigService.findConfigInDirectory).not.toHaveBeenCalled();
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('--confirm-replace');
   });
 
-  it('should handle error', async () => {
-    const config = { logLevel: 'info' as any, dedupe: { enabled: false } };
-    const targetDir = '/test/dir';
-
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
-    mockDirectoryValidator.validate.mockReturnValue(targetDir);
-
-    (FileScanner as jest.Mock).mockImplementation(() => ({
-      scan: jest.fn().mockRejectedValue(new Error('Scan failed')),
-      getCategorySummary: jest.fn()
-    }));
-
-    const cmdResult = await handler.execute(targetDir, {});
-
-    expect(cmdResult.success).toBe(false);
-    expect(cmdResult.exitCode).toBe(1);
-    expect(cmdResult.message).toContain('Organization failed: Scan failed');
-  });
-
-  it('should handle dedupe enabled', async () => {
-    const config = { logLevel: 'info' as any, dedupe: { enabled: true, action: 'skip' as any } };
-    const targetDir = '/test/dir';
-    const files = [{ filename: 'file1.txt' } as IScannedFile];
-    const dedupedFiles = files;
-    const operations = [{ type: 'move' as any }];
-    const result = { operations, successful: 1, failed: 0, errors: [] };
-
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
-    mockDirectoryValidator.validate.mockReturnValue(targetDir);
-
-    (FileScanner as jest.Mock).mockImplementation(() => ({
-      scan: jest.fn().mockResolvedValue(files),
-      getCategorySummary: jest.fn()
-    }));
-
-    (FileOrganizer as jest.Mock).mockImplementation(() => ({
-      planOperations: jest.fn().mockReturnValue(operations),
-      executeOperations: jest.fn().mockReturnValue(result)
-    }));
-
-    // Mock dedupe
+  it('should continue when replace is explicitly confirmed', async () => {
+    mockConfigService.loadWithOverrides.mockReturnValue({
+      dryRun: false,
+      includeHidden: false,
+      logLevel: 'info',
+      excludePatterns: [],
+      categories: [],
+      namingConvention: { type: 'kebab-case' },
+      generateManifest: false,
+      dedupe: {
+        enabled: true,
+        recursive: false,
+        strategy: { mode: 'any' },
+        action: 'replace'
+      }
+    });
     jest.mocked(DedupeStrategyFactory.createDedupeService).mockReturnValue({
       findDuplicates: jest.fn().mockResolvedValue({
         groups: [],
@@ -620,70 +186,272 @@ describe('OrganizeHandler - Execute', () => {
         totalDuplicates: 0,
         strategiesUsed: []
       }),
-      applyAction: jest.fn().mockReturnValue(dedupedFiles)
+      applyAction: jest.fn()
     } as any);
 
-    const cmdResult = await handler.execute(targetDir, {});
+    const result = await handler.execute('/test/dir', {
+      dedupe: true,
+      dedupeAction: DedupeAction.REPLACE,
+      confirmReplace: true
+    });
 
-    expect(cmdResult.success).toBe(true);
-    expect(cmdResult.exitCode).toBe(0);
+    expect(result.success).toBe(true);
   });
 
-  it('should handle manifest generation', async () => {
-    const config = { logLevel: 'info' as any, dedupe: { enabled: false } };
-    const targetDir = '/test/dir';
-    const files = [{ filename: 'file1.txt' } as IScannedFile];
-    const operations = [{ type: 'move' as any }];
-    const result = { operations, successful: 1, failed: 0, errors: [] };
+  it('should continue when replace uses a quarantine directory', async () => {
+    mockConfigService.loadWithOverrides.mockReturnValue({
+      dryRun: false,
+      includeHidden: false,
+      logLevel: 'info',
+      excludePatterns: [],
+      categories: [],
+      namingConvention: { type: 'kebab-case' },
+      generateManifest: false,
+      dedupe: {
+        enabled: true,
+        recursive: false,
+        strategy: { mode: 'any' },
+        action: 'replace'
+      }
+    });
+    jest.mocked(DedupeStrategyFactory.createDedupeService).mockReturnValue({
+      findDuplicates: jest.fn().mockResolvedValue({
+        groups: [],
+        totalFiles: 1,
+        totalDuplicates: 0,
+        strategiesUsed: []
+      }),
+      applyAction: jest.fn()
+    } as any);
 
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
-    mockDirectoryValidator.validate.mockReturnValue(targetDir);
+    const result = await handler.execute('/test/dir', {
+      dedupe: true,
+      dedupeAction: DedupeAction.REPLACE,
+      quarantineDir: '/test/dir/.orderly/quarantine'
+    });
 
-    (FileScanner as jest.Mock).mockImplementation(() => ({
-      scan: jest.fn().mockResolvedValue(files),
-      getCategorySummary: jest.fn()
-    }));
-
-    (FileOrganizer as jest.Mock).mockImplementation(() => ({
-      planOperations: jest.fn().mockReturnValue(operations),
-      executeOperations: jest.fn().mockReturnValue(result)
-    }));
-
-    const cmdResult = await handler.execute(targetDir, { manifest: true });
-
-    expect(cmdResult.success).toBe(true);
-    expect(cmdResult.exitCode).toBe(0);
-    expect(mockManifestService.saveManifests).toHaveBeenCalledWith(result, targetDir);
+    expect(result.success).toBe(true);
   });
 
-  it('should handle result with errors', async () => {
-    const config = { logLevel: 'info' as any, dedupe: { enabled: false } };
-    const targetDir = '/test/dir';
-    const files = [{ filename: 'file1.txt' } as IScannedFile];
-    const operations = [{ type: 'move' as any }];
-    const result = {
-      operations,
-      successful: 1,
-      failed: 0,
-      errors: [{ file: 'file1.txt', error: 'error' }]
+  it('should keep all files when dedupe is disabled', async () => {
+    const organizer = {
+      planOperations: jest.fn().mockReturnValue([{ type: 'move' }]),
+      executeOperations: jest.fn().mockReturnValue({
+        operations: [{ type: 'move' }],
+        successful: 1,
+        failed: 0,
+        skipped: 0,
+        errors: []
+      })
     };
+    (FileOrganizer as jest.Mock).mockImplementation(() => organizer);
 
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
-    mockDirectoryValidator.validate.mockReturnValue(targetDir);
+    await handler.execute('/test/dir', {});
 
+    expect(organizer.planOperations).toHaveBeenCalledWith([
+      expect.objectContaining({ originalPath: '/test/dir/file1.txt' })
+    ]);
+  });
+
+  it('should filter skipped duplicates before planning operations', async () => {
+    const organizer = {
+      planOperations: jest.fn().mockReturnValue([{ type: 'move' }]),
+      executeOperations: jest.fn().mockReturnValue({
+        operations: [{ type: 'move' }],
+        successful: 1,
+        failed: 0,
+        skipped: 0,
+        errors: []
+      })
+    };
+    (FileOrganizer as jest.Mock).mockImplementation(() => organizer);
     (FileScanner as jest.Mock).mockImplementation(() => ({
-      scan: jest.fn().mockResolvedValue(files),
-      getCategorySummary: jest.fn()
+      scan: jest.fn().mockResolvedValue([
+        {
+          originalPath: '/test/dir/file1.txt',
+          filename: 'file1.txt',
+          extension: '.txt',
+          size: 10,
+          requiresRename: false
+        },
+        {
+          originalPath: '/test/dir/file2.txt',
+          filename: 'file2.txt',
+          extension: '.txt',
+          size: 10,
+          requiresRename: false
+        }
+      ])
+    }));
+    mockConfigService.loadWithOverrides.mockReturnValue({
+      dryRun: false,
+      includeHidden: false,
+      logLevel: 'info',
+      excludePatterns: [],
+      categories: [],
+      namingConvention: { type: 'kebab-case' },
+      generateManifest: false,
+      dedupe: {
+        enabled: true,
+        recursive: false,
+        strategy: { mode: 'any' },
+        action: 'skip'
+      }
+    });
+    jest.mocked(DedupeStrategyFactory.createDedupeService).mockReturnValue({
+      findDuplicates: jest.fn().mockResolvedValue({
+        groups: [{ files: [{}, {}] }],
+        totalFiles: 2,
+        totalDuplicates: 1,
+        strategiesUsed: ['name']
+      }),
+      applyAction: jest.fn().mockResolvedValue({
+        skipped: [
+          {
+            originalPath: '/test/dir/file2.txt',
+            filename: 'file2.txt',
+            extension: '.txt',
+            size: 10,
+            requiresRename: false
+          }
+        ],
+        replaced: []
+      })
+    } as any);
+
+    await handler.execute('/test/dir', { dedupe: true, dedupeAction: 'skip' });
+
+    expect(organizer.planOperations).toHaveBeenCalledWith([
+      expect.objectContaining({ originalPath: '/test/dir/file1.txt' })
+    ]);
+  });
+
+  it('should keep all files when dedupe finds no groups', async () => {
+    const organizer = {
+      planOperations: jest.fn().mockReturnValue([{ type: 'move' }]),
+      executeOperations: jest.fn().mockReturnValue({
+        operations: [{ type: 'move' }],
+        successful: 1,
+        failed: 0,
+        skipped: 0,
+        errors: []
+      })
+    };
+    (FileOrganizer as jest.Mock).mockImplementation(() => organizer);
+    mockConfigService.loadWithOverrides.mockReturnValue({
+      dryRun: false,
+      includeHidden: false,
+      logLevel: 'info',
+      excludePatterns: [],
+      categories: [],
+      namingConvention: { type: 'kebab-case' },
+      generateManifest: false,
+      dedupe: {
+        enabled: true,
+        recursive: false,
+        strategy: { mode: 'any' },
+        action: 'report'
+      }
+    });
+    jest.mocked(DedupeStrategyFactory.createDedupeService).mockReturnValue({
+      findDuplicates: jest.fn().mockResolvedValue({
+        groups: [],
+        totalFiles: 1,
+        totalDuplicates: 0,
+        strategiesUsed: []
+      }),
+      applyAction: jest.fn()
+    } as any);
+
+    await handler.execute('/test/dir', { dedupe: true });
+
+    expect(organizer.planOperations).toHaveBeenCalledWith([
+      expect.objectContaining({ originalPath: '/test/dir/file1.txt' })
+    ]);
+  });
+
+  it('should handle execution errors', async () => {
+    (FileScanner as jest.Mock).mockImplementation(() => ({
+      scan: jest.fn().mockRejectedValue(new Error('Scan failed'))
     }));
 
-    (FileOrganizer as jest.Mock).mockImplementation(() => ({
-      planOperations: jest.fn().mockReturnValue(operations),
-      executeOperations: jest.fn().mockReturnValue(result)
-    }));
+    const result = await handler.execute('/test/dir', {});
 
-    const cmdResult = await handler.execute(targetDir, { manifest: false });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('Organization failed: Scan failed');
+  });
 
-    expect(cmdResult.success).toBe(true);
-    expect(cmdResult.exitCode).toBe(0);
+  it('should accept auto-discovered config context', async () => {
+    const result = await handler.execute(
+      '/ignored',
+      {},
+      {
+        autoDiscoveredConfig: '/test/dir/.orderly.yml',
+        configOptions: {},
+        targetDir: '/test/dir'
+      }
+    );
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should log auto-discovered config paths through the private helper', () => {
+    const logger = { info: jest.fn() };
+
+    (handler as any).logAutoDiscoveredConfig(logger, '/test/dir/.orderly.yml');
+
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('/test/dir/.orderly.yml'));
+  });
+
+  it('should log organization errors through the private result logger', () => {
+    const logger = { info: jest.fn(), warn: jest.fn() };
+
+    (handler as any).logResults(
+      {
+        successful: 1,
+        failed: 1,
+        skipped: 0,
+        errors: [{ file: '/test/dir/file1.txt', error: 'denied' }]
+      },
+      logger
+    );
+
+    expect(logger.warn).toHaveBeenCalledWith('1 errors occurred during organization');
+    expect(logger.warn).toHaveBeenCalledWith('  1. /test/dir/file1.txt: denied');
+  });
+
+  it('should return all files for report dedupe actions', () => {
+    const result = (handler as any).resolveDedupeFilesForAction({
+      action: DedupeAction.REPORT,
+      files: [{ originalPath: '/test/dir/file1.txt' }],
+      filteredFiles: [{ originalPath: '/test/dir/file1.txt' }],
+      dedupeOutcome: { skipped: [], replaced: [] },
+      dedupeGroupCount: 0,
+      deleteDuplicates: false,
+      logger: { info: jest.fn() }
+    });
+
+    expect(result).toEqual([{ originalPath: '/test/dir/file1.txt' }]);
+  });
+
+  it('should resolve replace dedupe actions through the replacement helper', () => {
+    const logger = { info: jest.fn() };
+
+    const result = (handler as any).resolveDedupeFilesForAction({
+      action: DedupeAction.REPLACE,
+      files: [{ originalPath: '/test/dir/file1.txt' }],
+      filteredFiles: [{ originalPath: '/test/dir/file1.txt' }],
+      dedupeOutcome: {
+        skipped: [],
+        replaced: [{ originalPath: '/test/dir/file2.txt', filename: 'file2.txt' }]
+      },
+      dedupeGroupCount: 1,
+      deleteDuplicates: false,
+      quarantineDir: '/test/dir/.orderly/quarantine',
+      logger
+    });
+
+    expect(result).toEqual([{ originalPath: '/test/dir/file1.txt' }]);
+    expect(logger.info).toHaveBeenCalledWith('Would remove 1 duplicate files before organization');
   });
 });

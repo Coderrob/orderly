@@ -9,12 +9,17 @@ import {
 import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
 import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
 import type {
-  IScanOptions,
-  IScanHandler,
-  ICommandResult,
   IConfigService,
-  IDirectoryValidator
+  IDirectoryValidator,
+  ICommandResult,
+  IScanHandler,
+  IScanOptions
 } from '../interfaces';
+
+const FORMAT_CSV = 'csv';
+const FORMAT_JSON = 'json';
+const FORMAT_TABLE = 'table';
+const JSON_INDENT_SPACES = 2;
 
 /**
  * Handler for the scan command.
@@ -47,7 +52,7 @@ export class ScanHandler implements IScanHandler {
   ): Promise<ICommandResult> {
     const commandContext = this.createCommandContext(directory, options, context);
     const files = await commandContext.scanner.scan(commandContext.targetDir);
-    this.displayResults(files, commandContext.scanner);
+    this.displayResults(files, commandContext.scanner, options.format);
 
     return {
       success: true,
@@ -92,45 +97,156 @@ export class ScanHandler implements IScanHandler {
 
   /**
    * Displays scan results to the console.
-   * @param files - Scanned files
-   * @param scanner - File scanner instance
-   */
-  private displayResults(files: readonly IScannedFile[], scanner: Readonly<FileScanner>): void {
-    console.log('\n🗂️  Orderly - File Scan Results\n');
-    console.log(`Found ${files.length} files\n`);
-    this.printCategorySummary(scanner, files);
-    this.printSampleFiles(files);
-  }
-
-  /**
-   * Prints the category summary for scanned files.
-   * @param scanner - File scanner instance.
    * @param files - Scanned files.
+   * @param scanner - File scanner instance.
+   * @param format - Requested output format.
    */
-  private printCategorySummary(
+  private displayResults(
+    files: readonly IScannedFile[],
     scanner: Readonly<FileScanner>,
-    files: readonly IScannedFile[]
+    format?: string
   ): void {
+    if (format === FORMAT_JSON || format === FORMAT_CSV) {
+      console.log(this.formatResults(files, scanner, format));
+      return;
+    }
+
+    console.log('\nOrderly - File Scan Results\n');
+    console.log(`Found ${files.length} files\n`);
     console.log('File categories:');
     for (const [category, count] of scanner.getCategorySummary(files)) {
       console.log(`  ${category}: ${count}`);
     }
+
+    for (const line of this.createSampleLines(files)) {
+      console.log(line);
+    }
   }
 
   /**
-   * Prints a sample of scanned files.
+   * Formats scan results for console output.
    * @param files - Scanned files.
+   * @param scanner - File scanner instance.
+   * @param format - Requested output format.
+   * @returns Formatted output string.
    */
-  private printSampleFiles(files: readonly IScannedFile[]): void {
-    if (files.length === 0) return;
-
-    console.log('\nSample files:');
-    for (const [index, file] of files.slice(0, CLI_CONSTANTS.MAX_DISPLAY_FILES).entries()) {
-      console.log(`  ${index + 1}. ${file.filename} (${file.category || 'uncategorized'})`);
-    }
-
-    if (files.length > CLI_CONSTANTS.MAX_DISPLAY_FILES) {
-      console.log(`  ... and ${files.length - CLI_CONSTANTS.MAX_DISPLAY_FILES} more files`);
+  private formatResults(
+    files: readonly IScannedFile[],
+    scanner: Readonly<FileScanner>,
+    format?: string
+  ): string {
+    switch (format) {
+      case FORMAT_JSON:
+        return JSON.stringify(this.toJsonPayload(files, scanner), null, JSON_INDENT_SPACES);
+      case FORMAT_CSV:
+        return this.toCsv(files);
+      case FORMAT_TABLE:
+      default:
+        return this.toTable(files, scanner);
     }
   }
+
+  /**
+   * Builds the JSON payload for scan output.
+   * @param files - Scanned files.
+   * @param scanner - File scanner instance.
+   * @returns Serializable scan payload.
+   */
+  private toJsonPayload(
+    files: readonly IScannedFile[],
+    scanner: Readonly<FileScanner>
+  ): Readonly<{
+    files: readonly IScannedFile[];
+    summary: readonly Readonly<{ category: string; count: number }>[];
+  }> {
+    return {
+      files,
+      summary: [...scanner.getCategorySummary(files)].map(toSummaryEntry)
+    };
+  }
+
+  /**
+   * Builds CSV output for scan results.
+   * @param files - Scanned files.
+   * @returns CSV output.
+   */
+  private toCsv(files: readonly IScannedFile[]): string {
+    const rows = files.map(toCsvRow);
+    return ['filename,extension,category,size', ...rows].join('\n');
+  }
+
+  /**
+   * Builds table output for scan results.
+   * @param files - Scanned files.
+   * @param scanner - File scanner instance.
+   * @returns Table output.
+   */
+  private toTable(files: readonly IScannedFile[], scanner: Readonly<FileScanner>): string {
+    const headerLines = [
+      '\nOrderly - File Scan Results\n',
+      `Found ${files.length} files\n`,
+      'File categories:'
+    ];
+    const summaryLines = [...scanner.getCategorySummary(files)].map(toSummaryLine);
+    return [...headerLines, ...summaryLines, ...this.createSampleLines(files)].join('\n');
+  }
+
+  /**
+   * Builds sample lines for table output.
+   * @param files - Scanned files.
+   * @returns Sample file lines.
+   */
+  private createSampleLines(files: readonly IScannedFile[]): readonly string[] {
+    if (files.length === 0) {
+      return [];
+    }
+
+    const fileLines = files.slice(0, CLI_CONSTANTS.MAX_DISPLAY_FILES).map(createSampleLine);
+    const remainingLine =
+      files.length > CLI_CONSTANTS.MAX_DISPLAY_FILES
+        ? [`  ... and ${files.length - CLI_CONSTANTS.MAX_DISPLAY_FILES} more files`]
+        : [];
+    return ['\nSample files:', ...fileLines, ...remainingLine];
+  }
+}
+
+/**
+ * Creates a sample output line for one scanned file.
+ * @param file - Scanned file.
+ * @param index - Zero-based sample index.
+ * @returns Sample line.
+ */
+function createSampleLine(file: Readonly<IScannedFile>, index: number): string {
+  return `  ${index + 1}. ${file.filename} (${file.category || 'uncategorized'})`;
+}
+
+/**
+ * Creates a CSV row for one scanned file.
+ * @param file - Scanned file.
+ * @returns CSV row.
+ */
+function toCsvRow(file: Readonly<IScannedFile>): string {
+  return [file.filename, file.extension, file.category ?? 'uncategorized', String(file.size)].join(
+    ','
+  );
+}
+
+/**
+ * Creates a summary payload entry.
+ * @param entry - Category/count tuple.
+ * @returns Summary entry object.
+ */
+function toSummaryEntry(
+  entry: readonly [string, number]
+): Readonly<{ category: string; count: number }> {
+  return { category: entry[0], count: entry[1] };
+}
+
+/**
+ * Creates a formatted summary line.
+ * @param entry - Category/count tuple.
+ * @returns Summary line.
+ */
+function toSummaryLine(entry: readonly [string, number]): string {
+  return `  ${entry[0]}: ${entry[1]}`;
 }

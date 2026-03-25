@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\cli\\commands\\revert.command.ts",
+  "module": {
+    "name": "revert.command",
+    "description": "Behavioral contract for D:\\orderly\\src\\cli\\commands\\revert.command.ts",
+    "exports": ["RevertHandler"]
+  },
+  "specifications": [
+    {
+      "feature": "Revert successful manifest operations",
+      "scenarios": [
+        {
+          "name": "should reverse successful file moves from a manifest",
+          "given": "a manifest JSON file with successful entries",
+          "when": "the handler executes",
+          "then": "it should move files back in reverse order"
+        }
+      ]
+    }
+  ]
+}

@@ -24,6 +24,12 @@ export interface IOrganizeOptions {
   dedupeAction?: string;
   /** Commander negated option `--no-auto-config` surfaces as `autoConfig: false` */
   autoConfig?: boolean;
+  /** Clean empty directories after organization completes */
+  cleanEmptyDirs?: boolean;
+  /** Explicitly confirm destructive dedupe replace behavior */
+  confirmReplace?: boolean;
+  /** Move replaced duplicates into a quarantine directory */
+  quarantineDir?: string;
 }
 
 /**
@@ -32,6 +38,8 @@ export interface IOrganizeOptions {
 export interface IInitOptions {
   /** Config file format (json, yaml) */
   format?: string;
+  /** Starter template for generated config */
+  template?: string;
 }
 
 /**
@@ -44,6 +52,8 @@ export interface IScanOptions {
   logLevel?: string;
   /** Commander negated option `--no-auto-config` surfaces as `autoConfig: false` */
   autoConfig?: boolean;
+  /** Output format for scan results */
+  format?: string;
 }
 
 /**
@@ -76,6 +86,42 @@ export interface IDedupeCommandOptions {
   reportMarkdown?: string;
   /** Commander negated option `--no-auto-config` surfaces as `autoConfig: false` */
   autoConfig?: boolean;
+  /** Require explicit confirmation before destructive replacement */
+  confirmReplace?: boolean;
+  /** Move replaced files into quarantine instead of deleting them */
+  quarantineDir?: string;
+  /** Dedupe strategy preset override */
+  preset?: string;
+}
+
+/**
+ * Options for config validation.
+ */
+export interface IConfigValidateOptions {
+  /** Path to config file */
+  config?: string;
+  /** Directory to search for auto-discovered config files */
+  directory?: string;
+}
+
+/**
+ * Options for manifest-based revert operations.
+ */
+export interface IRevertCommandOptions {
+  /** Path to manifest JSON file */
+  manifest: string;
+  /** Preview reversal actions without moving files */
+  dryRun?: boolean;
+}
+
+/**
+ * Options for watch mode.
+ */
+export interface IWatchCommandOptions extends IOrganizeOptions {
+  /** Poll interval in seconds */
+  interval?: string;
+  /** Number of polling cycles before exiting; 0 means continuous */
+  cycles?: string;
 }
 
 /**
@@ -142,6 +188,18 @@ export interface IInitHandler {
 }
 
 /**
+ * Interface for the config validation command handler.
+ */
+export interface IConfigValidateHandler {
+  /**
+   * Executes the config validation command.
+   * @param options - Validate command options.
+   * @returns Promise resolving to the command result.
+   */
+  execute(options: IConfigValidateOptions): Promise<ICommandResult>;
+}
+
+/**
  * Interface for the clean command handler.
  */
 export interface ICleanHandler {
@@ -165,6 +223,31 @@ export interface IDedupeHandler {
    * @returns Promise resolving to the command result
    */
   execute(directory: string, options: IDedupeCommandOptions): Promise<ICommandResult>;
+}
+
+/**
+ * Interface for the revert command handler.
+ */
+export interface IRevertHandler {
+  /**
+   * Executes the revert command.
+   * @param options - Revert command options.
+   * @returns Promise resolving to the command result.
+   */
+  execute(options: IRevertCommandOptions): Promise<ICommandResult>;
+}
+
+/**
+ * Interface for the watch command handler.
+ */
+export interface IWatchHandler {
+  /**
+   * Executes the watch command.
+   * @param directory - Target directory.
+   * @param options - Watch command options.
+   * @returns Promise resolving to the command result.
+   */
+  execute(directory: string, options: IWatchCommandOptions): Promise<ICommandResult>;
 }
 
 /**

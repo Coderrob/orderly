@@ -15,6 +15,7 @@ import {
 import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
 import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
 import type {
+  ICleanerService,
   IOrganizeOptions,
   IOrganizeHandler,
   ICommandResult,
@@ -39,11 +40,13 @@ export class OrganizeHandler implements IOrganizeHandler {
    * @param configService - Service for loading and managing configuration
    * @param directoryValidator - Service for validating directory paths
    * @param manifestService - Service for generating and saving manifests
+   * @param cleaner - Optional empty-directory cleaner for post-organize cleanup.
    */
   constructor(
     private readonly configService: Readonly<IConfigService>,
     private readonly directoryValidator: Readonly<IDirectoryValidator>,
-    private readonly manifestService: Readonly<IManifestService>
+    private readonly manifestService: Readonly<IManifestService>,
+    private readonly cleaner?: Readonly<ICleanerService>
   ) {}
 
   /**
@@ -62,11 +65,16 @@ export class OrganizeHandler implements IOrganizeHandler {
     context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
   ): Promise<ICommandResult> {
     const commandContext = this.createCommandContext(directory, options, context);
+    const dedupeSafetyResult = this.validateReplaceSafety(commandContext.config, options);
+    if (dedupeSafetyResult) {
+      return dedupeSafetyResult;
+    }
     const files = await this.scanFiles(commandContext);
     const filesToOrganize = await this.getFilesToOrganize(
       files,
       commandContext.config,
-      commandContext.logger
+      commandContext.logger,
+      options
     );
     const result = this.runOrganization(filesToOrganize, commandContext, options);
     return this.buildSuccessResult(result);
@@ -137,14 +145,18 @@ export class OrganizeHandler implements IOrganizeHandler {
    * @param files - Scanned files.
    * @param config - Configuration with dedupe settings.
    * @param logger - Logger instance.
+   * @param options - Organize command options.
    * @returns Files to organize.
    */
   private async getFilesToOrganize(
     files: readonly IScannedFile[],
     config: Readonly<OrderlyConfig>,
-    logger: Readonly<Logger>
+    logger: Readonly<Logger>,
+    options: Readonly<IOrganizeOptions>
   ): Promise<IScannedFile[]> {
-    return config.dedupe?.enabled ? this.processDuplicates(files, config, logger) : [...files];
+    return config.dedupe?.enabled
+      ? this.processDuplicates(files, config, logger, options)
+      : [...files];
   }
 
   /**
@@ -171,8 +183,36 @@ export class OrganizeHandler implements IOrganizeHandler {
 
     const result = commandContext.organizer.executeOperations(operations);
     this.saveManifestIfRequested(result, options, commandContext.logger, commandContext.targetDir);
+    this.cleanEmptyDirectoriesIfRequested(options, commandContext);
     this.logResults(result, commandContext.logger);
     return result;
+  }
+
+  /**
+   * Cleans empty directories after organization when requested.
+   * @param options - Organize command options.
+   * @param commandContext - Shared command context.
+   */
+  private cleanEmptyDirectoriesIfRequested(
+    options: Readonly<IOrganizeOptions>,
+    commandContext: Readonly<{
+      config: OrderlyConfig;
+      logger: Logger;
+      targetDir: string;
+    }>
+  ): void {
+    if (!options.cleanEmptyDirs || !this.cleaner) {
+      return;
+    }
+
+    const cleanResult = this.cleaner.clean(commandContext.targetDir, {
+      dryRun: commandContext.config.dryRun,
+      includeHidden: commandContext.config.includeHidden,
+      removeOrderlyDir: false
+    });
+    commandContext.logger.info(
+      `Post-organize cleanup removed ${cleanResult.removedDirectories} empty directories`
+    );
   }
 
   /**
@@ -230,12 +270,14 @@ export class OrganizeHandler implements IOrganizeHandler {
    * @param files - All scanned files
    * @param config - Configuration with dedupe settings
    * @param logger - Logger instance
+   * @param options - Organize command options.
    * @returns Filtered files to organize
    */
   private async processDuplicates(
     files: readonly IScannedFile[],
     config: Readonly<OrderlyConfig>,
-    logger: Readonly<Logger>
+    logger: Readonly<Logger>,
+    options: Readonly<IOrganizeOptions>
   ): Promise<IScannedFile[]> {
     const dedupeConfig = config.dedupe;
     if (!dedupeConfig) return [...files];
@@ -243,7 +285,7 @@ export class OrganizeHandler implements IOrganizeHandler {
     const dedupeContext = await this.createDedupeActionContext(
       files,
       dedupeConfig,
-      { deleteDuplicates: !config.dryRun },
+      { deleteDuplicates: !config.dryRun, quarantineDir: options.quarantineDir },
       logger
     );
     if (!dedupeContext) return [...files];
@@ -263,7 +305,7 @@ export class OrganizeHandler implements IOrganizeHandler {
   private async createDedupeActionContext(
     files: readonly IScannedFile[],
     dedupeConfig: Readonly<IDedupeConfig>,
-    options: Readonly<{ deleteDuplicates: boolean }>,
+    options: Readonly<{ deleteDuplicates: boolean; quarantineDir?: string }>,
     logger: Readonly<Logger>
   ): Promise<Readonly<IDedupeActionContext> | null> {
     const dedupeResult = await this.findDuplicateGroups(files, dedupeConfig, logger);
@@ -350,9 +392,36 @@ export class OrganizeHandler implements IOrganizeHandler {
     return handleReplacedDuplicates(
       params.filteredFiles,
       params.dedupeOutcome.replaced,
-      { deleteDuplicates: params.deleteDuplicates },
+      { deleteDuplicates: params.deleteDuplicates, quarantineDir: params.quarantineDir },
       params.logger
     );
+  }
+
+  /**
+   * Validates destructive dedupe replacement safety requirements.
+   * @param config - Loaded config.
+   * @param options - Parsed organize options.
+   * @returns Failure result when replace is unsafe; otherwise undefined.
+   */
+  private validateReplaceSafety(
+    config: Readonly<OrderlyConfig>,
+    options: Readonly<IOrganizeOptions>
+  ): ICommandResult | undefined {
+    const requiresConfirmation =
+      config.dedupe?.enabled &&
+      config.dedupe.action === DedupeAction.REPLACE &&
+      !config.dryRun &&
+      !options.confirmReplace &&
+      !options.quarantineDir;
+
+    return requiresConfirmation
+      ? {
+          success: false,
+          exitCode: ExitCode.ERROR,
+          message:
+            'Organize dedupe replace requires --confirm-replace or --quarantine-dir when not running in dry-run mode'
+        }
+      : undefined;
   }
 
   /**

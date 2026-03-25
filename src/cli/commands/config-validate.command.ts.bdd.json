@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\cli\\commands\\config-validate.command.ts",
+  "module": {
+    "name": "config-validate.command",
+    "description": "Behavioral contract for D:\\orderly\\src\\cli\\commands\\config-validate.command.ts",
+    "exports": ["ConfigValidateHandler"]
+  },
+  "specifications": [
+    {
+      "feature": "Validate config files from explicit paths or discovered directories",
+      "scenarios": [
+        {
+          "name": "should validate an available config file",
+          "given": "a config path is provided or discovered",
+          "when": "the handler executes",
+          "then": "it should load the config and return a success result"
+        }
+      ]
+    }
+  ]
+}

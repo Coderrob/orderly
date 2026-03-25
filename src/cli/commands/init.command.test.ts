@@ -30,8 +30,14 @@ describe('InitHandler', () => {
 
       expect(result.success).toBe(true);
       expect(result.exitCode).toBe(0);
-      expect(result.message).toContain('Created configuration file');
-      expect(mockConfigLoader.save).toHaveBeenCalledWith(DEFAULT_CONFIG, '.orderly.config.json');
+      expect(result.message).toContain('Created downloads configuration file');
+      expect(mockConfigLoader.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...DEFAULT_CONFIG,
+          dedupe: expect.objectContaining({ enabled: false, action: 'skip' })
+        }),
+        '.orderly.config.json'
+      );
     });
 
     it('should return error when config file already exists', async () => {
@@ -53,7 +59,72 @@ describe('InitHandler', () => {
 
       await handler.execute({ format: 'yaml' });
 
-      expect(mockConfigLoader.save).toHaveBeenCalledWith(DEFAULT_CONFIG, '.orderly.config.yaml');
+      expect(mockConfigLoader.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...DEFAULT_CONFIG,
+          dedupe: expect.objectContaining({ enabled: false, action: 'skip' })
+        }),
+        '.orderly.config.yaml'
+      );
+    });
+
+    it('should create a media-library template when requested', async () => {
+      mockConfigLoader.load.mockImplementation(() => {
+        throw new Error('Config not found');
+      });
+      mockConfigLoader.save.mockImplementation(() => {});
+
+      await handler.execute({ format: 'json', template: 'media-library' });
+
+      expect(mockConfigLoader.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categories: expect.arrayContaining([
+            expect.objectContaining({ name: 'photos' }),
+            expect.objectContaining({ name: 'videos' })
+          ])
+        }),
+        '.orderly.config.json'
+      );
+    });
+
+    it('should create a developer-workspace template when requested', async () => {
+      mockConfigLoader.load.mockImplementation(() => {
+        throw new Error('Config not found');
+      });
+      mockConfigLoader.save.mockImplementation(() => {});
+
+      await handler.execute({ format: 'json', template: 'developer-workspace' });
+
+      expect(mockConfigLoader.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categories: expect.arrayContaining([
+            expect.objectContaining({ name: 'code', targetFolder: 'code' }),
+            expect.objectContaining({ name: 'documents', targetFolder: 'docs' })
+          ])
+        }),
+        '.orderly.config.json'
+      );
+    });
+
+    it('should create a photos-only template when requested', async () => {
+      mockConfigLoader.load.mockImplementation(() => {
+        throw new Error('Config not found');
+      });
+      mockConfigLoader.save.mockImplementation(() => {});
+
+      await handler.execute({ format: 'json', template: 'photos-only' });
+
+      expect(mockConfigLoader.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categories: [expect.objectContaining({ name: 'photos', targetFolder: 'photos' })],
+          dedupe: expect.objectContaining({
+            enabled: true,
+            action: 'report',
+            strategy: expect.objectContaining({ imageDimensions: true, exif: true })
+          })
+        }),
+        '.orderly.config.json'
+      );
     });
 
     it('should default to yaml format', async () => {
@@ -64,7 +135,30 @@ describe('InitHandler', () => {
 
       await handler.execute({});
 
-      expect(mockConfigLoader.save).toHaveBeenCalledWith(DEFAULT_CONFIG, '.orderly.config.yaml');
+      expect(mockConfigLoader.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...DEFAULT_CONFIG,
+          dedupe: expect.objectContaining({ enabled: false, action: 'skip' })
+        }),
+        '.orderly.config.yaml'
+      );
+    });
+
+    it('should fall back to the downloads template for unknown templates', async () => {
+      mockConfigLoader.load.mockImplementation(() => {
+        throw new Error('Config not found');
+      });
+      mockConfigLoader.save.mockImplementation(() => {});
+
+      await handler.execute({ format: 'json', template: 'unknown-template' });
+
+      expect(mockConfigLoader.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categories: DEFAULT_CONFIG.categories,
+          dedupe: expect.objectContaining({ enabled: false, action: 'skip' })
+        }),
+        '.orderly.config.json'
+      );
     });
 
     it('should handle save error', async () => {

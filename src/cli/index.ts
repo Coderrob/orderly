@@ -6,6 +6,8 @@ export { createRootCommand } from './root-command.js';
 export type {
   ICleanCommandOptions,
   ICleanHandler,
+  IConfigValidateHandler,
+  IConfigValidateOptions,
   ICommandContext,
   ICommandHandler,
   ICommandResult,
@@ -20,7 +22,11 @@ export type {
   IManifestService,
   IOrganizeHandler,
   IOrganizeOptions,
+  IRevertCommandOptions,
+  IRevertHandler,
   IScanHandler,
-  IScanOptions
+  IScanOptions,
+  IWatchCommandOptions,
+  IWatchHandler
 } from './interfaces.js';
 export * from './services/index.js';

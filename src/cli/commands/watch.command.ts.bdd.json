@@ -1,0 +1,23 @@
+{
+  "$schema": "https://coderrob.com/schemas/bdd-spec.schema.json",
+  "schemaVersion": "1.0.0",
+  "sourceFile": "D:\\orderly\\src\\cli\\commands\\watch.command.ts",
+  "module": {
+    "name": "watch.command",
+    "description": "Behavioral contract for D:\\orderly\\src\\cli\\commands\\watch.command.ts",
+    "exports": ["WatchHandler"]
+  },
+  "specifications": [
+    {
+      "feature": "Polling watch mode",
+      "scenarios": [
+        {
+          "name": "should run organize cycles until the requested limit is reached",
+          "given": "a directory and a finite cycle count",
+          "when": "the handler executes",
+          "then": "it should invoke organize once per cycle and return a success result"
+        }
+      ]
+    }
+  ]
+}

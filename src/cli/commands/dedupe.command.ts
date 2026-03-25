@@ -1,9 +1,17 @@
 import * as path from 'node:path';
 
-import { DedupeAction, DedupeMode, type IDedupeConfig, type IDedupeResult } from '../../dedupe';
+import { type OrderlyConfig } from '../../config/types';
+import {
+  DedupeAction,
+  DedupeMode,
+  type IDedupeConfig,
+  type IDedupeResult,
+  type IDedupeStrategyConfig
+} from '../../dedupe';
 import { DedupeStrategyFactory } from '../../dedupe/dedupe-factory';
 import { Logger } from '../../logger/logger';
 import { FileScanner } from '../../scanner/file-scanner';
+import { Clock } from '../../utils/clock';
 import { FileSystemUtils } from '../../utils/file-system-utils';
 import { COMMAND_MESSAGES, ExitCode } from '../constants';
 import {
@@ -24,6 +32,28 @@ import type {
 const DEFAULT_REPORT_DIRECTORY = '.orderly';
 const DEFAULT_REPORT_JSON_FILENAME = 'dedupe-report.json';
 const DEFAULT_REPORT_MARKDOWN_FILENAME = 'dedupe-report.md';
+const DEFAULT_QUARANTINE_DIRECTORY = '.orderly/quarantine';
+const PRESET_EXACT = 'exact';
+const PRESET_FAST = 'fast';
+const PRESET_MEDIA = 'media';
+const PRESET_SAFE = 'safe';
+const PRESET_EXACT_CONFIG: IDedupeStrategyConfig = {
+  mode: DedupeMode.ALL,
+  size: true,
+  sha256: true
+};
+const PRESET_FAST_CONFIG: IDedupeStrategyConfig = {
+  mode: DedupeMode.ANY,
+  size: true,
+  name: { caseSensitive: false, ignoreExtension: false }
+};
+const PRESET_MEDIA_CONFIG: IDedupeStrategyConfig = {
+  mode: DedupeMode.ALL,
+  size: true,
+  sha256: true,
+  imageDimensions: true,
+  exif: true
+};
 
 /**
  * Converts a scanned file into its original file path.
@@ -66,6 +96,10 @@ export class DedupeHandler implements IDedupeHandler {
     context?: Readonly<IAutoConfigContext<IDedupeCommandOptions>>
   ): Promise<ICommandResult> {
     const commandContext = this.createCommandContext(directory, options, context);
+    const replacementGuardResult = this.validateReplaceSafety(commandContext);
+    if (replacementGuardResult) {
+      return replacementGuardResult;
+    }
     const files = await commandContext.scanner.scan(commandContext.targetDir);
     const result = await DedupeStrategyFactory.createDedupeService(
       commandContext.dedupeConfig
@@ -92,14 +126,71 @@ export class DedupeHandler implements IDedupeHandler {
     scanner: FileScanner;
     targetDir: string;
   }> {
-    const commandOptions = context?.configOptions ?? { ...options };
-    const targetDir = context?.targetDir ?? this.directoryValidator.validate(directory);
-    const config = this.configService.loadWithOverrides(this.toConfigOverrides(commandOptions));
+    const commandOptions = this.resolveCommandOptions(options, context);
+    const targetDir = this.resolveTargetDir(directory, context);
+    const config = this.loadCommandConfig(commandOptions);
     const logger = new Logger(config.logLevel);
     this.logAutoDiscoveredConfig(logger, context?.autoDiscoveredConfig);
+    return this.buildCommandContext(config, commandOptions, logger, targetDir);
+  }
+
+  /**
+   * Resolves the active command options.
+   * @param options - Parsed command options.
+   * @param context - Optional auto-config context.
+   * @returns Effective command options.
+   */
+  private resolveCommandOptions(
+    options: Readonly<IDedupeCommandOptions>,
+    context?: Readonly<IAutoConfigContext<IDedupeCommandOptions>>
+  ): Readonly<IDedupeCommandOptions> {
+    return context?.configOptions ?? { ...options };
+  }
+
+  /**
+   * Resolves the validated target directory.
+   * @param directory - Requested directory.
+   * @param context - Optional auto-config context.
+   * @returns Target directory.
+   */
+  private resolveTargetDir(
+    directory: string,
+    context?: Readonly<IAutoConfigContext<IDedupeCommandOptions>>
+  ): string {
+    return context?.targetDir ?? this.directoryValidator.validate(directory);
+  }
+
+  /**
+   * Loads command config with overrides applied.
+   * @param options - Effective command options.
+   * @returns Loaded config.
+   */
+  private loadCommandConfig(options: Readonly<IDedupeCommandOptions>): OrderlyConfig {
+    return this.configService.loadWithOverrides(this.toConfigOverrides(options));
+  }
+
+  /**
+   * Builds the final command context object.
+   * @param config - Loaded config.
+   * @param options - Effective command options.
+   * @param logger - Logger instance.
+   * @param targetDir - Validated target directory.
+   * @returns Command context.
+   */
+  private buildCommandContext(
+    config: Readonly<OrderlyConfig>,
+    options: Readonly<IDedupeCommandOptions>,
+    logger: Readonly<Logger>,
+    targetDir: string
+  ): Readonly<{
+    dedupeConfig: Readonly<IDedupeConfig>;
+    options: Readonly<IDedupeCommandOptions>;
+    scanner: FileScanner;
+    targetDir: string;
+  }> {
     return {
-      dedupeConfig: this.resolveDedupeConfig(config.dedupe, commandOptions.action),
-      options: commandOptions,
+      dedupeConfig: this.resolveDedupeConfig(config.dedupe, options.action, options.preset),
+      options,
       scanner: new FileScanner(config, logger),
       targetDir
     };
@@ -130,20 +221,44 @@ export class DedupeHandler implements IDedupeHandler {
    * Resolves the active dedupe config for the standalone command.
    * @param dedupeConfig - Config-sourced dedupe configuration.
    * @param action - Optional CLI action override.
+   * @param preset - Optional dedupe preset override.
    * @returns Active dedupe config.
    */
   private resolveDedupeConfig(
     dedupeConfig: Readonly<IDedupeConfig> | undefined,
-    action?: string
+    action?: string,
+    preset?: string
   ): Readonly<IDedupeConfig> {
     const resolvedAction =
       this.resolveAction(action) ?? dedupeConfig?.action ?? DedupeAction.REPORT;
+    const strategy = this.resolveStrategyPreset(preset) ??
+      dedupeConfig?.strategy ?? { mode: DedupeMode.ANY };
     return {
       enabled: true,
       recursive: dedupeConfig?.recursive ?? false,
-      strategy: dedupeConfig?.strategy ?? { mode: DedupeMode.ANY },
+      strategy,
       action: resolvedAction
     };
+  }
+
+  /**
+   * Resolves a named strategy preset.
+   * @param preset - Preset name.
+   * @returns Strategy preset or undefined.
+   */
+  private resolveStrategyPreset(preset?: string): IDedupeStrategyConfig | undefined {
+    switch (preset) {
+      case PRESET_EXACT:
+        return PRESET_EXACT_CONFIG;
+      case PRESET_FAST:
+        return PRESET_FAST_CONFIG;
+      case PRESET_MEDIA:
+        return PRESET_MEDIA_CONFIG;
+      case PRESET_SAFE:
+        return PRESET_EXACT_CONFIG;
+      default:
+        return undefined;
+    }
   }
 
   /**
@@ -195,7 +310,12 @@ export class DedupeHandler implements IDedupeHandler {
     const outcome = await DedupeStrategyFactory.createDedupeService(
       commandContext.dedupeConfig
     ).applyAction(result, DedupeAction.REPLACE);
-    return this.deleteDuplicateFiles(outcome.replaced.map(toOriginalPath));
+    return commandContext.options.quarantineDir
+      ? this.quarantineDuplicateFiles(
+          outcome.replaced.map(toOriginalPath),
+          commandContext.options.quarantineDir
+        )
+      : this.deleteDuplicateFiles(outcome.replaced.map(toOriginalPath));
   }
 
   /**
@@ -209,6 +329,33 @@ export class DedupeHandler implements IDedupeHandler {
     options: Readonly<IDedupeCommandOptions>
   ): boolean {
     return action === DedupeAction.REPLACE && !options.dryRun;
+  }
+
+  /**
+   * Validates destructive replace safety requirements.
+   * @param commandContext - Dedupe command context.
+   * @returns Failure result when the action is unsafe; otherwise undefined.
+   */
+  private validateReplaceSafety(
+    commandContext: Readonly<{
+      dedupeConfig: Readonly<IDedupeConfig>;
+      options: Readonly<IDedupeCommandOptions>;
+    }>
+  ): ICommandResult | undefined {
+    const requiresConfirmation =
+      commandContext.dedupeConfig.action === DedupeAction.REPLACE &&
+      !commandContext.options.dryRun &&
+      !commandContext.options.confirmReplace &&
+      !commandContext.options.quarantineDir;
+
+    return requiresConfirmation
+      ? {
+          success: false,
+          exitCode: ExitCode.ERROR,
+          message:
+            'Dedupe replace requires --confirm-replace or --quarantine-dir when not running in dry-run mode'
+        }
+      : undefined;
   }
 
   /**
@@ -228,6 +375,46 @@ export class DedupeHandler implements IDedupeHandler {
     }
 
     return errors;
+  }
+
+  /**
+   * Moves duplicate files into a quarantine directory.
+   * @param filePaths - File paths to quarantine.
+   * @param quarantineDir - Destination quarantine directory.
+   * @returns Error messages.
+   */
+  private quarantineDuplicateFiles(
+    filePaths: readonly string[],
+    quarantineDir: string
+  ): readonly string[] {
+    let errors: readonly string[] = [];
+
+    for (const filePath of filePaths) {
+      try {
+        const destinationPath = this.resolveQuarantinePath(filePath, quarantineDir);
+        FileSystemUtils.mkdirSync(path.dirname(destinationPath));
+        FileSystemUtils.renameSync(filePath, destinationPath);
+      } catch (error) {
+        errors = [...errors, this.toDeleteError(filePath, error)];
+      }
+    }
+
+    return errors;
+  }
+
+  /**
+   * Resolves a unique quarantine destination path.
+   * @param filePath - Original file path.
+   * @param quarantineDir - Quarantine directory.
+   * @returns Destination path.
+   */
+  private resolveQuarantinePath(filePath: string, quarantineDir: string): string {
+    const baseDirectory = path.resolve(quarantineDir || DEFAULT_QUARANTINE_DIRECTORY);
+    const filename = path.basename(filePath);
+    const destinationPath = path.join(baseDirectory, filename);
+    return FileSystemUtils.hasPath(destinationPath)
+      ? path.join(baseDirectory, `${Clock.nowMonotonicToken()}-${filename}`)
+      : destinationPath;
   }
 
   /**

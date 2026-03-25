@@ -4,8 +4,10 @@ import * as fs from 'node:fs';
 import { EmptyDirectoryCleaner } from '../../src/cleaner';
 import { InitHandler } from '../../src/cli/commands/init.command';
 import { CleanHandler } from '../../src/cli/commands/clean.command';
+import { ConfigValidateHandler } from '../../src/cli/commands/config-validate.command';
 import { DedupeHandler } from '../../src/cli/commands/dedupe.command';
 import { OrganizeHandler } from '../../src/cli/commands/organize.command';
+import { RevertHandler } from '../../src/cli/commands/revert.command';
 import { ScanHandler } from '../../src/cli/commands/scan.command';
 import { ConfigService } from '../../src/cli/services/config.service';
 import { DirectoryValidator } from '../../src/cli/services/directory-validator.service';
@@ -34,7 +36,9 @@ describe('CLI Integration Tests — Common Scenarios', () => {
   let testDir: string;
   let initHandler: InitHandler;
   let cleanHandler: CleanHandler;
+  let configValidateHandler: ConfigValidateHandler;
   let dedupeHandler: DedupeHandler;
+  let revertHandler: RevertHandler;
   let scanHandler: ScanHandler;
   let organizeHandler: OrganizeHandler;
   let configService: ConfigService;
@@ -48,14 +52,21 @@ describe('CLI Integration Tests — Common Scenarios', () => {
     directoryValidator = new DirectoryValidator();
     manifestService = new ManifestService();
     cleanHandler = new CleanHandler(new EmptyDirectoryCleaner(), configService, directoryValidator);
+    configValidateHandler = new ConfigValidateHandler(configService);
     dedupeHandler = new DedupeHandler(
       configService,
       directoryValidator,
       new DedupeReportWriter()
     );
     initHandler = new InitHandler();
+    revertHandler = new RevertHandler();
     scanHandler = new ScanHandler(configService, directoryValidator);
-    organizeHandler = new OrganizeHandler(configService, directoryValidator, manifestService);
+    organizeHandler = new OrganizeHandler(
+      configService,
+      directoryValidator,
+      manifestService,
+      new EmptyDirectoryCleaner()
+    );
 
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -105,6 +116,17 @@ describe('CLI Integration Tests — Common Scenarios', () => {
       TestAssertions.assertFileNotExists(path.join(testDir, 'report.txt'));
       TestAssertions.assertFileNotExists(path.join(testDir, 'photo.jpg'));
       TestAssertions.assertFileNotExists(path.join(testDir, 'app.js'));
+    });
+
+    it('should validate a generated config file', async () => {
+      await initHandler.execute({ format: 'json' });
+
+      const result = await configValidateHandler.execute({
+        config: path.join(testDir, '.orderly.config.json')
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Validated config');
     });
 
     it('should produce an idempotent result when organized files are scanned again', async () => {
@@ -563,6 +585,22 @@ describe('CLI Integration Tests — Common Scenarios', () => {
       expect(manifest).toHaveProperty('skipped');
       expect(typeof manifest.skipped).toBe('number');
     });
+
+    it('should revert manifest operations back to their source paths', async () => {
+      const configPath = path.join(testDir, '.orderly.config.json');
+      const config = createTestConfig({ dryRun: false, generateManifest: true });
+      testEnv.createFile(configPath, JSON.stringify(config, null, 2));
+      testEnv.createFile(path.join(testDir, 'restore.txt'), 'content');
+
+      await organizeHandler.execute(testDir, { config: configPath, manifest: true });
+
+      const revertResult = await revertHandler.execute({
+        manifest: path.join(testDir, 'orderly-manifest.json')
+      });
+
+      expect(revertResult.success).toBe(true);
+      TestAssertions.assertFileExists(path.join(testDir, 'restore.txt'));
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -587,7 +625,11 @@ describe('CLI Integration Tests — Common Scenarios', () => {
       testEnv.createFile(path.join(testDir, 'copy2.txt'), duplicateContent);
       testEnv.createFile(path.join(testDir, 'unique.txt'), 'completely different');
 
-      const result = await organizeHandler.execute(testDir, { config: configPath, dedupe: true });
+      const result = await organizeHandler.execute(testDir, {
+        config: configPath,
+        dedupe: true,
+        confirmReplace: true
+      });
 
       expect(result.success).toBe(true);
 
@@ -616,7 +658,11 @@ describe('CLI Integration Tests — Common Scenarios', () => {
       testEnv.createFile(primaryPath, content);
       testEnv.createFile(dupePath, content);
 
-      const result = await organizeHandler.execute(testDir, { config: configPath, dedupe: true });
+      const result = await organizeHandler.execute(testDir, {
+        config: configPath,
+        dedupe: true,
+        confirmReplace: true
+      });
 
       expect(result.success).toBe(true);
 
@@ -710,6 +756,21 @@ describe('CLI Integration Tests — Common Scenarios', () => {
       TestAssertions.assertDirExists(testDir);
       TestAssertions.assertDirNotExists(path.join(testDir, 'empty'));
     });
+
+    it('should clean empty directories after organize when requested', async () => {
+      const configPath = path.join(testDir, '.orderly.config.json');
+      const config = createTestConfig({ dryRun: false });
+      testEnv.createFile(configPath, JSON.stringify(config, null, 2));
+      testEnv.createFile(path.join(testDir, 'nested', 'doc.txt'), 'content');
+
+      const result = await organizeHandler.execute(testDir, {
+        config: configPath,
+        cleanEmptyDirs: true
+      });
+
+      expect(result.success).toBe(true);
+      TestAssertions.assertDirNotExists(path.join(testDir, 'nested'));
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -751,7 +812,11 @@ describe('CLI Integration Tests — Common Scenarios', () => {
       testEnv.createFile(path.join(testDir, 'a.txt'), 'same');
       testEnv.createFile(path.join(testDir, 'b.txt'), 'same');
 
-      const result = await dedupeHandler.execute(testDir, { config: configPath, action: 'replace' });
+      const result = await dedupeHandler.execute(testDir, {
+        config: configPath,
+        action: 'replace',
+        confirmReplace: true
+      });
 
       expect(result.success).toBe(true);
       expect(testEnv.countFiles(testDir)).toBeGreaterThanOrEqual(2);
@@ -759,6 +824,26 @@ describe('CLI Integration Tests — Common Scenarios', () => {
         fs.existsSync(path.join(testDir, filename))
       );
       expect(remainingDuplicates.length).toBe(1);
+    });
+
+    it('should require confirmation before destructive replace runs', async () => {
+      const configPath = path.join(testDir, '.orderly.config.json');
+      const config = createTestConfig({
+        dryRun: false,
+        dedupe: {
+          enabled: true,
+          strategy: HASH_STRATEGY,
+          action: DedupeAction.REPLACE
+        }
+      });
+      testEnv.createFile(configPath, JSON.stringify(config, null, 2));
+      testEnv.createFile(path.join(testDir, 'a.txt'), 'same');
+      testEnv.createFile(path.join(testDir, 'b.txt'), 'same');
+
+      const result = await dedupeHandler.execute(testDir, { config: configPath, action: 'replace' });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('--confirm-replace');
     });
   });
 
