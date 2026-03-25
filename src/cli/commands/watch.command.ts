@@ -226,6 +226,26 @@ function handleExecutedCycle(
     return;
   }
 
+  handleSuccessfulCycleResult(runCycleState);
+}
+
+/**
+ * Rejects the scheduler when an organize cycle returns an unsuccessful result.
+ * @param runCycleState - Immutable cycle state snapshot.
+ * @param cycleResult - Result returned by the completed organize cycle.
+ */
+function handleFailedCycleResult(
+  runCycleState: Readonly<IRunCycleState>,
+  cycleResult: Readonly<ICommandResult>
+): void {
+  runCycleState.reject(createCycleFailure(cycleResult));
+}
+
+/**
+ * Handles scheduler flow after a successful organize cycle.
+ * @param runCycleState - Immutable cycle state snapshot.
+ */
+function handleSuccessfulCycleResult(runCycleState: Readonly<IRunCycleState>): void {
   const nextRunCycleState = createSuccessfulCycleState(runCycleState);
   if (
     nextRunCycleState.hasReachedCycleLimit(
@@ -240,18 +260,6 @@ function handleExecutedCycle(
   delay(nextRunCycleState.intervalMs)
     .then(scheduleDelayedCycle.bind(null, nextRunCycleState))
     .catch(nextRunCycleState.reject);
-}
-
-/**
- * Rejects the scheduler when an organize cycle returns an unsuccessful result.
- * @param runCycleState - Immutable cycle state snapshot.
- * @param cycleResult - Result returned by the completed organize cycle.
- */
-function handleFailedCycleResult(
-  runCycleState: Readonly<IRunCycleState>,
-  cycleResult: Readonly<ICommandResult>
-): void {
-  runCycleState.reject(createCycleFailure(cycleResult));
 }
 
 /**
