@@ -202,4 +202,15 @@ describe('ScanHandler', () => {
 
     expect(lines).toContain('  ... and 2 more files');
   });
+
+  it('should build command context from direct options when no auto-config context exists', () => {
+    mockConfigService.loadWithOverrides.mockReturnValue({ logLevel: 'info' });
+    mockDirectoryValidator.validate.mockReturnValue('/validated');
+
+    const result = (handler as any).createCommandContext('/input', { format: 'json' }, undefined);
+
+    expect(mockDirectoryValidator.validate).toHaveBeenCalledWith('/input');
+    expect(mockConfigService.loadWithOverrides).toHaveBeenCalledWith({ format: 'json' });
+    expect(result.targetDir).toBe('/validated');
+  });
 });

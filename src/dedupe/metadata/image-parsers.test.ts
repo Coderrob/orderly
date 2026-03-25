@@ -27,6 +27,13 @@ describe('image-parsers', () => {
       expect(extractImageDimensions(gif)).toBeNull();
     });
 
+    it('should return null for GIF buffers with an unknown header', () => {
+      const gif = createMinimalGif(120, 80);
+      gif.write('NOTGIF', 0, 'ascii');
+
+      expect(extractImageDimensions(gif)).toBeNull();
+    });
+
     it('should extract BMP dimensions', () => {
       const bmp = createMinimalBmp(1920, 1080);
       expect(extractImageDimensions(bmp)).toEqual({ width: 1920, height: 1080 });
@@ -43,6 +50,12 @@ describe('image-parsers', () => {
       expect(extractImageDimensions(bmp)).toBeNull();
     });
 
+    it('should return null for BMP with zero dimensions', () => {
+      const bmp = createMinimalBmp(0, 50);
+
+      expect(extractImageDimensions(bmp)).toBeNull();
+    });
+
     it('should extract JPEG dimensions from SOF segment', () => {
       const jpeg = createMinimalJpegWithSof(640, 480);
       expect(extractImageDimensions(jpeg)).toEqual({ width: 640, height: 480 });
@@ -55,6 +68,18 @@ describe('image-parsers', () => {
 
     it('should return null when JPEG reaches a stop marker before SOF', () => {
       const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xda, 0x00, 0x08, 0xff, 0xd9]);
+      expect(extractImageDimensions(jpeg)).toBeNull();
+    });
+
+    it('should return null when a JPEG contains no additional marker prefix', () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09]);
+
+      expect(extractImageDimensions(jpeg)).toBeNull();
+    });
+
+    it('should return null for JPEG SOF segments with incomplete dimension bytes', () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x00, 0x10]);
+
       expect(extractImageDimensions(jpeg)).toBeNull();
     });
 

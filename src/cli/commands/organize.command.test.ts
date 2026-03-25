@@ -454,4 +454,72 @@ describe('OrganizeHandler', () => {
     expect(result).toEqual([{ originalPath: '/test/dir/file1.txt' }]);
     expect(logger.info).toHaveBeenCalledWith('Would remove 1 duplicate files before organization');
   });
+
+  it('should allow organize replace when config is in dry-run mode', () => {
+    const result = (handler as any).validateReplaceSafety(
+      {
+        dedupe: {
+          enabled: true,
+          action: DedupeAction.REPLACE
+        },
+        dryRun: true
+      },
+      {}
+    );
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should skip cleanup when cleanEmptyDirs is disabled', () => {
+    const logger = { info: jest.fn() };
+
+    (handler as any).cleanEmptyDirectoriesIfRequested(
+      { cleanEmptyDirs: false },
+      {
+        config: { dryRun: false, includeHidden: false },
+        logger,
+        targetDir: '/test/dir'
+      }
+    );
+
+    expect(mockCleaner.clean).not.toHaveBeenCalled();
+  });
+
+  it('should skip cleanup when no cleaner is configured', () => {
+    const handlerWithoutCleaner = new OrganizeHandler(
+      mockConfigService as any,
+      mockDirectoryValidator as any,
+      mockManifestService as any
+    );
+
+    expect(() =>
+      (handlerWithoutCleaner as any).cleanEmptyDirectoriesIfRequested(
+        { cleanEmptyDirs: true },
+        {
+          config: { dryRun: false, includeHidden: false },
+          logger: { info: jest.fn() },
+          targetDir: '/test/dir'
+        }
+      )
+    ).not.toThrow();
+  });
+
+  it('should skip manifest generation when manifest is false', () => {
+    (handler as any).saveManifestIfRequested(
+      { operations: [] },
+      { manifest: false },
+      { info: jest.fn() },
+      '/test/dir'
+    );
+
+    expect(mockManifestService.saveManifests).not.toHaveBeenCalled();
+  });
+
+  it('should return all files when processDuplicates receives no dedupe config', async () => {
+    const files = [{ originalPath: '/test/dir/file1.txt' }];
+
+    const result = await (handler as any).processDuplicates(files, {}, { info: jest.fn() }, {});
+
+    expect(result).toEqual(files);
+  });
 });

@@ -29,4 +29,36 @@ describe('WatchHandler', () => {
     expect(result.success).toBe(true);
     expect(mockOrganizeHandler.execute).toHaveBeenCalledTimes(1);
   });
+
+  it('should default invalid cycle counts to continuous mode in the private helper', () => {
+    expect((handler as any).resolveCycleLimit('-1')).toBe(0);
+    expect((handler as any).resolveCycleLimit('invalid')).toBe(0);
+  });
+
+  it('should resolve explicit valid interval and cycle values in private helpers', () => {
+    expect((handler as any).resolveIntervalSeconds('3')).toBe(3);
+    expect((handler as any).resolveCycleLimit('4')).toBe(4);
+  });
+
+  it('should detect when the requested cycle limit has been reached', () => {
+    expect((handler as any).hasReachedCycleLimit(0, 0)).toBe(false);
+    expect((handler as any).hasReachedCycleLimit(2, 2)).toBe(true);
+  });
+
+  it('should use the default interval for non-numeric values', () => {
+    expect((handler as any).resolveIntervalSeconds('invalid')).toBe(5);
+  });
+
+  it('should immediately stop when the cycle limit has already been reached', async () => {
+    const result = await (handler as any).runCycles({
+      completedCycles: 2,
+      cycleLimit: 2,
+      directory: '/tmp',
+      intervalSeconds: 1,
+      options: {}
+    });
+
+    expect(result).toBe(2);
+    expect(mockOrganizeHandler.execute).not.toHaveBeenCalled();
+  });
 });

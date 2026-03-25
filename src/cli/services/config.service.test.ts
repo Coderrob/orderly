@@ -115,6 +115,24 @@ describe('ConfigService', () => {
       expect(result.dryRun).toBe(true);
     });
 
+    it('should resolve output directories to absolute targetDirectory values', () => {
+      const baseConfig = {
+        categories: [],
+        namingConvention: { type: NamingConventionType.KEBAB_CASE, lowercase: true },
+        excludePatterns: [],
+        includeHidden: false,
+        dryRun: false,
+        generateManifest: false,
+        logLevel: LogLevel.INFO
+      };
+
+      mockConfigLoader.load.mockReturnValue(baseConfig);
+
+      const result = configService.loadWithOverrides({ output: './organized' });
+
+      expect(result.targetDirectory).toContain('organized');
+    });
+
     it('should apply dedupe configuration', () => {
       const baseConfig = {
         categories: [],
@@ -184,6 +202,30 @@ describe('ConfigService', () => {
       const result = configService.loadWithOverrides({ dedupeAction: 'invalid' });
 
       expect(result.dedupe?.action).toBe(DedupeAction.SKIP);
+    });
+
+    it('should disable dedupe when the CLI override sets dedupe to false', () => {
+      const baseConfig = {
+        categories: [],
+        namingConvention: { type: NamingConventionType.KEBAB_CASE, lowercase: true },
+        excludePatterns: [],
+        includeHidden: false,
+        dryRun: false,
+        generateManifest: false,
+        logLevel: LogLevel.INFO,
+        dedupe: {
+          enabled: true,
+          recursive: false,
+          strategy: { mode: DedupeMode.ANY },
+          action: DedupeAction.SKIP
+        }
+      };
+
+      mockConfigLoader.load.mockReturnValue(baseConfig);
+
+      const result = configService.loadWithOverrides({ dedupe: false });
+
+      expect(result.dedupe?.enabled).toBe(false);
     });
   });
 
@@ -263,6 +305,68 @@ describe('ConfigService', () => {
 
       expect(result).toBeNull();
       expect(mockExistsSync).toHaveBeenCalledTimes(CONFIG_FILE_NAMES.length);
+    });
+  });
+
+  describe('private helpers', () => {
+    it('should preserve the base config when no dedupe override is provided', () => {
+      const baseConfig = {
+        categories: [],
+        namingConvention: { type: NamingConventionType.KEBAB_CASE, lowercase: true },
+        excludePatterns: [],
+        includeHidden: false,
+        dryRun: false,
+        generateManifest: false,
+        logLevel: LogLevel.INFO
+      };
+
+      const result = (configService as any).withOptionalDedupeOverride(baseConfig, baseConfig, {});
+
+      expect(result).toEqual(baseConfig);
+      expect(result).not.toBe(baseConfig);
+    });
+
+    it('should resolve all supported log levels', () => {
+      expect((configService as any).resolveLogLevel('info')).toBe(LogLevel.INFO);
+      expect((configService as any).resolveLogLevel('warn')).toBe(LogLevel.WARN);
+      expect((configService as any).resolveLogLevel('error')).toBe(LogLevel.ERROR);
+    });
+
+    it('should resolve all supported dedupe actions', () => {
+      expect((configService as any).resolveDedupeAction('skip')).toBe(DedupeAction.SKIP);
+      expect((configService as any).resolveDedupeAction('report')).toBe(DedupeAction.REPORT);
+      expect((configService as any).resolveDedupeAction('replace')).toBe(DedupeAction.REPLACE);
+    });
+
+    it('should create a default dedupe config when no base config exists', () => {
+      const result = (configService as any).createDedupeConfig(undefined, undefined, undefined);
+
+      expect(result).toEqual({
+        enabled: true,
+        recursive: false,
+        strategy: { mode: DedupeMode.ANY },
+        action: DedupeAction.SKIP
+      });
+    });
+
+    it('should prefer explicit action and enabled overrides when creating dedupe config', () => {
+      const result = (configService as any).createDedupeConfig(
+        {
+          enabled: true,
+          recursive: true,
+          strategy: { mode: DedupeMode.ALL },
+          action: DedupeAction.SKIP
+        },
+        false,
+        DedupeAction.REPLACE
+      );
+
+      expect(result).toEqual({
+        enabled: false,
+        recursive: true,
+        strategy: { mode: DedupeMode.ALL },
+        action: DedupeAction.REPLACE
+      });
     });
   });
 });

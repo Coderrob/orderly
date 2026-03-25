@@ -61,4 +61,33 @@ describe('ConfigValidateHandler', () => {
     expect(result.success).toBe(false);
     expect(result.message).toContain('No config file found');
   });
+
+  it('should resolve an explicit config path through the private helper', () => {
+    const result = (handler as any).resolveConfigPath({ config: './orderly.config.json' });
+
+    expect(result).toBe('./orderly.config.json');
+  });
+
+  it('should build a validation success message through the private helper', () => {
+    const result = (handler as any).createSuccessMessage('/tmp/orderly.config.json', {
+      categories: [{ name: 'docs' }, { name: 'images' }]
+    });
+
+    expect(result).toContain('/tmp/orderly.config.json');
+    expect(result).toContain('2');
+  });
+
+  it('should resolve the current working directory when no directory option is supplied', () => {
+    const findConfigInDirectory = jest
+      .spyOn(process, 'cwd')
+      .mockReturnValue('/workspace/current-directory');
+    mockConfigService.findConfigInDirectory.mockReturnValue(
+      '/workspace/current-directory/.orderly.yml'
+    );
+
+    const result = (handler as any).resolveConfigPath({});
+
+    expect(result).toBe('/workspace/current-directory/.orderly.yml');
+    findConfigInDirectory.mockRestore();
+  });
 });

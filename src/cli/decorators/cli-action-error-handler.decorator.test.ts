@@ -45,4 +45,24 @@ describe('HandleCliActionErrors', () => {
 
     await expect(Promise.resolve(new TestService().execute())).resolves.toBe('ok');
   });
+
+  it('should reject with a normalized error when handleError is unavailable', async () => {
+    class TestService {
+      @HandleCliActionErrors()
+      execute(): void {
+        throw 'boom';
+      }
+    }
+
+    await expect(new TestService().execute()).rejects.toEqual(new Error('boom'));
+  });
+
+  it('should leave non-callable descriptors unchanged', () => {
+    const decorator = HandleCliActionErrors();
+    const descriptor: PropertyDescriptor = { configurable: true, value: 42 };
+
+    const result = decorator({}, 'execute', descriptor);
+
+    expect(result).toEqual(descriptor);
+  });
 });

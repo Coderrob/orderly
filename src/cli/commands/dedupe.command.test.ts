@@ -359,4 +359,121 @@ describe('DedupeHandler', () => {
 
     expect(action).toBe(DedupeAction.REPORT);
   });
+
+  it('should return undefined for unsupported presets and actions through private helpers', () => {
+    expect((handler as any).resolveStrategyPreset('unknown')).toBeUndefined();
+    expect((handler as any).resolveAction('unknown')).toBeUndefined();
+  });
+
+  it('should fall back to default report action and strategy when no config is present', () => {
+    const result = (handler as any).resolveDedupeConfig(undefined, undefined, undefined);
+
+    expect(result).toEqual({
+      enabled: true,
+      recursive: false,
+      strategy: { mode: 'any' },
+      action: DedupeAction.REPORT
+    });
+  });
+
+  it('should reuse config-provided strategy and action when no CLI overrides are given', () => {
+    const result = (handler as any).resolveDedupeConfig(
+      {
+        enabled: true,
+        recursive: true,
+        strategy: { mode: 'all', size: true },
+        action: DedupeAction.SKIP
+      },
+      undefined,
+      undefined
+    );
+
+    expect(result).toEqual({
+      enabled: true,
+      recursive: true,
+      strategy: { mode: 'all', size: true },
+      action: DedupeAction.SKIP
+    });
+  });
+
+  it('should build config overrides through the private helper', () => {
+    const result = (handler as any).toConfigOverrides({
+      config: '/tmp/config.yml',
+      action: 'replace',
+      dryRun: true,
+      logLevel: 'debug'
+    });
+
+    expect(result).toEqual({
+      config: '/tmp/config.yml',
+      dedupe: true,
+      dedupeAction: 'replace',
+      dryRun: true,
+      logLevel: 'debug'
+    });
+  });
+
+  it('should return false from the delete gate for non-replace and dry-run cases', () => {
+    expect((handler as any).shouldDeleteDuplicates(DedupeAction.REPORT, {})).toBe(false);
+    expect((handler as any).shouldDeleteDuplicates(DedupeAction.REPLACE, { dryRun: true })).toBe(
+      false
+    );
+  });
+
+  it('should allow replace when confirmation safety is satisfied', () => {
+    const result = (handler as any).validateReplaceSafety({
+      dedupeConfig: { action: DedupeAction.REPLACE },
+      options: { confirmReplace: true, dryRun: false }
+    });
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should build default report paths only for report actions', () => {
+    expect(
+      (handler as any).getDefaultReportPath(DedupeAction.REPORT, '/tmp/reports', 'x.json')
+    ).toBe(path.join('/tmp/reports', 'x.json'));
+    expect(
+      (handler as any).getDefaultReportPath(DedupeAction.SKIP, '/tmp/reports', 'x.json')
+    ).toBeUndefined();
+  });
+
+  it('should create report writes for json-only and markdown-only paths', async () => {
+    const jsonOnly = (handler as any).createReportWrites(
+      { jsonPath: '/tmp/report.json' },
+      { groups: [], totalFiles: 0, totalDuplicates: 0, strategiesUsed: [] }
+    );
+    const markdownOnly = (handler as any).createReportWrites(
+      { markdownPath: '/tmp/report.md' },
+      { groups: [], totalFiles: 0, totalDuplicates: 0, strategiesUsed: [] }
+    );
+
+    await Promise.all([...jsonOnly, ...markdownOnly]);
+
+    expect(mockReportWriter.write).toHaveBeenCalledWith(expect.anything(), '/tmp/report.json');
+    expect(mockReportWriter.writeMarkdown).toHaveBeenCalledWith(
+      expect.anything(),
+      '/tmp/report.md'
+    );
+  });
+
+  it('should skip report writes when no report paths are resolved', async () => {
+    await (handler as any).writeReportsIfRequested(
+      {
+        dedupeConfig: { action: DedupeAction.SKIP },
+        options: {},
+        targetDir: '/target'
+      },
+      { groups: [], totalFiles: 0, totalDuplicates: 0, strategiesUsed: [] }
+    );
+
+    expect(mockReportWriter.write).not.toHaveBeenCalled();
+    expect(mockReportWriter.writeMarkdown).not.toHaveBeenCalled();
+  });
+
+  it('should use the default quarantine directory when none is provided to the private helper', () => {
+    const destination = (handler as any).resolveQuarantinePath('/target/b.txt', '');
+
+    expect(destination).toContain(path.join('.orderly', 'quarantine'));
+  });
 });

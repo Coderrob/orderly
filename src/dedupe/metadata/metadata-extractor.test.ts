@@ -270,6 +270,10 @@ describe('MetadataExtractor', () => {
           )
         ).toBe(false);
       });
+
+      it('should return false when no system paths remain to check', () => {
+        expect(extractor['hasSystemPath']('/home/file', [])).toBe(false);
+      });
     });
 
     describe('isReadonlyFile', () => {
@@ -316,6 +320,36 @@ describe('MetadataExtractor', () => {
         expect(extractor['isJpeg'](Buffer.from([0xff, 0xd8, 0xff]))).toBe(true);
         expect(extractor['isJpeg'](Buffer.from([0xff]))).toBe(false);
         expect(extractor['isJpeg'](Buffer.from([0x89, 0x50]))).toBe(false);
+      });
+    });
+
+    describe('extractFromJpegBuffer', () => {
+      it('should stop expanding when the JPEG scan limit is reached', async () => {
+        const extractorRun = jest.fn().mockReturnValue({ width: 1, height: 1 });
+
+        const result = await extractor['extractFromJpegBuffer'](
+          {} as any,
+          Buffer.alloc(1024 * 1024),
+          { run: extractorRun }
+        );
+
+        expect(result).toEqual({ width: 1, height: 1 });
+        expect(extractorRun).toHaveBeenCalledTimes(1);
+      });
+
+      it('should stop when a larger read returns the same buffer length', async () => {
+        const extractorRun = jest.fn().mockReturnValue(null);
+        const readFilePrefixSpy = jest
+          .spyOn(extractor as any, 'readFilePrefix')
+          .mockResolvedValue(Buffer.alloc(64));
+
+        const result = await extractor['extractFromJpegBuffer']({} as any, Buffer.alloc(64), {
+          run: extractorRun
+        });
+
+        expect(result).toBeNull();
+        expect(extractorRun).toHaveBeenCalledTimes(1);
+        readFilePrefixSpy.mockRestore();
       });
     });
   });
