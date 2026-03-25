@@ -1,17 +1,10 @@
 import * as path from 'node:path';
 
 import { type OrderlyConfig } from '../../config/types';
-import {
-  DedupeAction,
-  DedupeMode,
-  type IDedupeConfig,
-  type IDedupeResult,
-  type IDedupeStrategyConfig
-} from '../../dedupe';
+import { DedupeAction, type IDedupeResult } from '../../dedupe';
 import { DedupeStrategyFactory } from '../../dedupe/dedupe-factory';
 import { Logger } from '../../logger/logger';
 import { FileScanner } from '../../scanner/file-scanner';
-import { Clock } from '../../utils/clock';
 import { FileSystemUtils } from '../../utils/file-system-utils';
 import { COMMAND_MESSAGES, ExitCode } from '../constants';
 import {
@@ -29,40 +22,19 @@ import type {
   ICommandResult
 } from '../interfaces';
 
-const DEFAULT_REPORT_DIRECTORY = '.orderly';
-const DEFAULT_REPORT_JSON_FILENAME = 'dedupe-report.json';
-const DEFAULT_REPORT_MARKDOWN_FILENAME = 'dedupe-report.md';
-const DEFAULT_QUARANTINE_DIRECTORY = '.orderly/quarantine';
-const PRESET_EXACT = 'exact';
-const PRESET_FAST = 'fast';
-const PRESET_MEDIA = 'media';
-const PRESET_SAFE = 'safe';
-const PRESET_EXACT_CONFIG: IDedupeStrategyConfig = {
-  mode: DedupeMode.ALL,
-  size: true,
-  sha256: true
-};
-const PRESET_FAST_CONFIG: IDedupeStrategyConfig = {
-  mode: DedupeMode.ANY,
-  size: true,
-  name: { caseSensitive: false, ignoreExtension: false }
-};
-const PRESET_MEDIA_CONFIG: IDedupeStrategyConfig = {
-  mode: DedupeMode.ALL,
-  size: true,
-  sha256: true,
-  imageDimensions: true,
-  exif: true
-};
-
-/**
- * Converts a scanned file into its original file path.
- * @param file - Scanned file.
- * @returns Original file path.
- */
-function toOriginalPath(file: Readonly<{ originalPath: string }>): string {
-  return file.originalPath;
-}
+import {
+  createDedupeConfigOverrides,
+  createReportWrites,
+  getOriginalPath,
+  resolveDedupeConfig,
+  resolveQuarantinePath,
+  resolveReportPaths,
+  shouldDeleteDuplicates,
+  toDeleteError,
+  validateReplaceSafety,
+  type IDedupeCommandContext,
+  type IDeleteSafetyContext
+} from './dedupe.command.helpers';
 
 /**
  * Handler for the standalone dedupe command.
@@ -120,12 +92,7 @@ export class DedupeHandler implements IDedupeHandler {
     directory: string,
     options: Readonly<IDedupeCommandOptions>,
     context?: Readonly<IAutoConfigContext<IDedupeCommandOptions>>
-  ): Readonly<{
-    dedupeConfig: Readonly<IDedupeConfig>;
-    options: Readonly<IDedupeCommandOptions>;
-    scanner: FileScanner;
-    targetDir: string;
-  }> {
+  ): Readonly<IDedupeCommandContext & { readonly scanner: FileScanner }> {
     const commandOptions = this.resolveCommandOptions(options, context);
     const targetDir = this.resolveTargetDir(directory, context);
     const config = this.loadCommandConfig(commandOptions);
@@ -166,7 +133,7 @@ export class DedupeHandler implements IDedupeHandler {
    * @returns Loaded config.
    */
   private loadCommandConfig(options: Readonly<IDedupeCommandOptions>): OrderlyConfig {
-    return this.configService.loadWithOverrides(this.toConfigOverrides(options));
+    return this.configService.loadWithOverrides(createDedupeConfigOverrides(options));
   }
 
   /**
@@ -182,101 +149,13 @@ export class DedupeHandler implements IDedupeHandler {
     options: Readonly<IDedupeCommandOptions>,
     logger: Readonly<Logger>,
     targetDir: string
-  ): Readonly<{
-    dedupeConfig: Readonly<IDedupeConfig>;
-    options: Readonly<IDedupeCommandOptions>;
-    scanner: FileScanner;
-    targetDir: string;
-  }> {
+  ): Readonly<IDedupeCommandContext & { readonly scanner: FileScanner }> {
     return {
-      dedupeConfig: this.resolveDedupeConfig(config.dedupe, options.action, options.preset),
+      dedupeConfig: resolveDedupeConfig(config.dedupe, options.action, options.preset),
       options,
       scanner: new FileScanner(config, logger),
       targetDir
     };
-  }
-
-  /**
-   * Builds config override input from dedupe options.
-   * @param options - Dedupe command options.
-   * @returns Config override object.
-   */
-  private toConfigOverrides(options: Readonly<IDedupeCommandOptions>): Readonly<{
-    config?: string;
-    dedupe?: boolean;
-    dedupeAction?: string;
-    dryRun?: boolean;
-    logLevel?: string;
-  }> {
-    return {
-      config: options.config,
-      dedupe: true,
-      dedupeAction: options.action,
-      dryRun: options.dryRun,
-      logLevel: options.logLevel
-    };
-  }
-
-  /**
-   * Resolves the active dedupe config for the standalone command.
-   * @param dedupeConfig - Config-sourced dedupe configuration.
-   * @param action - Optional CLI action override.
-   * @param preset - Optional dedupe preset override.
-   * @returns Active dedupe config.
-   */
-  private resolveDedupeConfig(
-    dedupeConfig: Readonly<IDedupeConfig> | undefined,
-    action?: string,
-    preset?: string
-  ): Readonly<IDedupeConfig> {
-    const resolvedAction =
-      this.resolveAction(action) ?? dedupeConfig?.action ?? DedupeAction.REPORT;
-    const strategy = this.resolveStrategyPreset(preset) ??
-      dedupeConfig?.strategy ?? { mode: DedupeMode.ANY };
-    return {
-      enabled: true,
-      recursive: dedupeConfig?.recursive ?? false,
-      strategy,
-      action: resolvedAction
-    };
-  }
-
-  /**
-   * Resolves a named strategy preset.
-   * @param preset - Preset name.
-   * @returns Strategy preset or undefined.
-   */
-  private resolveStrategyPreset(preset?: string): IDedupeStrategyConfig | undefined {
-    switch (preset) {
-      case PRESET_EXACT:
-        return PRESET_EXACT_CONFIG;
-      case PRESET_FAST:
-        return PRESET_FAST_CONFIG;
-      case PRESET_MEDIA:
-        return PRESET_MEDIA_CONFIG;
-      case PRESET_SAFE:
-        return PRESET_EXACT_CONFIG;
-      default:
-        return undefined;
-    }
-  }
-
-  /**
-   * Resolves a CLI action string to an enum member.
-   * @param action - CLI action string.
-   * @returns Supported dedupe action when valid.
-   */
-  private resolveAction(action?: string): DedupeAction | undefined {
-    switch (action) {
-      case DedupeAction.SKIP:
-        return DedupeAction.SKIP;
-      case DedupeAction.REPORT:
-        return DedupeAction.REPORT;
-      case DedupeAction.REPLACE:
-        return DedupeAction.REPLACE;
-      default:
-        return undefined;
-    }
   }
 
   /**
@@ -297,13 +176,10 @@ export class DedupeHandler implements IDedupeHandler {
    * @returns Deletion error messages.
    */
   private async applyReplaceActionIfNeeded(
-    commandContext: Readonly<{
-      dedupeConfig: Readonly<IDedupeConfig>;
-      options: Readonly<IDedupeCommandOptions>;
-    }>,
+    commandContext: Readonly<IDeleteSafetyContext>,
     result: Readonly<IDedupeResult>
   ): Promise<readonly string[]> {
-    if (!this.shouldDeleteDuplicates(commandContext.dedupeConfig.action, commandContext.options)) {
+    if (!shouldDeleteDuplicates(commandContext.dedupeConfig.action, commandContext.options)) {
       return [];
     }
 
@@ -312,23 +188,10 @@ export class DedupeHandler implements IDedupeHandler {
     ).applyAction(result, DedupeAction.REPLACE);
     return commandContext.options.quarantineDir
       ? this.quarantineDuplicateFiles(
-          outcome.replaced.map(toOriginalPath),
+          outcome.replaced.map(getOriginalPath),
           commandContext.options.quarantineDir
         )
-      : this.deleteDuplicateFiles(outcome.replaced.map(toOriginalPath));
-  }
-
-  /**
-   * Returns whether duplicate source files should be deleted.
-   * @param action - Active dedupe action.
-   * @param options - Parsed command options.
-   * @returns True when replacement deletions should run.
-   */
-  private shouldDeleteDuplicates(
-    action: Readonly<DedupeAction>,
-    options: Readonly<IDedupeCommandOptions>
-  ): boolean {
-    return action === DedupeAction.REPLACE && !options.dryRun;
+      : this.deleteDuplicateFiles(outcome.replaced.map(getOriginalPath));
   }
 
   /**
@@ -336,26 +199,8 @@ export class DedupeHandler implements IDedupeHandler {
    * @param commandContext - Dedupe command context.
    * @returns Failure result when the action is unsafe; otherwise undefined.
    */
-  private validateReplaceSafety(
-    commandContext: Readonly<{
-      dedupeConfig: Readonly<IDedupeConfig>;
-      options: Readonly<IDedupeCommandOptions>;
-    }>
-  ): ICommandResult | undefined {
-    const requiresConfirmation =
-      commandContext.dedupeConfig.action === DedupeAction.REPLACE &&
-      !commandContext.options.dryRun &&
-      !commandContext.options.confirmReplace &&
-      !commandContext.options.quarantineDir;
-
-    return requiresConfirmation
-      ? {
-          success: false,
-          exitCode: ExitCode.ERROR,
-          message:
-            'Dedupe replace requires --confirm-replace or --quarantine-dir when not running in dry-run mode'
-        }
-      : undefined;
+  private validateReplaceSafety(commandContext: Readonly<IDeleteSafetyContext>): ICommandResult | undefined {
+    return validateReplaceSafety(commandContext);
   }
 
   /**
@@ -370,7 +215,7 @@ export class DedupeHandler implements IDedupeHandler {
       try {
         FileSystemUtils.unlinkSync(filePath);
       } catch (error) {
-        errors = [...errors, this.toDeleteError(filePath, error)];
+        errors = [...errors, toDeleteError(filePath, error)];
       }
     }
 
@@ -391,40 +236,15 @@ export class DedupeHandler implements IDedupeHandler {
 
     for (const filePath of filePaths) {
       try {
-        const destinationPath = this.resolveQuarantinePath(filePath, quarantineDir);
+        const destinationPath = resolveQuarantinePath(filePath, quarantineDir);
         FileSystemUtils.mkdirSync(path.dirname(destinationPath));
         FileSystemUtils.renameSync(filePath, destinationPath);
       } catch (error) {
-        errors = [...errors, this.toDeleteError(filePath, error)];
+        errors = [...errors, toDeleteError(filePath, error)];
       }
     }
 
     return errors;
-  }
-
-  /**
-   * Resolves a unique quarantine destination path.
-   * @param filePath - Original file path.
-   * @param quarantineDir - Quarantine directory.
-   * @returns Destination path.
-   */
-  private resolveQuarantinePath(filePath: string, quarantineDir: string): string {
-    const baseDirectory = path.resolve(quarantineDir || DEFAULT_QUARANTINE_DIRECTORY);
-    const filename = path.basename(filePath);
-    const destinationPath = path.join(baseDirectory, filename);
-    return FileSystemUtils.hasPath(destinationPath)
-      ? path.join(baseDirectory, `${Clock.nowMonotonicToken()}-${filename}`)
-      : destinationPath;
-  }
-
-  /**
-   * Builds a delete error string.
-   * @param filePath - File path that failed.
-   * @param error - Thrown error.
-   * @returns Error message.
-   */
-  private toDeleteError(filePath: string, error: unknown): string {
-    return `${filePath}: ${error instanceof Error ? error.message : String(error)}`;
   }
 
   /**
@@ -434,88 +254,15 @@ export class DedupeHandler implements IDedupeHandler {
    * @returns Promise resolving after report generation.
    */
   private async writeReportsIfRequested(
-    commandContext: Readonly<{
-      dedupeConfig: Readonly<IDedupeConfig>;
-      options: Readonly<IDedupeCommandOptions>;
-      targetDir: string;
-    }>,
+    commandContext: Readonly<IDedupeCommandContext>,
     result: Readonly<IDedupeResult>
   ): Promise<void> {
-    const reportPaths = this.resolveReportPaths(commandContext);
+    const reportPaths = resolveReportPaths(commandContext);
     if (!reportPaths.jsonPath && !reportPaths.markdownPath) {
       return;
     }
 
-    await Promise.all(this.createReportWrites(reportPaths, result));
-  }
-
-  /**
-   * Resolves report output paths.
-   * @param commandContext - Dedupe command context.
-   * @returns Resolved report paths.
-   */
-  private resolveReportPaths(
-    commandContext: Readonly<{
-      dedupeConfig: Readonly<IDedupeConfig>;
-      options: Readonly<IDedupeCommandOptions>;
-      targetDir: string;
-    }>
-  ): Readonly<{ jsonPath?: string; markdownPath?: string }> {
-    const reportDirectory = path.join(commandContext.targetDir, DEFAULT_REPORT_DIRECTORY);
-    const jsonPath =
-      commandContext.options.reportJson ??
-      this.getDefaultReportPath(
-        commandContext.dedupeConfig.action,
-        reportDirectory,
-        DEFAULT_REPORT_JSON_FILENAME
-      );
-    const markdownPath =
-      commandContext.options.reportMarkdown ??
-      this.getDefaultReportPath(
-        commandContext.dedupeConfig.action,
-        reportDirectory,
-        DEFAULT_REPORT_MARKDOWN_FILENAME
-      );
-
-    return { jsonPath, markdownPath };
-  }
-
-  /**
-   * Returns the default report path when the action is REPORT.
-   * @param action - Active dedupe action.
-   * @param reportDirectory - Report directory.
-   * @param filename - Report filename.
-   * @returns Default report path or undefined.
-   */
-  private getDefaultReportPath(
-    action: Readonly<DedupeAction>,
-    reportDirectory: string,
-    filename: string
-  ): string | undefined {
-    return action === DedupeAction.REPORT ? path.join(reportDirectory, filename) : undefined;
-  }
-
-  /**
-   * Creates report-write promises for configured output paths.
-   * @param reportPaths - Resolved report paths.
-   * @param result - Dedupe result.
-   * @returns Report write promises.
-   */
-  private createReportWrites(
-    reportPaths: Readonly<{ jsonPath?: string; markdownPath?: string }>,
-    result: Readonly<IDedupeResult>
-  ): readonly Promise<void>[] {
-    let writes: readonly Promise<void>[] = [];
-
-    if (reportPaths.jsonPath) {
-      writes = [...writes, this.reportWriter.write(result, reportPaths.jsonPath)];
-    }
-
-    if (reportPaths.markdownPath) {
-      writes = [...writes, this.reportWriter.writeMarkdown(result, reportPaths.markdownPath)];
-    }
-
-    return writes;
+    await Promise.all(createReportWrites(this.reportWriter, reportPaths, result));
   }
 
   /**

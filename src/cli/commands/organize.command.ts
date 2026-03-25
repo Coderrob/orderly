@@ -298,7 +298,7 @@ export class OrganizeHandler implements IOrganizeHandler {
    * Builds dedupe context used to resolve post-dedupe file selection.
    * @param files - Scanned files.
    * @param dedupeConfig - Active dedupe configuration.
-   * @param dryRun - Whether deletes should be skipped.
+   * @param options - Dedupe execution options.
    * @param logger - Logger instance.
    * @returns Dedupe context when duplicates exist; otherwise null.
    */

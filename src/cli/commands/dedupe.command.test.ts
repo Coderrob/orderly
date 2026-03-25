@@ -2,8 +2,19 @@ import * as path from 'node:path';
 
 import { FileSystemUtils } from '../../utils/file-system-utils';
 import { Clock } from '../../utils/clock';
-import { DedupeAction } from '../../dedupe';
+import { DedupeAction, DedupeMode } from '../../dedupe';
 import { DedupeStrategyFactory } from '../../dedupe/dedupe-factory';
+import {
+  createDedupeConfigOverrides,
+  createReportWrites,
+  getDefaultReportPath,
+  resolveAction,
+  resolveDedupeConfig,
+  resolveQuarantinePath,
+  resolveStrategyPreset,
+  shouldDeleteDuplicates,
+  validateReplaceSafety
+} from './dedupe.command.helpers';
 import { DedupeHandler } from './dedupe.command';
 
 jest.mock('../../dedupe/dedupe-factory', () => ({
@@ -354,19 +365,19 @@ describe('DedupeHandler', () => {
     expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('/target/.orderly.yml'));
   });
 
-  it('should resolve the explicit report action through the private helper', () => {
-    const action = (handler as any).resolveAction('report');
+  it('should resolve the explicit report action through the helper', () => {
+    const action = resolveAction('report');
 
     expect(action).toBe(DedupeAction.REPORT);
   });
 
-  it('should return undefined for unsupported presets and actions through private helpers', () => {
-    expect((handler as any).resolveStrategyPreset('unknown')).toBeUndefined();
-    expect((handler as any).resolveAction('unknown')).toBeUndefined();
+  it('should return undefined for unsupported presets and actions through helpers', () => {
+    expect(resolveStrategyPreset('unknown')).toBeUndefined();
+    expect(resolveAction('unknown')).toBeUndefined();
   });
 
   it('should fall back to default report action and strategy when no config is present', () => {
-    const result = (handler as any).resolveDedupeConfig(undefined, undefined, undefined);
+    const result = resolveDedupeConfig(undefined, undefined, undefined);
 
     expect(result).toEqual({
       enabled: true,
@@ -377,11 +388,11 @@ describe('DedupeHandler', () => {
   });
 
   it('should reuse config-provided strategy and action when no CLI overrides are given', () => {
-    const result = (handler as any).resolveDedupeConfig(
+    const result = resolveDedupeConfig(
       {
         enabled: true,
         recursive: true,
-        strategy: { mode: 'all', size: true },
+        strategy: { mode: DedupeMode.ALL, size: true },
         action: DedupeAction.SKIP
       },
       undefined,
@@ -391,13 +402,13 @@ describe('DedupeHandler', () => {
     expect(result).toEqual({
       enabled: true,
       recursive: true,
-      strategy: { mode: 'all', size: true },
+      strategy: { mode: DedupeMode.ALL, size: true },
       action: DedupeAction.SKIP
     });
   });
 
-  it('should build config overrides through the private helper', () => {
-    const result = (handler as any).toConfigOverrides({
+  it('should build config overrides through the helper', () => {
+    const result = createDedupeConfigOverrides({
       config: '/tmp/config.yml',
       action: 'replace',
       dryRun: true,
@@ -414,15 +425,18 @@ describe('DedupeHandler', () => {
   });
 
   it('should return false from the delete gate for non-replace and dry-run cases', () => {
-    expect((handler as any).shouldDeleteDuplicates(DedupeAction.REPORT, {})).toBe(false);
-    expect((handler as any).shouldDeleteDuplicates(DedupeAction.REPLACE, { dryRun: true })).toBe(
-      false
-    );
+    expect(shouldDeleteDuplicates(DedupeAction.REPORT, {})).toBe(false);
+    expect(shouldDeleteDuplicates(DedupeAction.REPLACE, { dryRun: true })).toBe(false);
   });
 
   it('should allow replace when confirmation safety is satisfied', () => {
-    const result = (handler as any).validateReplaceSafety({
-      dedupeConfig: { action: DedupeAction.REPLACE },
+    const result = validateReplaceSafety({
+      dedupeConfig: {
+        enabled: true,
+        recursive: false,
+        strategy: { mode: DedupeMode.ANY },
+        action: DedupeAction.REPLACE
+      },
       options: { confirmReplace: true, dryRun: false }
     });
 
@@ -430,20 +444,20 @@ describe('DedupeHandler', () => {
   });
 
   it('should build default report paths only for report actions', () => {
-    expect(
-      (handler as any).getDefaultReportPath(DedupeAction.REPORT, '/tmp/reports', 'x.json')
-    ).toBe(path.join('/tmp/reports', 'x.json'));
-    expect(
-      (handler as any).getDefaultReportPath(DedupeAction.SKIP, '/tmp/reports', 'x.json')
-    ).toBeUndefined();
+    expect(getDefaultReportPath(DedupeAction.REPORT, '/tmp/reports', 'x.json')).toBe(
+      path.join('/tmp/reports', 'x.json')
+    );
+    expect(getDefaultReportPath(DedupeAction.SKIP, '/tmp/reports', 'x.json')).toBeUndefined();
   });
 
   it('should create report writes for json-only and markdown-only paths', async () => {
-    const jsonOnly = (handler as any).createReportWrites(
+    const jsonOnly = createReportWrites(
+      mockReportWriter,
       { jsonPath: '/tmp/report.json' },
       { groups: [], totalFiles: 0, totalDuplicates: 0, strategiesUsed: [] }
     );
-    const markdownOnly = (handler as any).createReportWrites(
+    const markdownOnly = createReportWrites(
+      mockReportWriter,
       { markdownPath: '/tmp/report.md' },
       { groups: [], totalFiles: 0, totalDuplicates: 0, strategiesUsed: [] }
     );
@@ -472,7 +486,7 @@ describe('DedupeHandler', () => {
   });
 
   it('should use the default quarantine directory when none is provided to the private helper', () => {
-    const destination = (handler as any).resolveQuarantinePath('/target/b.txt', '');
+    const destination = resolveQuarantinePath('/target/b.txt', '');
 
     expect(destination).toContain(path.join('.orderly', 'quarantine'));
   });

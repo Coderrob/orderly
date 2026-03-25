@@ -101,8 +101,7 @@ export class CleanHandler implements ICleanHandler {
   /**
    * Builds cleaner options with config-based fallbacks.
    * @param options - Parsed clean command options.
-   * @param includeHiddenDefault - Config include-hidden value.
-   * @param dryRunDefault - Config dry-run value.
+   * @param defaults - Config defaults for dry-run and include-hidden.
    * @returns Cleaner options.
    */
   private toCleanerOptions(

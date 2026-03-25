@@ -84,7 +84,7 @@ export class InitHandler implements IInitHandler {
 
   /**
    * Gets the configuration file path based on format.
-   * @param format - Configuration format (json or yaml)
+   * @param format - Configuration format (json, yaml, or yml)
    * @returns Configuration file path
    */
   private getConfigPath(format: ConfigFileFormat | string): string {

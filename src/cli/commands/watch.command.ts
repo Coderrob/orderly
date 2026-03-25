@@ -21,12 +21,7 @@ interface IRunCyclesOptions {
   readonly options: Readonly<IWatchCommandOptions>;
 }
 
-interface IRunCyclePromiseHandlers {
-  readonly reject: (error?: unknown) => void;
-  readonly resolve: (completedCycles: number) => void;
-}
-
-interface IRunCycleState {
+interface IRunCycleBaseState {
   readonly completedCycles: number;
   readonly cycleLimit: number;
   readonly directory: string;
@@ -37,6 +32,11 @@ interface IRunCycleState {
   readonly hasReachedCycleLimit: (completedCycles: number, cycleLimit: number) => boolean;
   readonly intervalMs: number;
   readonly options: Readonly<IWatchCommandOptions>;
+}
+
+interface IRunCycleState extends IRunCycleBaseState {
+  readonly reject: (error?: unknown) => void;
+  readonly resolve: (completedCycles: number) => void;
 }
 
 /**
@@ -79,17 +79,13 @@ export class WatchHandler implements IWatchHandler {
   }
 
   /**
-   * Runs watch cycles recursively until the requested limit is reached.
-   * @param directory - Target directory.
-   * @param options - Watch options.
-   * @param intervalSeconds - Polling interval in seconds.
-   * @param cycleLimit - Requested cycle limit.
-   * @param completedCycles - Completed cycle count.
+   * Runs watch cycles until the requested limit is reached.
+   * @param runOptions - Watch cycle execution options.
    * @returns Completed cycle count.
    */
   private async runCycles(runOptions: Readonly<IRunCyclesOptions>): Promise<number> {
-    return await new Promise<number>(
-      startCycleRunner.bind(
+    return new Promise<number>(
+      startScheduledCycles.bind(
         null,
         createRunCycleState(
           runOptions,
@@ -136,11 +132,11 @@ export class WatchHandler implements IWatchHandler {
 }
 
 /**
- * Creates the watch-cycle state object used by the scheduler.
+ * Creates the mutable state object used by the watch scheduler.
  * @param runOptions - Cycle execution options.
  * @param executeCycle - Organize-cycle executor.
  * @param hasReachedCycleLimit - Cycle limit predicate.
- * @returns Cycle scheduler state.
+ * @returns Cycle state.
  */
 function createRunCycleState(
   runOptions: Readonly<IRunCyclesOptions>,
@@ -149,7 +145,7 @@ function createRunCycleState(
     options: Readonly<IWatchCommandOptions>
   ) => Promise<ICommandResult>,
   hasReachedCycleLimit: (completedCycles: number, cycleLimit: number) => boolean
-): Readonly<IRunCycleState> {
+): IRunCycleBaseState {
   return {
     completedCycles: runOptions.completedCycles,
     cycleLimit: runOptions.cycleLimit,
@@ -162,61 +158,15 @@ function createRunCycleState(
 }
 
 /**
- * Starts the long-running watch-cycle executor promise.
- * @param runCycleState - Cycle execution state.
- * @param resolve - Promise resolve callback.
- * @param reject - Promise reject callback.
+ * Creates the next immutable cycle state after one completed iteration.
+ * @param runCycleState - Current cycle state.
+ * @returns Updated cycle state.
  */
-function startCycleRunner(
-  runCycleState: Readonly<IRunCycleState>,
-  resolve: (completedCycles: number) => void,
-  reject: (error?: unknown) => void
-): void {
-  scheduleCycleExecution(runCycleState, { resolve, reject });
-}
-
-/**
- * Schedules the next watch cycle without building a recursive await chain.
- * @param runCycleState - Cycle execution state.
- * @param handlers - Promise resolution handlers.
- */
-function scheduleCycleExecution(
-  runCycleState: Readonly<IRunCycleState>,
-  handlers: Readonly<IRunCyclePromiseHandlers>
-): void {
-  if (runCycleState.hasReachedCycleLimit(runCycleState.completedCycles, runCycleState.cycleLimit)) {
-    handlers.resolve(runCycleState.completedCycles);
-    return;
-  }
-
-  void Promise.resolve(runCycleState.executeCycle(runCycleState.directory, runCycleState.options))
-    .then(handleCompletedCycle.bind(null, runCycleState, handlers))
-    .catch(handlers.reject);
-}
-
-/**
- * Handles completion of one watch cycle and schedules the next delay when needed.
- * @param runCycleState - Cycle execution state.
- * @param handlers - Promise resolution handlers.
- */
-function handleCompletedCycle(
-  runCycleState: Readonly<IRunCycleState>,
-  handlers: Readonly<IRunCyclePromiseHandlers>
-): void {
-  const completedCycles = runCycleState.completedCycles + 1;
-  if (runCycleState.hasReachedCycleLimit(completedCycles, runCycleState.cycleLimit)) {
-    handlers.resolve(completedCycles);
-    return;
-  }
-
-  delay(runCycleState.intervalMs)
-    .then(
-      scheduleCycleExecution.bind(null, {
-        ...runCycleState,
-        completedCycles
-      }, handlers)
-    )
-    .catch(handlers.reject);
+function createUpdatedRunCycleState(runCycleState: Readonly<IRunCycleState>): IRunCycleState {
+  return {
+    ...runCycleState,
+    completedCycles: runCycleState.completedCycles + 1
+  };
 }
 
 /**
@@ -226,6 +176,64 @@ function handleCompletedCycle(
  */
 function delay(durationMs: number): Promise<void> {
   return new Promise(waitForDelay.bind(null, durationMs));
+}
+
+/**
+ * Executes the next scheduled watch cycle.
+ * @param runCycleState - Immutable cycle state snapshot.
+ */
+function executeScheduledCycle(runCycleState: Readonly<IRunCycleState>): void {
+  if (runCycleState.hasReachedCycleLimit(runCycleState.completedCycles, runCycleState.cycleLimit)) {
+    runCycleState.resolve(runCycleState.completedCycles);
+    return;
+  }
+
+  void runCycleState.executeCycle(runCycleState.directory, runCycleState.options)
+    .then(handleExecutedCycle.bind(null, runCycleState))
+    .catch(runCycleState.reject);
+}
+
+/**
+ * Handles the completed cycle and schedules the next delay when needed.
+ * @param runCycleState - Immutable cycle state snapshot.
+ */
+function handleExecutedCycle(runCycleState: Readonly<IRunCycleState>): void {
+  const nextRunCycleState = createUpdatedRunCycleState(runCycleState);
+  if (
+    nextRunCycleState.hasReachedCycleLimit(
+      nextRunCycleState.completedCycles,
+      nextRunCycleState.cycleLimit
+    )
+  ) {
+    nextRunCycleState.resolve(nextRunCycleState.completedCycles);
+    return;
+  }
+
+  delay(nextRunCycleState.intervalMs)
+    .then(scheduleDelayedCycle.bind(null, nextRunCycleState))
+    .catch(nextRunCycleState.reject);
+}
+
+/**
+ * Schedules the next watch cycle after the polling delay.
+ * @param runCycleState - Immutable cycle state snapshot.
+ */
+function scheduleDelayedCycle(runCycleState: Readonly<IRunCycleState>): void {
+  executeScheduledCycle(runCycleState);
+}
+
+/**
+ * Starts the long-running watch scheduler.
+ * @param runCycleState - Initial cycle state.
+ * @param resolve - Promise resolve callback.
+ * @param reject - Promise reject callback.
+ */
+function startScheduledCycles(
+  runCycleState: Readonly<IRunCycleBaseState>,
+  resolve: (completedCycles: number) => void,
+  reject: (error?: unknown) => void
+): void {
+  executeScheduledCycle({ ...runCycleState, resolve, reject });
 }
 
 /**

@@ -137,12 +137,105 @@ function appendReversedEntry(
 }
 
 /**
+ * Returns whether an object record exposes an entries array.
+ * @param value - Record under inspection.
+ * @returns True when the entries property is an array.
+ */
+function hasEntriesArray(
+  value: Readonly<Record<string, unknown>>
+): value is Readonly<{ entries: unknown[] }> & Readonly<Record<string, unknown>> {
+  return Array.isArray(value.entries);
+}
+
+/**
+ * Returns whether an unknown value exposes manifest operation paths.
+ * @param value - Entry candidate.
+ * @returns True when the value has string original/new paths.
+ */
+function hasManifestOperation(
+  value: unknown
+): value is Readonly<{ operation: Readonly<{ newPath: string; originalPath: string }> }> {
+  if (!isObjectRecord(value) || !hasOperationRecord(value)) {
+    return false;
+  }
+
+  const operation = value.operation;
+  return (
+    isObjectRecord(operation) &&
+    hasNewPathString(operation) &&
+    hasOriginalPathString(operation)
+  );
+}
+
+/**
+ * Returns whether an operation record exposes a string `newPath` value.
+ * @param value - Operation record under inspection.
+ * @returns True when the newPath property is a string.
+ */
+function hasNewPathString(
+  value: Readonly<Record<string, unknown>>
+): value is Readonly<{ newPath: string }> & Readonly<Record<string, unknown>> {
+  return typeof value.newPath === 'string';
+}
+
+/**
+ * Returns whether an object record exposes an operation object.
+ * @param value - Record under inspection.
+ * @returns True when the operation property is an object record.
+ */
+function hasOperationRecord(
+  value: Readonly<Record<string, unknown>>
+): value is Readonly<{ operation: Record<string, unknown> }> & Readonly<Record<string, unknown>> {
+  return isObjectRecord(value.operation);
+}
+
+/**
+ * Returns whether an operation record exposes a string `originalPath` value.
+ * @param value - Operation record under inspection.
+ * @returns True when the originalPath property is a string.
+ */
+function hasOriginalPathString(
+  value: Readonly<Record<string, unknown>>
+): value is Readonly<{ originalPath: string }> & Readonly<Record<string, unknown>> {
+  return typeof value.originalPath === 'string';
+}
+
+/**
+ * Returns whether an object record exposes a string `status` value.
+ * @param value - Record under inspection.
+ * @returns True when the status property is a string.
+ */
+function hasStatusString(
+  value: Readonly<Record<string, unknown>>
+): value is Readonly<{ status: string }> & Readonly<Record<string, unknown>> {
+  return typeof value.status === 'string';
+}
+
+/**
+ * Returns whether an unknown value matches the minimal manifest-entry shape.
+ * @param value - Entry candidate.
+ * @returns True when the entry exposes status and operation paths.
+ */
+function isManifestEntryLike(value: unknown): value is IManifestEntryLike {
+  return isObjectRecord(value) && hasStatusString(value) && hasManifestOperation(value);
+}
+
+/**
  * Returns whether a parsed value looks like a manifest payload.
  * @param value - Parsed JSON value.
  * @returns True when the value exposes manifest entries.
  */
 function isManifestLike(value: unknown): value is IManifestLike {
-  return typeof value === 'object' && value !== null && 'entries' in value;
+  return isObjectRecord(value) && hasEntriesArray(value) && value.entries.every(isManifestEntryLike);
+}
+
+/**
+ * Returns whether an unknown value is a plain object record.
+ * @param value - Value under inspection.
+ * @returns True when the value is a non-null object.
+ */
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 /**
