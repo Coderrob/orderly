@@ -15,6 +15,8 @@ import type {
   IDirectoryValidator
 } from '../interfaces';
 
+import { createMappedCommandContextBase, logAutoDiscoveredConfig } from './command-context.helpers';
+
 /**
  * Handler for the clean command.
  */
@@ -63,16 +65,15 @@ export class CleanHandler implements ICleanHandler {
     directory: string,
     options: Readonly<ICleanCommandOptions>,
     context?: Readonly<IAutoConfigContext<ICleanCommandOptions>>
-  ): Readonly<{
-    cleanOptions: Readonly<ICleanCommandOptions>;
-    logger: Logger;
-    targetDir: string;
-  }> {
-    const configOptions = context?.configOptions ?? { ...options };
-    const targetDir = context?.targetDir ?? this.directoryValidator.validate(directory);
-    const config = this.configService.loadWithOverrides(this.toConfigOverrides(configOptions));
-    const logger = new Logger(config.logLevel);
-    this.logAutoDiscoveredConfig(logger, context?.autoDiscoveredConfig);
+  ): Readonly<{ cleanOptions: Readonly<ICleanCommandOptions>; logger: Logger; targetDir: string }> {
+    const { config, configOptions, logger, targetDir } = createMappedCommandContextBase({
+      directory,
+      options,
+      context,
+      configService: this.configService,
+      directoryValidator: this.directoryValidator,
+      toConfigOverrides: this.toConfigOverrides.bind(this)
+    });
     return {
       cleanOptions: this.toCleanerOptions(configOptions, {
         dryRun: config.dryRun,
@@ -121,9 +122,7 @@ export class CleanHandler implements ICleanHandler {
    * @param autoDiscoveredConfig - Auto-discovered config path.
    */
   private logAutoDiscoveredConfig(logger: Readonly<Logger>, autoDiscoveredConfig?: string): void {
-    if (autoDiscoveredConfig) {
-      logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
-    }
+    logAutoDiscoveredConfig(logger, autoDiscoveredConfig);
   }
 
   /**

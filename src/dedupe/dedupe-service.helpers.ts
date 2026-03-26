@@ -45,7 +45,7 @@ export function appendIndexToRoot(
     return [...groupedRoots, { root, indexes: [index] }];
   }
 
-  return updateGroupedRootIndexes(groupedRoots, root, index);
+  return updateGroupedRoots(groupedRoots, createGroupedRootAppender(root, index));
 }
 
 /**
@@ -193,6 +193,32 @@ function createCandidateKeyMap(
 }
 
 /**
+ * Creates a grouped-root updater that appends one index to a matching root.
+ * @param root - Duplicate-set root to update.
+ * @param index - File index to append.
+ * @returns Group update function.
+ */
+function createGroupedRootAppender(
+  root: number,
+  index: number
+): (
+  group: Readonly<{ indexes: readonly number[]; root: number }>
+) => Readonly<{ indexes: readonly number[]; root: number }> {
+  /**
+   * Updates one grouped-root entry when it matches the target root.
+   * @param group - Grouped-root entry.
+   * @returns Updated grouped-root entry.
+   */
+  function appendGroupedRootIndex(
+    group: Readonly<{ indexes: readonly number[]; root: number }>
+  ): Readonly<{ indexes: readonly number[]; root: number }> {
+    return group.root === root ? { ...group, indexes: [...group.indexes, index] } : group;
+  }
+
+  return appendGroupedRootIndex;
+}
+
+/**
  * Creates the index pairs inside one duplicate group.
  * @param indexes - File indexes in the group.
  * @returns Group-local index pairs.
@@ -271,7 +297,6 @@ export function createPairMatchMap(
 
   return new Map(entries);
 }
-
 /**
  * Creates unique strategy names in sorted order.
  * @param strategyExecutions - Successful strategy executions.
@@ -288,7 +313,6 @@ function createSortedStrategyNames(
 
   return sortedNames;
 }
-
 /**
  * Creates unique strategies from match metadata.
  * @param matchMetadata - Match metadata contributing to a group.
@@ -507,24 +531,21 @@ function toStrategyName(execution: Readonly<IStrategyExecution>): string {
 }
 
 /**
- * Updates the grouped-root collection with one additional index.
+ * Applies an immutable update across grouped-root entries.
  * @param groupedRoots - Existing grouped roots.
- * @param root - Duplicate-set root.
- * @param index - File index to append.
+ * @param updateGroup - Group update function.
  * @returns Updated grouped roots.
  */
-function updateGroupedRootIndexes(
+function updateGroupedRoots(
   groupedRoots: readonly Readonly<{ indexes: readonly number[]; root: number }>[],
-  root: number,
-  index: number
+  updateGroup: (
+    group: Readonly<{ indexes: readonly number[]; root: number }>
+  ) => Readonly<{ indexes: readonly number[]; root: number }>
 ): readonly Readonly<{ indexes: readonly number[]; root: number }>[] {
   let updatedRoots: readonly Readonly<{ indexes: readonly number[]; root: number }>[] = [];
 
   for (const group of groupedRoots) {
-    updatedRoots = [
-      ...updatedRoots,
-      group.root === root ? { ...group, indexes: [...group.indexes, index] } : group
-    ];
+    updatedRoots = [...updatedRoots, updateGroup(group)];
   }
 
   return updatedRoots;

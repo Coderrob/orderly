@@ -24,12 +24,21 @@ import type {
   IManifestService
 } from '../interfaces';
 
+import { createCommandContextBase, logAutoDiscoveredConfig } from './command-context.helpers';
 import {
   buildDedupeActionContext,
   handleReplacedDuplicates,
   handleSkippedDuplicates,
   type IDedupeActionContext
 } from './organize.command.helpers';
+
+interface IOrganizeCommandContext {
+  readonly config: OrderlyConfig;
+  readonly logger: Logger;
+  readonly organizer: FileOrganizer;
+  readonly scanner: FileScanner;
+  readonly targetDir: string;
+}
 
 /**
  * Handler for the organize command.
@@ -91,18 +100,14 @@ export class OrganizeHandler implements IOrganizeHandler {
     directory: string,
     options: Readonly<IOrganizeOptions>,
     context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
-  ): Readonly<{
-    config: OrderlyConfig;
-    logger: Logger;
-    organizer: FileOrganizer;
-    scanner: FileScanner;
-    targetDir: string;
-  }> {
-    const targetDir = context?.targetDir ?? this.directoryValidator.validate(directory);
-    const config = this.configService.loadWithOverrides(context?.configOptions ?? { ...options });
-    const logger = new Logger(config.logLevel);
-
-    this.logAutoDiscoveredConfig(logger, context?.autoDiscoveredConfig);
+  ): Readonly<IOrganizeCommandContext> {
+    const { config, logger, targetDir } = createCommandContextBase({
+      directory,
+      options,
+      context,
+      configService: this.configService,
+      directoryValidator: this.directoryValidator
+    });
     return {
       config,
       logger,
@@ -118,9 +123,7 @@ export class OrganizeHandler implements IOrganizeHandler {
    * @param autoDiscoveredConfig - Auto-discovered config path.
    */
   private logAutoDiscoveredConfig(logger: Readonly<Logger>, autoDiscoveredConfig?: string): void {
-    if (autoDiscoveredConfig) {
-      logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
-    }
+    logAutoDiscoveredConfig(logger, autoDiscoveredConfig);
   }
 
   /**

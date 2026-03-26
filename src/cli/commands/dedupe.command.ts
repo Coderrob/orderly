@@ -22,9 +22,11 @@ import type {
   ICommandResult
 } from '../interfaces';
 
+import { createMappedCommandContextBase, logAutoDiscoveredConfig } from './command-context.helpers';
 import {
   createDedupeConfigOverrides,
   createReportWrites,
+  normalizeDedupeCommandOptions,
   getOriginalPath,
   resolveDedupeConfig,
   resolveQuarantinePath,
@@ -33,6 +35,7 @@ import {
   toDeleteError,
   validateReplaceSafety,
   type IDedupeCommandContext,
+  type IDedupeCommandInput,
   type IDeleteSafetyContext
 } from './dedupe.command.helpers';
 
@@ -93,47 +96,16 @@ export class DedupeHandler implements IDedupeHandler {
     options: Readonly<IDedupeCommandOptions>,
     context?: Readonly<IAutoConfigContext<IDedupeCommandOptions>>
   ): Readonly<IDedupeCommandContext & { readonly scanner: FileScanner }> {
-    const commandOptions = this.resolveCommandOptions(options, context);
-    const targetDir = this.resolveTargetDir(directory, context);
-    const config = this.loadCommandConfig(commandOptions);
-    const logger = new Logger(config.logLevel);
-    this.logAutoDiscoveredConfig(logger, context?.autoDiscoveredConfig);
-    return this.buildCommandContext(config, commandOptions, logger, targetDir);
-  }
-
-  /**
-   * Resolves the active command options.
-   * @param options - Parsed command options.
-   * @param context - Optional auto-config context.
-   * @returns Effective command options.
-   */
-  private resolveCommandOptions(
-    options: Readonly<IDedupeCommandOptions>,
-    context?: Readonly<IAutoConfigContext<IDedupeCommandOptions>>
-  ): Readonly<IDedupeCommandOptions> {
-    return context?.configOptions ?? { ...options };
-  }
-
-  /**
-   * Resolves the validated target directory.
-   * @param directory - Requested directory.
-   * @param context - Optional auto-config context.
-   * @returns Target directory.
-   */
-  private resolveTargetDir(
-    directory: string,
-    context?: Readonly<IAutoConfigContext<IDedupeCommandOptions>>
-  ): string {
-    return context?.targetDir ?? this.directoryValidator.validate(directory);
-  }
-
-  /**
-   * Loads command config with overrides applied.
-   * @param options - Effective command options.
-   * @returns Loaded config.
-   */
-  private loadCommandConfig(options: Readonly<IDedupeCommandOptions>): OrderlyConfig {
-    return this.configService.loadWithOverrides(createDedupeConfigOverrides(options));
+    const commandOptions = normalizeDedupeCommandOptions(context?.configOptions ?? { ...options });
+    const { config, configOptions, logger, targetDir } = createMappedCommandContextBase({
+      directory,
+      options: commandOptions,
+      context: this.normalizeContext(context),
+      configService: this.configService,
+      directoryValidator: this.directoryValidator,
+      toConfigOverrides: createDedupeConfigOverrides
+    });
+    return this.buildCommandContext(config, configOptions, logger, targetDir);
   }
 
   /**
@@ -146,7 +118,7 @@ export class DedupeHandler implements IDedupeHandler {
    */
   private buildCommandContext(
     config: Readonly<OrderlyConfig>,
-    options: Readonly<IDedupeCommandOptions>,
+    options: Readonly<IDedupeCommandInput>,
     logger: Readonly<Logger>,
     targetDir: string
   ): Readonly<IDedupeCommandContext & { readonly scanner: FileScanner }> {
@@ -159,14 +131,34 @@ export class DedupeHandler implements IDedupeHandler {
   }
 
   /**
+   * Normalizes auto-config context into typed dedupe command input.
+   * @param context - Optional auto-config context.
+   * @returns Context with normalized command input.
+   */
+  private normalizeContext(context?: Readonly<IAutoConfigContext<IDedupeCommandOptions>>):
+    | Readonly<{
+        readonly autoDiscoveredConfig?: string;
+        readonly configOptions: Readonly<IDedupeCommandInput>;
+        readonly targetDir: string;
+      }>
+    | undefined {
+    if (!context) {
+      return undefined;
+    }
+
+    return {
+      ...context,
+      configOptions: normalizeDedupeCommandOptions(context.configOptions)
+    };
+  }
+
+  /**
    * Logs any auto-discovered config path.
    * @param logger - Logger instance.
    * @param autoDiscoveredConfig - Auto-discovered config path.
    */
   private logAutoDiscoveredConfig(logger: Readonly<Logger>, autoDiscoveredConfig?: string): void {
-    if (autoDiscoveredConfig) {
-      logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
-    }
+    logAutoDiscoveredConfig(logger, autoDiscoveredConfig);
   }
 
   /**

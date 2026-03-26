@@ -16,6 +16,8 @@ import type {
   IScanOptions
 } from '../interfaces';
 
+import { createCommandContextBase, logAutoDiscoveredConfig } from './command-context.helpers';
+
 const FORMAT_CSV = 'csv';
 const FORMAT_JSON = 'json';
 const FORMAT_TABLE = 'table';
@@ -76,11 +78,13 @@ export class ScanHandler implements IScanHandler {
     options: Readonly<IScanOptions>,
     context?: Readonly<IAutoConfigContext<IScanOptions>>
   ): Readonly<{ scanner: FileScanner; targetDir: string }> {
-    const targetDir = context?.targetDir ?? this.directoryValidator.validate(directory);
-    const config = this.configService.loadWithOverrides(context?.configOptions ?? { ...options });
-    const logger = new Logger(config.logLevel);
-
-    this.logAutoDiscoveredConfig(logger, context?.autoDiscoveredConfig);
+    const { config, logger, targetDir } = createCommandContextBase({
+      directory,
+      options,
+      context,
+      configService: this.configService,
+      directoryValidator: this.directoryValidator
+    });
     return { scanner: new FileScanner(config, logger), targetDir };
   }
 
@@ -90,9 +94,7 @@ export class ScanHandler implements IScanHandler {
    * @param autoDiscoveredConfig - Auto-discovered config path.
    */
   private logAutoDiscoveredConfig(logger: Readonly<Logger>, autoDiscoveredConfig?: string): void {
-    if (autoDiscoveredConfig) {
-      logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
-    }
+    logAutoDiscoveredConfig(logger, autoDiscoveredConfig);
   }
 
   /**

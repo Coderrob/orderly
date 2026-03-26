@@ -2,6 +2,8 @@ import { IScannedFile } from '../../scanner/interfaces';
 import { IDedupeStrategy, IMetadataExtractor } from '../interfaces';
 import { MetadataExtractor } from '../metadata';
 
+import { serializeKeyParts } from './strategy-helpers';
+
 const FILE_PROPERTIES_PRIORITY = 30;
 
 /**
@@ -64,13 +66,11 @@ export class FilePropertiesStrategy implements IDedupeStrategy {
       mimeType?: string;
     }>
   ): string {
-    const createdPart = properties.createdAt ? [`created:${properties.createdAt.getTime()}`] : [];
-    const modifiedPart = properties.modifiedAt
-      ? [`modified:${properties.modifiedAt.getTime()}`]
-      : [];
-    const mimePart = properties.mimeType ? [`mime:${properties.mimeType}`] : [];
-    const sizePart = [`size:${file.size}`];
-
-    return [...createdPart, ...modifiedPart, ...mimePart, ...sizePart].join('|');
+    return serializeKeyParts([
+      { name: 'created', value: properties.createdAt?.getTime(), optional: true },
+      { name: 'modified', value: properties.modifiedAt?.getTime(), optional: true },
+      { name: 'mime', value: properties.mimeType, optional: true },
+      { name: 'size', value: file.size }
+    ]);
   }
 }

@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 
+import { version } from '../../package.json';
 import { EmptyDirectoryCleaner } from '../cleaner';
 import { DedupeReportWriter } from '../dedupe';
 
@@ -43,7 +44,7 @@ function createOrganizeHandler(services: Readonly<IRootServices>): OrganizeHandl
  * @returns Program instance.
  */
 function createProgram(): Command {
-  return new Command().name('orderly').description(CLI_CONSTANTS.TOOL_DESCRIPTION).version('1.0.0');
+  return new Command().name('orderly').description(CLI_CONSTANTS.TOOL_DESCRIPTION).version(version);
 }
 
 /**

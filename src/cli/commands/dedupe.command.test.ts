@@ -7,9 +7,12 @@ import { DedupeStrategyFactory } from '../../dedupe/dedupe-factory';
 import {
   createDedupeConfigOverrides,
   createReportWrites,
+  DedupePreset,
   getDefaultReportPath,
+  normalizeDedupeCommandOptions,
   resolveAction,
   resolveDedupeConfig,
+  resolvePreset,
   resolveQuarantinePath,
   resolveStrategyPreset,
   shouldDeleteDuplicates,
@@ -372,8 +375,9 @@ describe('DedupeHandler', () => {
   });
 
   it('should return undefined for unsupported presets and actions through helpers', () => {
-    expect(resolveStrategyPreset('unknown')).toBeUndefined();
+    expect(resolveStrategyPreset(undefined)).toBeUndefined();
     expect(resolveAction('unknown')).toBeUndefined();
+    expect(resolvePreset('unknown')).toBeUndefined();
   });
 
   it('should fall back to default report action and strategy when no config is present', () => {
@@ -410,7 +414,8 @@ describe('DedupeHandler', () => {
   it('should build config overrides through the helper', () => {
     const result = createDedupeConfigOverrides({
       config: '/tmp/config.yml',
-      action: 'replace',
+      action: DedupeAction.REPLACE,
+      confirmReplace: false,
       dryRun: true,
       logLevel: 'debug'
     });
@@ -422,6 +427,30 @@ describe('DedupeHandler', () => {
       dryRun: true,
       logLevel: 'debug'
     });
+  });
+
+  it('should normalize raw dedupe command options into typed command input', () => {
+    const result = normalizeDedupeCommandOptions({
+      action: 'replace',
+      confirmReplace: undefined,
+      dryRun: true,
+      preset: 'media',
+      reportJson: '/tmp/report.json'
+    });
+
+    expect(result).toEqual({
+      action: DedupeAction.REPLACE,
+      confirmReplace: false,
+      dryRun: true,
+      preset: DedupePreset.MEDIA,
+      reportJson: '/tmp/report.json'
+    });
+  });
+
+  it('should resolve the explicit preset through the helper', () => {
+    const preset = resolvePreset('safe');
+
+    expect(preset).toBe(DedupePreset.SAFE);
   });
 
   it('should return false from the delete gate for non-replace and dry-run cases', () => {

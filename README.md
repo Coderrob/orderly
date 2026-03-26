@@ -472,6 +472,12 @@ npm run build
 npm run dev -- files organize ./test-folder --dry-run
 ```
 
+When running commands through `npm run dev`, pass CLI arguments after `--` so npm forwards them to Orderly (especially flags like `-h`/`--help`).
+
+```bash
+npm run dev -- files dedupe --help
+```
+
 ### Testing
 
 ```bash
