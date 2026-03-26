@@ -32,7 +32,7 @@ describe('RevertHandler', () => {
   });
 
   it('should revert successful manifest entries', async () => {
-    jest.mocked(FileSystemUtils.hasPath).mockReturnValue(true);
+    jest.mocked(FileSystemUtils.hasPath).mockReturnValueOnce(true).mockReturnValueOnce(false);
 
     const result = await handler.execute({ manifest: '/root/orderly-manifest.json' });
 
@@ -81,7 +81,7 @@ describe('RevertHandler', () => {
   });
 
   it('should count failures when a rename throws', () => {
-    jest.mocked(FileSystemUtils.hasPath).mockReturnValue(true);
+    jest.mocked(FileSystemUtils.hasPath).mockReturnValueOnce(true).mockReturnValueOnce(false);
     jest.mocked(FileSystemUtils.renameSync).mockImplementation(() => {
       throw new Error('rename failed');
     });
@@ -121,7 +121,7 @@ describe('RevertHandler', () => {
   });
 
   it('should return a failed command result when a revert operation fails during execution', async () => {
-    jest.mocked(FileSystemUtils.hasPath).mockReturnValue(true);
+    jest.mocked(FileSystemUtils.hasPath).mockReturnValueOnce(true).mockReturnValueOnce(false);
     jest.mocked(FileSystemUtils.renameSync).mockImplementation(() => {
       throw new Error('rename failed');
     });
@@ -131,5 +131,20 @@ describe('RevertHandler', () => {
     expect(result.success).toBe(false);
     expect(result.exitCode).toBe(1);
     expect(result.message).toContain('failed 1');
+  });
+
+  it('should skip revert when target path already exists', () => {
+    jest.mocked(FileSystemUtils.hasPath).mockReturnValueOnce(true).mockReturnValueOnce(true);
+
+    const result = (handler as any).revertEntry(
+      {
+        status: 'success',
+        operation: { originalPath: '/source/file.txt', newPath: '/target/file.txt' }
+      },
+      { dryRun: false }
+    );
+
+    expect(result).toEqual({ reverted: 0, skipped: 1, failed: 0 });
+    expect(FileSystemUtils.renameSync).not.toHaveBeenCalled();
   });
 });

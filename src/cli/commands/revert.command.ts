@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 
 import { FileSystemUtils } from '../../utils/file-system-utils';
+import { isArray, isObject, isString } from '../../utils/guards';
 import { COMMAND_MESSAGES, ExitCode } from '../constants';
 import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
 import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
@@ -113,6 +114,10 @@ export class RevertHandler implements IRevertHandler {
       return { reverted: 1, skipped: 0, failed: 0 };
     }
 
+    if (FileSystemUtils.hasPath(targetPath)) {
+      return { reverted: 0, skipped: 1, failed: 0 };
+    }
+
     try {
       FileSystemUtils.mkdirSync(path.dirname(targetPath));
       FileSystemUtils.renameSync(sourcePath, targetPath);
@@ -124,19 +129,6 @@ export class RevertHandler implements IRevertHandler {
 }
 
 /**
- * Appends one manifest entry while iterating from right to left.
- * @param reversedEntries - Accumulated reversed entries.
- * @param entry - Entry being appended.
- * @returns Updated reversed entries.
- */
-function appendReversedEntry(
-  reversedEntries: readonly IManifestEntryLike[],
-  entry: Readonly<IManifestEntryLike>
-): readonly IManifestEntryLike[] {
-  return [...reversedEntries, entry];
-}
-
-/**
  * Returns whether an object record exposes an entries array.
  * @param value - Record under inspection.
  * @returns True when the entries property is an array.
@@ -144,7 +136,7 @@ function appendReversedEntry(
 function hasEntriesArray(
   value: Readonly<Record<string, unknown>>
 ): value is Readonly<{ entries: unknown[] }> & Readonly<Record<string, unknown>> {
-  return Array.isArray(value.entries);
+  return isArray(value.entries);
 }
 
 /**
@@ -155,14 +147,12 @@ function hasEntriesArray(
 function hasManifestOperation(
   value: unknown
 ): value is Readonly<{ operation: Readonly<{ newPath: string; originalPath: string }> }> {
-  if (!isObjectRecord(value) || !hasOperationRecord(value)) {
+  if (!isObject(value) || !hasOperationRecord(value)) {
     return false;
   }
 
   const operation = value.operation;
-  return (
-    isObjectRecord(operation) && hasNewPathString(operation) && hasOriginalPathString(operation)
-  );
+  return isObject(operation) && hasNewPathString(operation) && hasOriginalPathString(operation);
 }
 
 /**
@@ -173,7 +163,7 @@ function hasManifestOperation(
 function hasNewPathString(
   value: Readonly<Record<string, unknown>>
 ): value is Readonly<{ newPath: string }> & Readonly<Record<string, unknown>> {
-  return typeof value.newPath === 'string';
+  return isString(value.newPath);
 }
 
 /**
@@ -184,7 +174,7 @@ function hasNewPathString(
 function hasOperationRecord(
   value: Readonly<Record<string, unknown>>
 ): value is Readonly<{ operation: Record<string, unknown> }> & Readonly<Record<string, unknown>> {
-  return isObjectRecord(value.operation);
+  return isObject(value.operation);
 }
 
 /**
@@ -195,7 +185,7 @@ function hasOperationRecord(
 function hasOriginalPathString(
   value: Readonly<Record<string, unknown>>
 ): value is Readonly<{ originalPath: string }> & Readonly<Record<string, unknown>> {
-  return typeof value.originalPath === 'string';
+  return isString(value.originalPath);
 }
 
 /**
@@ -206,7 +196,7 @@ function hasOriginalPathString(
 function hasStatusString(
   value: Readonly<Record<string, unknown>>
 ): value is Readonly<{ status: string }> & Readonly<Record<string, unknown>> {
-  return typeof value.status === 'string';
+  return isString(value.status);
 }
 
 /**
@@ -215,7 +205,7 @@ function hasStatusString(
  * @returns True when the entry exposes status and operation paths.
  */
 function isManifestEntryLike(value: unknown): value is IManifestEntryLike {
-  return isObjectRecord(value) && hasStatusString(value) && hasManifestOperation(value);
+  return isObject(value) && hasStatusString(value) && hasManifestOperation(value);
 }
 
 /**
@@ -224,18 +214,7 @@ function isManifestEntryLike(value: unknown): value is IManifestEntryLike {
  * @returns True when the value exposes manifest entries.
  */
 function isManifestLike(value: unknown): value is IManifestLike {
-  return (
-    isObjectRecord(value) && hasEntriesArray(value) && value.entries.every(isManifestEntryLike)
-  );
-}
-
-/**
- * Returns whether an unknown value is a plain object record.
- * @param value - Value under inspection.
- * @returns True when the value is a non-null object.
- */
-function isObjectRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return isObject(value) && hasEntriesArray(value) && value.entries.every(isManifestEntryLike);
 }
 
 /**
@@ -262,5 +241,20 @@ function parseManifestJson(manifestContent: string): unknown {
  * @returns Reversed entries.
  */
 function reverseEntries(entries: readonly IManifestEntryLike[]): readonly IManifestEntryLike[] {
-  return entries.reduceRight<readonly IManifestEntryLike[]>(appendReversedEntry, []);
+  return Array.from(entries, selectReversedEntry, entries);
+}
+
+/**
+ * Maps a forward index to its corresponding reversed entry.
+ * @param this - Source entries used for index mapping.
+ * @param _entry - Current entry from the forward iteration.
+ * @param index - Forward index in the source array.
+ * @returns Entry from the mirrored index.
+ */
+function selectReversedEntry(
+  this: readonly IManifestEntryLike[],
+  _entry: Readonly<IManifestEntryLike>,
+  index: number
+): IManifestEntryLike {
+  return this[this.length - 1 - index];
 }
