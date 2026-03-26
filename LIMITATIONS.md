@@ -1,397 +1,132 @@
-# Orderly - Known Limitations and Implementation Plans
+# Orderly Limitations
 
-This document outlines current limitations in Orderly and provides detailed implementation plans to address them.
+This file tracks current, known constraints in Orderly behavior.
 
-## Overview
+## Scope
 
-Orderly is a functional file organization tool, but several features are either not implemented or have behavioral constraints. This document serves as a roadmap for future enhancements.
-
----
-
-## Recently Implemented Features ✅
-
-### File Name Collision Handling
-
-**Status:** ✅ **Implemented** (as of PR #11)
-
-**Feature Description:**
-Orderly now includes configurable collision resolution strategies to handle files with identical names being organized to the same target folder.
-
-**Available Strategies:**
-
-1. **Skip Strategy** (`skip`)
-   - Skips files that would collide with existing files
-   - Logs warnings for skipped operations
-   - First file wins, subsequent files are not moved
-
-2. **Keep Both Strategy** (`keep-both`) - Default
-   - Renames colliding files using a configurable pattern
-   - Default pattern: `{name}-{n}{ext}` (e.g., `readme.txt`, `readme-1.txt`, `readme-2.txt`)
-   - Preserves all files with unique names
-   - Supports up to 100 rename attempts by default (configurable)
-
-3. **Replace Strategy** (`replace`)
-   - Replaces existing file with the new one
-   - Deletes the existing file before moving the new one
-   - Use with caution as data may be lost
-
-**Configuration:**
-
-```typescript
-interface OrderlyConfig {
-  // ... other fields
-  collisionResolution?: {
-    strategy: 'skip' | 'keep-both' | 'replace';
-    renamePattern?: string; // Default: '{name}-{n}{ext}'
-    maxAttempts?: number; // Default: 100
-  };
-}
-```
-
-**Example Usage:**
-
-```yaml
-# .orderly.yml
-collisionResolution:
-  strategy: keep-both
-  renamePattern: '{name} ({n}){ext}' # Optional custom pattern
-  maxAttempts: 50 # Optional max rename attempts
-```
-
-**Implementation Details:**
-
-- Collision detection happens during operation execution in `OperationExecutor`
-- Rename pattern supports placeholders: `{name}`, `{n}`, `{ext}`
-- Falls back to timestamp-based naming if max attempts exceeded
-- Proper logging for all collision scenarios
-
-**Future Enhancements:**
-
-Potential improvements for future releases:
-
-- Interactive mode (`ask` strategy) to prompt user for each collision
-- Early collision detection in `OperationPlanner` phase
-- Collision preview before execution
-
----
+The items below focus on user-facing runtime behavior and engineering constraints that are not fully solved yet.
 
 ## Current Limitations
 
-### 1. Custom Output Directory ⚠️ **Medium Priority**
+### 1) Scan depth is always recursive
 
-**Status:** ✅ **Implemented**
+Status: Open
 
-Custom output directory support has been added, allowing files to be organized to a different location than the source directory.
+Current behavior:
 
-**Configuration:**
+- Scanning traverses nested directories recursively.
+- There is no first-class non-recursive mode in CLI commands.
+- There is no max-depth option in scan/organize/watch.
 
-```typescript
-interface OrderlyConfig {
-  targetDirectory?: string; // Absolute or relative path
-}
-```
+Impact:
 
-**CLI Usage:**
+- Larger trees may increase runtime and memory use.
+- Users cannot easily limit work to root-level files only.
 
-```bash
-orderly organize --output /path/to/output
-orderly organize -o /custom/directory
-```
+Potential direction:
 
-**Example Usage:**
+- Add scanning options for recursive false and maxDepth.
 
-```yaml
-# .orderly.yml
-targetDirectory: /output
-```
+### 2) No extension pre-filter during discovery
 
-```bash
-# Before (default behavior)
-/source/file.txt      →  /source/documents/file.txt
-/source/photo.jpg     →  /source/images/photo.jpg
+Status: Open
 
-# After (with --output /organized)
-/source/file.txt      →  /organized/documents/file.txt
-/source/photo.jpg     →  /organized/images/photo.jpg
-```
+Current behavior:
 
-See the implementation in:
+- File discovery gathers all files first.
+- Categorization determines how files are handled afterward.
+- There is no dedicated includeExtensions or excludeExtensions scan filter.
 
-- `src/config/types.ts` - Type definitions
-- `src/organizer/operation-planner.ts` - Path resolution logic
-- `src/cli/cli.service.ts` - CLI option handling
+Impact:
 
----
+- More files are loaded and evaluated than necessary in mixed-content trees.
 
-### 2. Non-Recursive Scanning ℹ️ **Low Priority**
+Potential direction:
 
-**Current Behavior:**
-The file scanner always scans recursively using the glob pattern `**/*`, finding all files in all subdirectories. There's no option to scan only the root level.
+- Add configurable scan-time include/exclude extension filters.
 
-**Impact:**
+### 3) Watch mode is polling-based only
 
-- Cannot limit organization to root directory only
-- May scan unnecessary deep directory structures
-- Performance impact on very large directory trees
+Status: Open
 
-**Implementation Plan:**
+Current behavior:
 
-#### Phase 1: Configuration
+- Watch runs organize cycles on a polling interval.
+- No native file-system event mode is available.
 
-1. **Add scanning options to `OrderlyConfig`**
+Impact:
 
-   ```typescript
-   interface OrderlyConfig {
-     // ... existing fields
-     scanning?: {
-       recursive?: boolean; // Default: true
-       maxDepth?: number; // Default: unlimited
-       followSymlinks?: boolean; // Default: false
-     };
-   }
-   ```
+- Polling can introduce delay and extra repeated scans.
+- Resource usage may be higher than event-driven watch on large trees.
 
-2. **Add CLI options**
+Potential direction:
 
-   ```bash
-   orderly scan --no-recursive
-   orderly scan --max-depth 2
-   ```
+- Add optional FS-event watch mode while keeping polling as fallback.
 
-#### Phase 2: Update FileScanner
+### 4) Revert is manifest-based and conservative
 
-1. **Modify `findFiles` method**
+Status: Partially Mitigated
 
-   ```typescript
-   private async findFiles(directory: string): Promise<string[]> {
-     const recursive = this.config.scanning?.recursive ?? true;
-     const maxDepth = this.config.scanning?.maxDepth;
+Current behavior:
 
-     let pattern: string;
-     if (!recursive) {
-       pattern = this.config.includeHidden ? '*' : '[!.]*';
-     } else if (maxDepth) {
-       // Build depth-limited pattern
-       pattern = this.buildDepthPattern(maxDepth);
-     } else {
-       pattern = this.config.includeHidden ? '**/*' : '**/[!.]*';
-     }
+- Revert only processes entries marked successful in the manifest.
+- Revert skips when source is missing.
+- Revert skips when destination already exists (to avoid overwrite).
+- There is no force-overwrite option.
 
-     return glob(pattern, {
-       cwd: directory,
-       nodir: true,
-       absolute: false,
-       ignore: this.config.excludePatterns
-     });
-   }
-   ```
+Impact:
 
-2. **Depth limiting helper**
+- Conflicting destinations require manual intervention.
+- Partial restore outcomes are possible and expected in real-world cleanup scenarios.
 
-   ```typescript
-   private buildDepthPattern(maxDepth: number): string {
-     const segments = Array(maxDepth).fill('*').join('/');
-     return this.config.includeHidden ? segments : segments.replace(/\*/g, '[!.]*');
-   }
-   ```
+Potential direction:
 
-#### Phase 3: Testing
+- Add explicit force mode with strong confirmation and detailed reporting.
 
-- Test non-recursive scanning
-- Test depth-limited scanning (1, 2, 3 levels)
-- Performance benchmarks for large directory trees
-- Edge cases: symlinks, circular references
+### 5) No transactional rollback across a full run
 
-**Complexity:** Low
-**Dependencies:** None
+Status: Open
 
----
+Current behavior:
 
-### 3. Extension-Based Filtering During Scan 📊 **Low Priority**
+- Operations are applied per file.
+- Failures are reported, but there is no all-or-nothing transaction boundary.
 
-**Current Behavior:**
-The scanner finds all files regardless of extension. Filtering happens during organization through category definitions. This means:
+Impact:
 
-- All files are scanned and processed
-- Memory overhead for files that won't be organized
-- No way to scan only specific file types
+- Mixed success/failure outcomes can leave partially applied state.
 
-**Impact:**
+Potential direction:
 
-- Performance impact when scanning directories with many file types
-- Cannot quickly scan for specific extensions
-- No pre-filtering before heavy operations (hashing, metadata extraction)
+- Add optional staged execution with best-effort rollback semantics.
 
-**Implementation Plan:**
+### 6) Cross-device move semantics depend on platform
 
-#### Phase 1: Configuration
+Status: Open
 
-1. **Add filter options to scanning config**
+Current behavior:
 
-   ```typescript
-   interface OrderlyConfig {
-     scanning?: {
-       // ... existing options
-       includeExtensions?: string[]; // Only scan these extensions
-       excludeExtensions?: string[]; // Skip these extensions
-     };
-   }
-   ```
+- Move/rename behavior relies on platform file system semantics.
+- Cross-device scenarios may fail depending on environment and operation path.
 
-2. **CLI options**
+Impact:
 
-   ```bash
-   orderly scan --include ".jpg,.png,.gif"
-   orderly scan --exclude ".tmp,.log"
-   ```
+- Some moves may fail in containerized, network, or mounted-drive setups.
 
-#### Phase 2: Implementation Options
+Potential direction:
 
-**Option A: Glob Pattern Filtering (Recommended)**
+- Add fallback copy+verify+delete flow for cross-device moves.
 
-- Modify glob patterns to include/exclude extensions
-- Most efficient - filtering at file system level
-- Example: `**/*.{jpg,png,gif}` for inclusion
+## Out of Date Items Removed
 
-**Option B: Post-Scan Filtering**
+This document previously listed several items as limitations that are now implemented, including custom output directory support. Those stale sections have been removed.
 
-- Filter results after glob returns
-- Less efficient but simpler to implement
-- Good for complex filter logic
+## Related Docs
 
-**Recommended Implementation (Option A):**
+- README.md
+- AGENTS.md
+- CHANGELOG.md
+- **tests**/README.md
 
-```typescript
-private async findFiles(directory: string): Promise<string[]> {
-  const basePattern = this.buildBasePattern();
-  const extensionPattern = this.buildExtensionPattern();
-
-  return glob(extensionPattern || basePattern, {
-    cwd: directory,
-    nodir: true,
-    absolute: false,
-    ignore: this.buildIgnorePatterns()
-  });
-}
-
-private buildExtensionPattern(): string | null {
-  const { includeExtensions, excludeExtensions } = this.config.scanning || {};
-
-  if (includeExtensions?.length) {
-    const exts = includeExtensions.map(e => e.replace(/^\./, '')).join(',');
-    return `**/*.{${exts}}`;
-  }
-
-  // Exclusion handled via ignore patterns
-  return null;
-}
-
-private buildIgnorePatterns(): string[] {
-  const patterns = [...this.config.excludePatterns];
-  const { excludeExtensions } = this.config.scanning || {};
-
-  if (excludeExtensions?.length) {
-    excludeExtensions.forEach(ext => {
-      patterns.push(`**/*${ext.startsWith('.') ? ext : '.' + ext}`);
-    });
-  }
-
-  return patterns;
-}
-```
-
-#### Phase 3: Relationship with Categories
-
-1. **Clarify distinction**
-   - Scanning filters: What files to find
-   - Categories: How to organize found files
-
-2. **Validation**
-   - Warn if includeExtensions doesn't overlap with any category
-   - Suggest removing excludeExtensions that match no categories
-
-#### Phase 4: Performance Optimization
-
-- Benchmark scanning with vs without filters
-- Test on directories with 10k+ files
-- Compare glob pattern vs post-filter performance
-
-**Complexity:** Low-Medium
-**Dependencies:** None
-
----
-
-## Implementation Priority & Roadmap
-
-### Medium Priority (Future Release)
-
-1. **Custom Output Directory**
-   - Enables important use cases
-   - Good UX improvement
-
-### Low Priority (As Needed)
-
-2. **Non-Recursive Scanning**
-   - Nice to have
-   - Workaround available (use excludePatterns)
-
-3. **Extension-Based Filtering**
-   - Performance optimization
-   - Categories provide similar functionality
-
----
-
-## Development Guidelines
-
-### Before Implementation
-
-- [ ] Review and update this plan based on new insights
-- [ ] Create GitHub issues for each feature
-- [ ] Get user feedback on priority and approach
-- [ ] Review AGENTS.md for quality standards
-
-### During Implementation
-
-- [ ] Write tests first (TDD approach)
-- [ ] Update type definitions
-- [ ] Add JSDoc documentation
-- [ ] Follow existing code patterns
-- [ ] Maintain >95% test coverage
-
-### After Implementation
-
-- [ ] Update README.md with new features
-- [ ] Add migration guide if breaking changes
-- [ ] Update CHANGELOG.md
-- [ ] Run full verification: `npm run verify`
-- [ ] Manual testing of new features
-- [ ] Update this document to mark completed
-
----
-
-## Related Documentation
-
-- [AGENTS.md](./AGENTS.md) - Development standards and expectations
-- [README.md](./README.md) - User-facing documentation
-- [CHANGELOG.md](./CHANGELOG.md) - Version history
-- [**tests**/README.md](./__tests__/README.md) - Testing guide
-- [**tests**/CONFIG_ISSUE.md](./__tests__/CONFIG_ISSUE.md) - Configuration structure notes
-
----
-
-## Contributing
-
-If you'd like to contribute to implementing any of these features:
-
-1. Comment on the related GitHub issue
-2. Follow the implementation plan outlined above
-3. Ensure all quality checks pass
-4. Submit a PR with comprehensive tests
-5. Update relevant documentation
-
-For questions or discussions, please open an issue on GitHub.
-
----
-
-_Last Updated: February 2, 2026_
-_Document Version: 1.0_
+Last updated: March 25, 2026
+Document version: 2.0

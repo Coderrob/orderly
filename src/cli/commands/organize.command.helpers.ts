@@ -1,7 +1,10 @@
+import * as path from 'node:path';
+
 import { DedupeAction } from '../../dedupe';
 import type { IDedupeResult } from '../../dedupe/types';
 import { Logger } from '../../logger/logger';
 import type { IScannedFile } from '../../scanner/interfaces';
+import { Clock } from '../../utils/clock';
 import { FileSystemUtils } from '../../utils/file-system-utils';
 
 export interface IDedupeActionContext {
@@ -12,6 +15,7 @@ export interface IDedupeActionContext {
     skipped: readonly IScannedFile[];
   }>;
   readonly deleteDuplicates: boolean;
+  readonly quarantineDir?: string;
   readonly files: readonly IScannedFile[];
   readonly filteredFiles: readonly IScannedFile[];
   readonly logger: Readonly<Logger>;
@@ -26,7 +30,7 @@ export interface IDedupeContextBuildParams {
   readonly dedupeResult: Readonly<IDedupeResult>;
   readonly files: readonly IScannedFile[];
   readonly logger: Readonly<Logger>;
-  readonly options: Readonly<{ deleteDuplicates: boolean }>;
+  readonly options: Readonly<{ deleteDuplicates: boolean; quarantineDir?: string }>;
 }
 
 /**
@@ -42,6 +46,7 @@ export function buildDedupeActionContext(
     dedupeGroupCount: params.dedupeResult.groups.length,
     dedupeOutcome: params.dedupeOutcome,
     deleteDuplicates: params.options.deleteDuplicates,
+    quarantineDir: params.options.quarantineDir,
     files: params.files,
     filteredFiles: filterDuplicateFiles(
       params.files,
@@ -102,17 +107,23 @@ function filterDuplicateFiles(
 export function handleReplacedDuplicates(
   filteredFiles: readonly IScannedFile[],
   replacedFiles: readonly IScannedFile[],
-  options: Readonly<{ deleteDuplicates: boolean }>,
+  options: Readonly<{ deleteDuplicates: boolean; quarantineDir?: string }>,
   logger: Readonly<Logger>
 ): IScannedFile[] {
   if (options.deleteDuplicates) {
     for (const file of replacedFiles) {
-      FileSystemUtils.unlinkSync(file.originalPath);
+      if (options.quarantineDir) {
+        const destinationPath = resolveQuarantinePath(file.originalPath, options.quarantineDir);
+        FileSystemUtils.mkdirSync(path.dirname(destinationPath));
+        FileSystemUtils.renameSync(file.originalPath, destinationPath);
+      } else {
+        FileSystemUtils.unlinkSync(file.originalPath);
+      }
     }
   }
 
   logger.info(
-    `${options.deleteDuplicates ? 'Removed' : 'Would remove'} ${replacedFiles.length} duplicate files before organization`
+    `${options.deleteDuplicates ? (options.quarantineDir ? 'Quarantined' : 'Removed') : 'Would remove'} ${replacedFiles.length} duplicate files before organization`
   );
   return [...filteredFiles];
 }
@@ -155,4 +166,17 @@ function removeDuplicateFiles(
   }
 
   return [...uniqueFiles];
+}
+
+/**
+ * Resolves a unique quarantine destination path for organize dedupe replacement.
+ * @param filePath - Duplicate file path.
+ * @param quarantineDir - Quarantine directory.
+ * @returns Collision-safe quarantine destination path.
+ */
+function resolveQuarantinePath(filePath: string, quarantineDir: string): string {
+  const destinationPath = path.join(quarantineDir, path.basename(filePath));
+  return FileSystemUtils.hasPath(destinationPath)
+    ? path.join(quarantineDir, `${Clock.nowMonotonicToken()}-${path.basename(filePath)}`)
+    : destinationPath;
 }

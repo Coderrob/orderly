@@ -175,6 +175,25 @@ describe('OperationExecutor', () => {
       expect(unlinkCall).toBeLessThan(renameCall);
     });
 
+    it('should skip deletion when replace collision disappears before unlinking', () => {
+      const config = {
+        ...DEFAULT_CONFIG,
+        collisionResolution: { strategy: CollisionResolutionStrategy.REPLACE }
+      };
+      const executorWithConfig = new OperationExecutor(loggerInstance, false, config);
+
+      mockFileSystemUtils.hasPath.mockReturnValueOnce(true).mockReturnValueOnce(false);
+
+      const result = executorWithConfig.execute(testOperations);
+
+      expect(result.successful).toBe(1);
+      expect(mockFileSystemUtils.unlinkSync).not.toHaveBeenCalled();
+      expect(mockFileSystemUtils.renameSync).toHaveBeenCalledWith(
+        '/source/file.txt',
+        '/target/file.txt'
+      );
+    });
+
     it('should fall back to keep-both when replace deletion fails', () => {
       const config = {
         ...DEFAULT_CONFIG,

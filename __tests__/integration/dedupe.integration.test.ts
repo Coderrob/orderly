@@ -380,7 +380,8 @@ describe('Dedupe Integration Tests', () => {
       // Act
       const result = await organizeHandler.execute(testDir, {
         dedupe: true,
-        dedupeAction: DedupeAction.REPLACE
+        dedupeAction: DedupeAction.REPLACE,
+        confirmReplace: true
       });
 
       // Assert

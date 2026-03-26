@@ -19,7 +19,14 @@ describe('createRootCommand', () => {
     const subcommandNames = filesCommand?.commands.map(command => command.name()) ?? [];
 
     expect(subcommandNames).toEqual(
-      expect.arrayContaining(['scan', 'organize', 'clean', 'dedupe'])
+      expect.arrayContaining(['scan', 'organize', 'clean', 'dedupe', 'revert', 'watch'])
     );
+  });
+
+  it('should register grouped config subcommands', () => {
+    const configCommand = createRootCommand().commands.find(command => command.name() === 'config');
+    const subcommandNames = configCommand?.commands.map(command => command.name()) ?? [];
+
+    expect(subcommandNames).toEqual(expect.arrayContaining(['init', 'validate']));
   });
 });

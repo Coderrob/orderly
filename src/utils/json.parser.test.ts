@@ -134,5 +134,15 @@ describe('JSON Parser', () => {
         error: expect.any(String)
       });
     });
+
+    it('should return null without warning when JSON root is not an object', () => {
+      const result = safeJsonParse('["a","b"]', mockLogger);
+
+      expect(result).toBeNull();
+      expect(mockLogger.error).toHaveBeenCalledWith('Failed to parse JSON string', {
+        error: 'Parsed JSON root is not an object'
+      });
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+    });
   });
 });

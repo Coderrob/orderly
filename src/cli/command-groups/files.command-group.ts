@@ -1,20 +1,29 @@
 import { Command } from 'commander';
 
 import { DedupeAction } from '../../dedupe';
-import type { ICleanHandler, IDedupeHandler, IOrganizeHandler, IScanHandler } from '../interfaces';
+import type {
+  ICleanHandler,
+  IDedupeHandler,
+  IOrganizeHandler,
+  IRevertHandler,
+  IScanHandler,
+  IWatchHandler
+} from '../interfaces';
 import {
   addAutoConfigOption,
   addConfigOption,
   addDirectoryArgument,
   addLogLevelOption
 } from '../options';
-import { createDirectoryCommandAction } from '../result/command-result-runner';
+import { createCommandAction, createDirectoryCommandAction } from '../result/command-result-runner';
 
 interface IFileCommandHandlers {
   readonly clean: Readonly<ICleanHandler>;
   readonly dedupe: Readonly<IDedupeHandler>;
   readonly organize: Readonly<IOrganizeHandler>;
+  readonly revert: Readonly<IRevertHandler>;
   readonly scan: Readonly<IScanHandler>;
+  readonly watch: Readonly<IWatchHandler>;
 }
 
 /**
@@ -72,6 +81,24 @@ function createOrganizeCommand(
 }
 
 /**
+ * Creates the revert command definition.
+ * @param parent - Parent command.
+ * @param handler - Revert handler.
+ * @returns Configured command.
+ */
+function createRevertCommand(
+  parent: Readonly<Command>,
+  handler: Readonly<IRevertHandler>
+): Command {
+  return parent
+    .command('revert')
+    .description('Revert file moves recorded in a manifest JSON file')
+    .requiredOption('-m, --manifest <path>', 'Path to orderly manifest JSON file')
+    .option('-d, --dry-run', 'Preview revert operations without moving files')
+    .action(createCommandAction(handler.execute.bind(handler)));
+}
+
+/**
  * Creates the scan command definition.
  * @param parent - Parent command.
  * @param handler - Scan handler.
@@ -84,6 +111,22 @@ function createScanCommand(parent: Readonly<Command>, handler: Readonly<IScanHan
       .description('Scan a directory and show what would be organized')
       .action(createDirectoryCommandAction(handler.execute.bind(handler))),
     'Directory to scan'
+  );
+}
+
+/**
+ * Creates the watch command definition.
+ * @param parent - Parent command.
+ * @param handler - Watch handler.
+ * @returns Configured command.
+ */
+function createWatchCommand(parent: Readonly<Command>, handler: Readonly<IWatchHandler>): Command {
+  return addDirectoryArgument(
+    parent
+      .command('watch')
+      .description('Continuously organize a directory on a polling interval')
+      .action(createDirectoryCommandAction(handler.execute.bind(handler))),
+    'Directory to watch'
   );
 }
 
@@ -110,6 +153,9 @@ function registerDedupeCommand(parent: Readonly<Command>, handler: Readonly<IDed
   addAutoConfigOption(addLogLevelOption(addConfigOption(command)));
   command.option('-d, --dry-run', 'Preview actions without deleting files');
   command.option('--action <action>', `Dedupe action (${Object.values(DedupeAction).join(', ')})`);
+  command.option('--preset <preset>', 'Strategy preset (fast, safe, exact, media)', 'safe');
+  command.option('--confirm-replace', 'Explicitly confirm destructive replace actions');
+  command.option('--quarantine-dir <path>', 'Move replaced files into a quarantine directory');
   command.option('--report-json <path>', 'Write JSON report to the provided path');
   command.option('--report-markdown <path>', 'Write Markdown report to the provided path');
 }
@@ -128,6 +174,8 @@ export function registerFilesCommandGroup(
   registerOrganizeCommand(filesCommand, handlers.organize);
   registerCleanCommand(filesCommand, handlers.clean);
   registerDedupeCommand(filesCommand, handlers.dedupe);
+  registerRevertCommand(filesCommand, handlers.revert);
+  registerWatchCommand(filesCommand, handlers.watch);
 }
 
 /**
@@ -149,6 +197,21 @@ function registerOrganizeCommand(
     '--dedupe-action <action>',
     `Duplicate action (${Object.values(DedupeAction).join(', ')})`
   );
+  command.option('--clean-empty-dirs', 'Remove empty directories after organization completes');
+  command.option('--confirm-replace', 'Explicitly confirm destructive dedupe replace actions');
+  command.option(
+    '--quarantine-dir <path>',
+    'Move replaced duplicate files into a quarantine directory'
+  );
+}
+
+/**
+ * Registers the revert command on a parent command.
+ * @param parent - Parent command.
+ * @param handler - Revert handler.
+ */
+function registerRevertCommand(parent: Readonly<Command>, handler: Readonly<IRevertHandler>): void {
+  createRevertCommand(parent, handler);
 }
 
 /**
@@ -157,5 +220,34 @@ function registerOrganizeCommand(
  * @param handler - Scan handler.
  */
 function registerScanCommand(parent: Readonly<Command>, handler: Readonly<IScanHandler>): void {
-  addAutoConfigOption(addLogLevelOption(addConfigOption(createScanCommand(parent, handler))));
+  const command = addAutoConfigOption(
+    addLogLevelOption(addConfigOption(createScanCommand(parent, handler)))
+  );
+  command.option('--format <format>', 'Output format (table, json, csv)', 'table');
+}
+
+/**
+ * Registers the watch command on a parent command.
+ * @param parent - Parent command.
+ * @param handler - Watch handler.
+ */
+function registerWatchCommand(parent: Readonly<Command>, handler: Readonly<IWatchHandler>): void {
+  const command = createWatchCommand(parent, handler);
+  addAutoConfigOption(addLogLevelOption(addConfigOption(command)));
+  command.option('-d, --dry-run', 'Preview changes without applying them');
+  command.option('--no-manifest', 'Skip manifest generation');
+  command.option('-o, --output <path>', 'Output directory for organized files');
+  command.option('--dedupe', 'Enable duplicate detection before organization');
+  command.option(
+    '--dedupe-action <action>',
+    `Duplicate action (${Object.values(DedupeAction).join(', ')})`
+  );
+  command.option('--clean-empty-dirs', 'Remove empty directories after organization completes');
+  command.option('--confirm-replace', 'Explicitly confirm destructive dedupe replace actions');
+  command.option(
+    '--quarantine-dir <path>',
+    'Move replaced duplicate files into a quarantine directory'
+  );
+  command.option('--interval <seconds>', 'Polling interval in seconds', '5');
+  command.option('--cycles <count>', 'Number of cycles before exiting; 0 means continuous', '0');
 }

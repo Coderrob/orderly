@@ -7,10 +7,13 @@
     "description": "Behavioral contract for D:\\orderly\\src\\cli\\index.ts",
     "exports": [
       "CleanHandler",
+      "ConfigValidateHandler",
       "DedupeHandler",
       "InitHandler",
       "OrganizeHandler",
+      "RevertHandler",
       "ScanHandler",
+      "WatchHandler",
       "ConfigService",
       "DirectoryValidator",
       "ManifestService",

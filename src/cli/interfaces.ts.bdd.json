@@ -12,6 +12,8 @@
       "ICommandHandler",
       "ICommandResult",
       "ICleanerService",
+      "IConfigValidateHandler",
+      "IConfigValidateOptions",
       "IConfigService",
       "IDedupeCommandOptions",
       "IDedupeHandler",
@@ -22,8 +24,12 @@
       "IManifestService",
       "IOrganizeHandler",
       "IOrganizeOptions",
+      "IRevertCommandOptions",
+      "IRevertHandler",
       "IScanHandler",
-      "IScanOptions"
+      "IScanOptions",
+      "IWatchCommandOptions",
+      "IWatchHandler"
     ]
   },
   "specifications": [

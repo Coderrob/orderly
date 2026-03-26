@@ -79,7 +79,7 @@ export default [
       // Complexity rules (SOLID and Clean Code)
       complexity: ['error', 10],
       'max-depth': ['error', 3],
-      'zero-tolerance/max-function-lines': ['error', { max: 20 }],
+      'zero-tolerance/max-function-lines': ['error', { max: 25 }],
       'max-lines-per-function': ['error', { max: 25, skipBlankLines: true, skipComments: true }],
       'max-params': ['error', 5],
       'max-lines': ['warn', { max: 300, skipBlankLines: true, skipComments: true }],

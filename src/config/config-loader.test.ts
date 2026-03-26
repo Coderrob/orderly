@@ -119,6 +119,18 @@ describe('ConfigLoader', () => {
       expect(result).toEqual(DEFAULT_CONFIG);
       expect(mockFileSystemUtils.hasPath).toHaveBeenCalled();
     });
+
+    it('should throw when parsing a discovered config fails', () => {
+      mockFileSystemUtils.hasPath.mockImplementation((filePath: string) =>
+        filePath.endsWith('.orderly.yml')
+      );
+      mockConfigParser.parse.mockReturnValue({
+        success: false,
+        error: new Error('parse failed')
+      } as any);
+
+      expect(() => ConfigLoader.load()).toThrow('parse failed');
+    });
   });
 
   describe('save', () => {
@@ -136,6 +148,17 @@ describe('ConfigLoader', () => {
 
       expect(mockConfigParser.stringify).toHaveBeenCalledWith(config, format);
       expect(mockFileSystemUtils.writeFileSync).toHaveBeenCalledWith(filePath, stringified);
+    });
+
+    it('should throw when stringifying config fails', () => {
+      mockConfigParser.stringify.mockReturnValue({
+        success: false,
+        error: new Error('stringify failed')
+      } as any);
+
+      expect(() => ConfigLoader.save(DEFAULT_CONFIG, '/config/test.json')).toThrow(
+        'stringify failed'
+      );
     });
   });
 

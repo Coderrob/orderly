@@ -46,6 +46,7 @@ describe('DedupeReportWriter', () => {
           {
             key: 'group-1',
             strategy: 'name',
+            strategies: ['name'],
             files: [
               {
                 originalPath: '/target/a.txt',
@@ -53,18 +54,35 @@ describe('DedupeReportWriter', () => {
                 extension: '.txt',
                 size: 1,
                 needsRename: false
+              },
+              {
+                originalPath: '/target/b.txt',
+                filename: 'b.txt',
+                extension: '.txt',
+                size: 1,
+                needsRename: false
               }
-            ]
+            ],
+            primary: {
+              originalPath: '/target/a.txt',
+              filename: 'a.txt',
+              extension: '.txt',
+              size: 1,
+              needsRename: false
+            }
           }
         ],
-        totalFiles: 1,
-        totalDuplicates: 1,
+        totalFiles: 2,
+        totalDuplicates: 2,
         strategiesUsed: ['name']
       },
       outputPath
     );
 
-    expect(fs.readFileSync(outputPath, 'utf8')).toContain('# Orderly Dedupe Report');
+    const markdown = fs.readFileSync(outputPath, 'utf8');
+    expect(markdown).toContain('# Orderly Dedupe Report');
+    expect(markdown).toContain('- Reclaimable bytes: 1');
+    expect(markdown).toContain('- Shared strategies: name');
   });
 
   it('should write Markdown fallback values when strategies or primary are missing', async () => {
@@ -97,5 +115,6 @@ describe('DedupeReportWriter', () => {
     const markdown = fs.readFileSync(outputPath, 'utf8');
     expect(markdown).toContain('- Strategies used: none');
     expect(markdown).toContain('- Primary: `n/a`');
+    expect(markdown).toContain('- Reclaimable bytes: 0');
   });
 });

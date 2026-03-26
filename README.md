@@ -1,238 +1,263 @@
-<p align="center">
-  <img
-    src="public/img/orderly-logo-small.png"
-    alt="Orderly logo"
-  />
-</p>
-
 # Orderly
 
-A configurable CLI tool that scans folders, categorizes and organizes files by type and context, enforces naming conventions (e.g., lowercase kebab case), moves and renames files, generates a manifest, and logs all actions for full auditability—ensuring a clean, consistent, and traceable directory structure.
-
----
-
-<!-- Primary Badges -->
-<div align="center">
-
-[![NPM Version](https://img.shields.io/npm/v/@coderrob/orderly?style=flat-square)](https://www.npmjs.com/package/@coderrob/orderly)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=flat-square)](LICENSE)
-[![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg?style=flat-square)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-
-<!-- Quality Badges -->
-
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
-[![Code Quality](https://img.shields.io/badge/code%20quality-A+-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
-
-<!-- Standards & Tools -->
-
-[![Code Style: Prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square&logo=prettier)](https://prettier.io/)
-[![Linter: ESLint](https://img.shields.io/badge/linter-ESLint-4B32C3.svg?style=flat-square&logo=eslint)](https://eslint.org/)
-[![Tested with Jest](https://img.shields.io/badge/tested_with-jest-99424f.svg?style=flat-square&logo=jest)](https://jestjs.io/)
-[![Commitizen Friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg?style=flat-square)](http://commitizen.github.io/cz-cli/)
-
-<!-- Metrics -->
-
-[![Code Duplication](https://img.shields.io/badge/duplication-%3C1%25-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
-[![Maintainability](https://img.shields.io/badge/maintainability-A-brightgreen.svg?style=flat-square)](https://github.com/Coderrob/orderly)
-[![Dependencies](https://img.shields.io/badge/dependencies-5-blue.svg?style=flat-square)](package.json)
-[![DevDependencies](https://img.shields.io/badge/devDependencies-19-blue.svg?style=flat-square)](package.json)
-
-<!-- Additional Badges -->
-
-[![GitHub Stars](https://img.shields.io/github/stars/Coderrob/orderly?style=flat-square)](https://github.com/Coderrob/orderly/stargazers)
-[![GitHub Issues](https://img.shields.io/github/issues/Coderrob/orderly?style=flat-square)](https://github.com/Coderrob/orderly/issues)
-[![GitHub Last Commit](https://img.shields.io/github/last-commit/Coderrob/orderly?style=flat-square)](https://github.com/Coderrob/orderly/commits/main)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](http://makeapullrequest.com)
-
-</div>
-
----
+A configurable CLI tool that scans folders, categorizes and organizes files by type and context, enforces naming conventions, detects duplicates, removes empty folders, generates manifests, and logs all actions for auditability.
 
 ## Features
 
-- 🔍 **Smart File Scanning**: Automatically scans directories and categorizes files by type
-- 📁 **File Organization**: Moves files into organized folders based on their type
-- ✏️ **Naming Convention Enforcement**: Automatically renames files to follow consistent naming patterns (kebab-case, snake_case, camelCase, or PascalCase)
-- 📋 **Manifest Generation**: Creates detailed JSON and Markdown manifests of all operations
-- 📝 **Comprehensive Logging**: Full audit trail of all actions with configurable log levels
-- 🎯 **Configurable Rules**: Customize file categories, patterns, and organization rules
-- 🔒 **Dry Run Mode**: Preview changes before applying them
-- 🎨 **Colorized Output**: Easy-to-read console output with colors
-- 🛡️ **Type Safety**: Built with TypeScript using strict mode and type-safe enums
-- ✅ **Production Ready**: comprehensive test suite, strict linting, and enforced quality gates
+- Smart file scanning with `table`, `json`, and `csv` output
+- File organization with category rules and naming conventions
+- Duplicate detection with standalone reports and safer replacement workflows
+- Empty-directory cleanup and post-organize cleanup support
+- Manifest generation with JSON and Markdown outputs
+- Manifest-based revert support for move operations
+- Config validation and starter config templates
+- Polling watch mode for repeated organization passes
+- Dry-run support across destructive workflows
+- Strict TypeScript, tests, linting, and quality gates
 
 ## Installation
 
 ```bash
-npm install -g orderly
+npm install -g @coderrob/orderly
 ```
 
-Or use directly with npx:
+Or use directly with `npx`:
 
 ```bash
-npx orderly files organize
+npx @coderrob/orderly files organize
 ```
 
 ## Quick Start
 
-1. **Initialize a configuration file**:
+1. Initialize a configuration file:
 
-   ```bash
-   orderly config init
-   ```
+```bash
+orderly config init --template downloads
+```
 
-2. **Scan a directory** to see what would be organized:
+2. Validate the resolved configuration:
 
-   ```bash
-   orderly files scan ./my-folder
-   ```
+```bash
+orderly config validate --directory ./my-folder
+```
 
-3. **Organize files** (dry run first):
+3. Scan a directory to preview the plan:
 
-   ```bash
-   orderly files organize ./my-folder --dry-run
-   ```
+```bash
+orderly files scan ./my-folder --format table
+```
 
-4. **Inspect duplicates** before changing files, if needed:
+4. Preview organization and cleanup:
 
-   ```bash
-   orderly files dedupe ./my-folder
-   ```
+```bash
+orderly files organize ./my-folder --dry-run --clean-empty-dirs
+```
 
-5. **Clean empty folders after organizing, if needed**:
+5. Review duplicates before changing files:
 
-   ```bash
-   orderly files clean ./my-folder --dry-run
-   ```
+```bash
+orderly files dedupe ./my-folder --preset safe --report-markdown ./.orderly/dedupe-report.md
+```
 
-6. **Apply the organization**:
+6. Apply organization:
 
-   ```bash
-   orderly files organize ./my-folder
-   ```
+```bash
+orderly files organize ./my-folder --clean-empty-dirs
+```
 
 ## Commands
 
 Canonical grouped commands:
 
 ```bash
+orderly config init
+orderly config validate
 orderly files scan [directory]
 orderly files organize [directory]
 orderly files dedupe [directory]
 orderly files clean [directory]
-orderly config init
-```
-
-### `orderly files organize [directory]`
-
-Organize files in the specified directory (defaults to current directory).
-
-**Options:**
-
-- `-c, --config <path>` - Path to config file
-- `-d, --dry-run` - Preview changes without applying them
-- `--no-manifest` - Skip manifest generation
-- `-l, --log-level <level>` - Set log level (debug, info, warn, error)
-- `-o, --output <path>` - Output directory for organized files
-- `--no-auto-config` - Disable auto-discovery of config files in target directory
-
-> **Note:** By default, Orderly will automatically use a config file if found in the target directory. It searches in this order and uses the first file it finds: `.orderly.yml`, `.orderly.yaml`, `.orderly.config.yaml`, `.orderly.config.json`, then `orderly.config.json`. Use `--no-auto-config` to disable this behavior and use only the default configuration or an explicitly specified config file.
-
-**Examples:**
-
-```bash
-# Organize current directory with dry run
-orderly files organize --dry-run
-
-# Organize specific directory with custom config
-orderly files organize ./downloads -c ./my-config.yml
-
-# Organize and output to a different location
-orderly files organize ./messy-folder -o ./organized-folder
-```
-
-### `orderly files scan [directory]`
-
-Scan a directory and display what would be organized without making changes.
-
-**Options:**
-
-- `-c, --config <path>` - Path to config file
-- `-l, --log-level <level>` - Set log level
-- `--no-auto-config` - Disable auto-discovery of config files in target directory
-
-> **Note:** By default, Orderly will automatically use a config file if found in the target directory. A message will be displayed when an auto-discovered config is used.
-
-**Example:**
-
-```bash
-orderly files scan ./downloads
-```
-
-### `orderly files clean [directory]`
-
-Remove empty folders beneath the target directory without removing the root directory itself.
-
-**Options:**
-
-- `--dry-run` - Preview directories that would be removed
-- `--include-hidden` - Allow deleting empty hidden directories
-- `--remove-orderly-dir` - Allow deleting an empty `.orderly` directory
-- `-l, --log-level <level>` - Set log level
-- `-c, --config <path>` - Path to config file
-
-**Examples:**
-
-```bash
-# Preview empty folder cleanup
-orderly files clean ./downloads --dry-run
-
-# Remove empty hidden folders too
-orderly files clean ./downloads --include-hidden
-```
-
-### `orderly files dedupe [directory]`
-
-Find duplicate files without running organization.
-
-**Options:**
-
-- `-c, --config <path>` - Path to config file
-- `-l, --log-level <level>` - Set log level
-- `-d, --dry-run` - Preview replacement behavior without deleting files
-- `--action <action>` - Dedupe action (`skip`, `report`, or `replace`)
-- `--report-json <path>` - Write a JSON dedupe report
-- `--report-markdown <path>` - Write a Markdown dedupe report
-- `--no-auto-config` - Disable auto-discovery of config files in target directory
-
-**Examples:**
-
-```bash
-# Generate default reports in .orderly/
-orderly files dedupe ./downloads
-
-# Replace duplicates after review
-orderly files dedupe ./downloads --action replace
+orderly files revert --manifest <path>
+orderly files watch [directory]
 ```
 
 ### `orderly config init`
 
 Initialize a new configuration file.
 
-**Options:**
+Options:
 
-- `-f, --format <format>` - Config file format (json or yaml, default: yaml)
+- `-f, --format <format>`: Config file format (`json`, `yaml`, or `yml`, default: `yaml`)
+- `-t, --template <template>`: Starter template (`downloads`, `media-library`, `developer-workspace`, or `photos-only`)
 
-**Example:**
+Examples:
 
 ```bash
-orderly config init --format json
+orderly config init
+orderly config init --format json --template developer-workspace
+```
+
+### `orderly config validate`
+
+Validate an existing configuration file or an auto-discovered config.
+
+Options:
+
+- `-c, --config <path>`: Path to config file
+- `-d, --directory <path>`: Directory to search for an auto-discovered config
+
+Examples:
+
+```bash
+orderly config validate --config ./orderly.config.json
+orderly config validate --directory ./downloads
+```
+
+### `orderly files scan [directory]`
+
+Scan a directory and display what would be organized without making changes. The directory defaults to the current working directory.
+
+Options:
+
+- `-c, --config <path>`: Path to config file
+- `-l, --log-level <level>`: Set log level
+- `--format <format>`: Output format (`table`, `json`, or `csv`)
+- `--no-auto-config`: Disable auto-discovery of config files in the target directory
+
+Examples:
+
+```bash
+orderly files scan ./downloads
+orderly files scan ./downloads --format json
+```
+
+### `orderly files organize [directory]`
+
+Organize files in the specified directory. The directory defaults to the current working directory.
+
+Options:
+
+- `-c, --config <path>`: Path to config file
+- `-d, --dry-run`: Preview changes without applying them
+- `--no-manifest`: Skip manifest generation
+- `-l, --log-level <level>`: Set log level (`debug`, `info`, `warn`, `error`)
+- `-o, --output <path>`: Output directory for organized files
+- `--dedupe`: Enable duplicate detection before organization
+- `--dedupe-action <action>`: Duplicate action (`skip`, `report`, or `replace`)
+- `--clean-empty-dirs`: Remove empty directories after organization completes
+- `--confirm-replace`: Explicitly confirm destructive dedupe replacement
+- `--quarantine-dir <path>`: Move replaced duplicate files into a quarantine directory instead of deleting them
+- `--no-auto-config`: Disable auto-discovery of config files in the target directory
+
+Examples:
+
+```bash
+orderly files organize --dry-run
+orderly files organize ./downloads -c ./my-config.yml
+orderly files organize ./messy-folder -o ./organized-folder
+orderly files organize ./downloads --dedupe --dedupe-action skip --clean-empty-dirs
+```
+
+If `--dedupe-action replace` is used outside dry-run mode, you must also provide `--confirm-replace` or `--quarantine-dir`.
+
+### `orderly files dedupe [directory]`
+
+Find duplicate files without running organization. The directory defaults to the current working directory.
+
+Options:
+
+- `-c, --config <path>`: Path to config file
+- `-l, --log-level <level>`: Set log level
+- `-d, --dry-run`: Preview actions without deleting files
+- `--action <action>`: Dedupe action (`skip`, `report`, or `replace`)
+- `--preset <preset>`: Strategy preset (`fast`, `safe`, `exact`, or `media`)
+- `--confirm-replace`: Explicitly confirm destructive replace actions
+- `--quarantine-dir <path>`: Move replaced files into a quarantine directory
+- `--report-json <path>`: Write a JSON report
+- `--report-markdown <path>`: Write a Markdown report
+- `--no-auto-config`: Disable auto-discovery of config files in the target directory
+
+Examples:
+
+```bash
+orderly files dedupe ./downloads
+orderly files dedupe ./downloads --preset exact --report-json ./.orderly/dedupe.json
+orderly files dedupe ./downloads --action replace --confirm-replace
+```
+
+If `--action replace` is used outside dry-run mode, you must also provide `--confirm-replace` or `--quarantine-dir`.
+
+### `orderly files clean [directory]`
+
+Remove empty folders beneath the target directory without removing the root directory itself. The directory defaults to the current working directory.
+
+Options:
+
+- `-c, --config <path>`: Path to config file
+- `-l, --log-level <level>`: Set log level
+- `--dry-run`: Preview directories that would be removed
+- `--include-hidden`: Allow deleting empty hidden directories
+- `--remove-orderly-dir`: Allow deleting an empty `.orderly` directory
+- `--no-auto-config`: Disable auto-discovery of config files in the target directory
+
+Examples:
+
+```bash
+orderly files clean ./downloads --dry-run
+orderly files clean ./downloads --include-hidden
+```
+
+### `orderly files revert`
+
+Revert file move operations recorded in a manifest JSON file.
+
+Options:
+
+- `-m, --manifest <path>`: Path to an Orderly manifest JSON file
+- `-d, --dry-run`: Preview revert operations without moving files
+
+Examples:
+
+```bash
+orderly files revert --manifest ./.orderly/manifest.json --dry-run
+orderly files revert --manifest ./.orderly/manifest.json
+```
+
+### `orderly files watch [directory]`
+
+Repeatedly organize a directory on a polling interval. The directory defaults to the current working directory.
+
+Options:
+
+- `-c, --config <path>`: Path to config file
+- `-l, --log-level <level>`: Set log level
+- `-d, --dry-run`: Preview changes without applying them
+- `--no-manifest`: Skip manifest generation
+- `-o, --output <path>`: Output directory for organized files
+- `--dedupe`: Enable duplicate detection before organization
+- `--dedupe-action <action>`: Duplicate action (`skip`, `report`, or `replace`)
+- `--clean-empty-dirs`: Remove empty directories after organization completes
+- `--confirm-replace`: Explicitly confirm destructive dedupe replacement
+- `--quarantine-dir <path>`: Move replaced duplicate files into a quarantine directory
+- `--interval <seconds>`: Polling interval in seconds (default: `5`)
+- `--cycles <count>`: Number of cycles before exiting; `0` means continuous (default: `0`)
+- `--no-auto-config`: Disable auto-discovery of config files in the target directory
+
+Example:
+
+```bash
+orderly files watch ./downloads --dry-run --interval 10 --cycles 3
 ```
 
 ## Configuration
 
-Create a `.orderly.yml` (or `.orderly.yaml`, `.orderly.config.yaml`, `.orderly.config.json`, or `orderly.config.json`) file in your project root:
+Create a `.orderly.yml` (or `.orderly.yaml`, `.orderly.config.yaml`, `.orderly.config.json`, or `orderly.config.json`) file in your project root. `orderly config init --template <name>` can generate one of the built-in starter templates:
+
+- `downloads`
+- `media-library`
+- `developer-workspace`
+- `photos-only`
+
+Example:
 
 ```yaml
 categories:
@@ -262,7 +287,7 @@ categories:
     targetFolder: code
 
 namingConvention:
-  type: kebab-case # Options: kebab-case, snake_case, camelCase, PascalCase
+  type: kebab-case
   lowercase: true
 
 excludePatterns:
@@ -273,20 +298,20 @@ excludePatterns:
 
 includeHidden: false
 dryRun: false
-generateManifest: true
+generateManifest: false
 logLevel: info
 
 dedupe:
   enabled: true
   recursive: false
   strategy:
-    mode: any # Options: any, all
+    mode: any
     name:
       caseSensitive: false
       ignoreExtension: false
     size: true
     sha256: true
-  action: skip # Options: skip, report, replace
+  action: skip
 ```
 
 ### Configuration Options
@@ -296,7 +321,7 @@ dedupe:
 Define file categories based on extensions and optional patterns.
 
 - `name`: Category name
-- `extensions`: List of file extensions (including the dot)
+- `extensions`: List of file extensions including the dot
 - `patterns`: Optional glob patterns for additional matching
 - `targetFolder`: Folder name where files should be moved
 
@@ -304,20 +329,20 @@ Define file categories based on extensions and optional patterns.
 
 Define how files should be renamed.
 
-- `type`: Naming convention type
-  - `kebab-case`: my-file-name.txt
-  - `snake_case`: my_file_name.txt
-  - `camelCase`: myFileName.txt
-  - `PascalCase`: MyFileName.txt
-- `lowercase`: Force lowercase (only applies to kebab-case and snake_case)
+- `type`:
+  - `kebab-case`
+  - `snake_case`
+  - `camelCase`
+  - `PascalCase`
+- `lowercase`: Force lowercase for kebab-case and snake_case naming
 
 #### `excludePatterns`
 
-Glob patterns for files/folders to exclude from scanning.
+Glob patterns for files and folders to exclude from scanning.
 
 #### `includeHidden`
 
-Whether to include hidden files (starting with `.`).
+Whether to include hidden files.
 
 #### `dryRun`
 
@@ -327,19 +352,23 @@ Preview changes without applying them.
 
 Generate JSON and Markdown manifests of all operations.
 
+For CLI `files organize` and `files watch`, manifest generation is enabled by default unless you pass `--no-manifest`.
+
 #### `dedupe`
 
 Control duplicate detection and duplicate handling before organization planning.
 
-- `enabled`: Turn dedupe on or off.
-- `recursive`: Reserved for strategy-specific recursion behavior.
+- `enabled`: Turn dedupe on or off
+- `recursive`: Reserved for strategy-specific recursion behavior
 - `strategy.mode`:
-  - `any`: A file pair is treated as duplicate when at least one applicable enabled strategy matches.
-  - `all`: A file pair is treated as duplicate only when all applicable enabled strategies match.
+  - `any`: At least one applicable enabled strategy must match
+  - `all`: All applicable enabled strategies must match
 - `action`:
-  - `skip`: Keep the primary file from each duplicate group and skip the rest.
-  - `report`: Report duplicate groups but keep all files in the organization pipeline.
-  - `replace`: Keep the primary file from each duplicate group, remove duplicate source files before planning, and continue organization with primary files only. In dry-run mode, no files are removed and planned removals are only reported.
+  - `skip`: Keep the primary file from each duplicate group and skip the rest
+  - `report`: Report duplicate groups but keep all files in the organization pipeline
+  - `replace`: Keep the primary file from each duplicate group, remove duplicate source files before planning, and continue organization with primary files only
+
+When using replace actions from the CLI, provide either `--confirm-replace` or `--quarantine-dir` for non-dry-run execution.
 
 #### `logLevel`
 
@@ -349,33 +378,37 @@ Logging verbosity: `debug`, `info`, `warn`, or `error`.
 
 ### Manifest Files
 
-When organization completes, Orderly generates two manifest files in the `.orderly` directory:
+When organization completes, Orderly generates manifest files in the `.orderly` directory:
 
-1. **manifest.json**: Machine-readable JSON format
-2. **manifest.md**: Human-readable Markdown format
+- `manifest.json`: Machine-readable JSON format
+- `manifest.md`: Human-readable Markdown format
 
-These files contain:
+They include:
 
 - Timestamp of operation
 - Total number of operations
-- Success/failure/skipped counts
-- Detailed list of all file operations
+- Success and failure counts
+- Detailed list of file operations
 - Any errors encountered
 
 ### Log Files
 
-All operations are logged to `.orderly/orderly.log` for full auditability.
+Operations are logged to `.orderly/orderly.log`.
+
+### Dedupe Reports
+
+The standalone dedupe command can generate:
+
+- JSON reports for automation
+- Markdown reports with duplicate groups, matched strategies, and reclaimable bytes
 
 ## Examples
 
-### Example 1: Organize Downloads Folder
+### Example 1: Organize a Downloads Folder
 
 ```bash
-# Preview what would happen
-orderly files scan ~/Downloads
-
-# Apply organization
-orderly files organize ~/Downloads
+orderly files scan ~/Downloads --format table
+orderly files organize ~/Downloads --clean-empty-dirs
 ```
 
 ### Example 2: Custom Organization
@@ -402,131 +435,76 @@ Then run:
 orderly files organize ./media-files
 ```
 
-### Example 3: Organize with Custom Output Directory
+### Example 3: Validate Config and Revert with a Manifest
 
 ```bash
-orderly files organize ./source-folder -o ./organized-output
+orderly config validate --directory ./source-folder
+orderly files revert --manifest ./.orderly/manifest.json --dry-run
+```
+
+### Example 4: Standalone Dedupe Review
+
+```bash
+orderly files dedupe ./photos --preset media --report-markdown ./.orderly/dedupe.md
+```
+
+### Example 5: Watch a Directory
+
+```bash
+orderly files watch ./downloads --dry-run --interval 10 --cycles 3
 ```
 
 ## Development
 
 ### Prerequisites
 
-- Node.js ≥ 18.0.0
-- npm ≥ 9.0.0
+- Node.js >= 20.0.0
+- npm >= 9.0.0
 
 ### Build from Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/Coderrob/orderly.git
 cd orderly
-
-# Install dependencies
 npm install
-
-# Build
+npm run setup:rg
 npm run build
-
-# Run locally
-npm run dev -- files organize ./test-folder
+npm run dev -- files organize ./test-folder --dry-run
 ```
 
 ### Testing
 
 ```bash
-# Run all tests
 npm test
-
-# Run tests with coverage
 npm run test:coverage
-
-# Watch mode (development)
 npm run test:watch
-
-# CI/CD mode
 npm run test:ci
 ```
 
-**Test Results**: The test suite and coverage checks are validated through `npm run verify`.
+The main validation entrypoint is:
+
+```bash
+npm run verify
+```
 
 ### Code Quality
 
-This project maintains exceptional code quality through automated checks and standards:
-
 ```bash
-# Run linting
 npm run lint
-
-# Auto-fix lint issues
 npm run lint:fix
-
-# Check code formatting
 npm run format:check
-
-# Format code
 npm run format
-
-# Type checking
 npm run typecheck
-
-# Check code duplication (< 1%)
-npm run duplication
-
-# Run static analysis
-npm run sonar
-
-# Full quality check
+npm run duplication:check
 npm run verify
-
-# Quick quality fixes
-npm run quality:fix
 ```
-
-### Quality Signals
-
-- Automated type checking via `npm run typecheck`
-- Lint enforcement via `npm run lint`
-- Formatting checks via `npm run format:check`
-- Coverage and test execution via `npm run test:coverage`
-- Full quality gate via `npm run verify`
-
-### Code Quality Features
-
-- **Type-Safe Enums**: All string literals replaced with type-safe enums
-  - `ConfigFormat`: JSON, YAML configuration formats
-  - `NamingConventionType`: kebab-case, snake_case, camelCase, PascalCase
-  - `FileOperationType`: move, rename, move-rename operations
-  - `OperationStatus`: success, failed, skipped status tracking
-- **Defensive Testing**: Comprehensive test assertions using `toHaveBeenCalledTimes()` and `toHaveBeenNthCalledWith()`
-- **Module Consistency**: Proper Node.js module imports with `node:` prefix for built-in modules
-- **Mock Integrity**: All tests use proper mocking patterns with `jest.mock()` and `jest.mocked()`
 
 ### Documentation
 
-Comprehensive documentation is available:
-
-- [TESTING_STANDARDS.md](./.automation/TESTING_STANDARDS.md) - Testing guidelines and best practices
-- [CODE_QUALITY_STANDARDS.md](./.automation/CODE_QUALITY_STANDARDS.md) - SOLID principles and clean code
-- [QUALITY_GATE.md](./.automation/QUALITY_GATE.md) - Automated quality checks and gates
-- [AGENTS.md](./AGENTS.md) - AI agent expectations and standards
-
-## Recent Improvements
-
-### Version 1.0.0 - Type Safety & Quality Enhancements
-
-- ✅ **Type-Safe Enums**: Replaced all string literals with TypeScript enums for compile-time safety
-  - Configuration format validation (JSON/YAML)
-  - Naming convention types (kebab-case, snake_case, camelCase, PascalCase)
-  - File operation types (move, rename, move-rename)
-  - Operation status tracking (success, failed, skipped)
-- ✅ **Enhanced Test Quality**: Upgraded all unit tests with defensive assertions
-  - Precise call count verification with `toHaveBeenCalledTimes()`
-  - Argument validation with `toHaveBeenNthCalledWith()`
-  - Proper module mocking with `node:` prefix consistency
-- ✅ **Bug Fixes**: Resolved critical module import mismatches and test mocking issues
-- ✅ **Quality Gates**: Full verify/build pipeline is part of the standard workflow
-- ✅ **Zero Defects**: No TypeScript errors, no lint errors, no code duplication
+- [TESTING_STANDARDS.md](./.automation/TESTING_STANDARDS.md)
+- [CODE_QUALITY_STANDARDS.md](./.automation/CODE_QUALITY_STANDARDS.md)
+- [QUALITY_GATE.md](./.automation/QUALITY_GATE.md)
+- [AGENTS.md](./AGENTS.md)
 
 ## License
 

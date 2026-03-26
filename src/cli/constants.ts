@@ -44,6 +44,9 @@ interface ICommandMessages {
   readonly CONFIG_EXISTS: string;
   readonly CONFIG_CREATED: string;
   readonly CONFIG_AUTO_DISCOVERED: string;
+  readonly CONFIG_TEMPLATE_CREATED: string;
+  readonly CONFIG_VALID: string;
+  readonly CONFIG_INVALID: string;
   readonly CLEAN_FAILED: string;
   readonly CLEAN_SUCCESS: string;
   readonly DEDUPE_FAILED: string;
@@ -54,8 +57,12 @@ interface ICommandMessages {
   readonly MANIFESTS_GENERATED: string;
   readonly ORGANIZED_SUCCESS: string;
   readonly ORGANIZATION_FAILED: string;
+  readonly REVERT_FAILED: string;
+  readonly REVERT_SUCCESS: string;
   readonly SCAN_SUCCESS: string;
   readonly SCAN_FAILED: string;
+  readonly WATCH_FAILED: string;
+  readonly WATCH_SUCCESS: string;
 }
 
 /**
@@ -91,6 +98,9 @@ export const COMMAND_MESSAGES: ICommandMessages = {
   CONFIG_EXISTS: 'Configuration file already exists: ',
   CONFIG_CREATED: 'Created configuration file: ',
   CONFIG_AUTO_DISCOVERED: 'Using config file found in target directory: ',
+  CONFIG_TEMPLATE_CREATED: 'Created {0} configuration file: {1}',
+  CONFIG_VALID: 'Validated config {0} with {1} categories',
+  CONFIG_INVALID: 'Config validation failed: ',
   CLEAN_FAILED: 'Clean failed: ',
   CLEAN_SUCCESS: 'Scanned {0} directories, removed {1}, skipped {2}',
   DEDUPE_FAILED: 'Dedupe failed: ',
@@ -101,8 +111,12 @@ export const COMMAND_MESSAGES: ICommandMessages = {
   MANIFESTS_GENERATED: 'Manifests generated',
   ORGANIZED_SUCCESS: 'Successfully organized {0} files',
   ORGANIZATION_FAILED: 'Organization failed: ',
+  REVERT_FAILED: 'Revert failed: ',
+  REVERT_SUCCESS: 'Reverted {0} files, skipped {1}, failed {2}',
   SCAN_SUCCESS: 'Found {0} files in {1}',
-  SCAN_FAILED: 'Scan failed: '
+  SCAN_FAILED: 'Scan failed: ',
+  WATCH_FAILED: 'Watch failed: ',
+  WATCH_SUCCESS: 'Completed {0} watch cycles'
 };
 
 /**

@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 
 import { CLI_CONSTANTS } from '../constants';
-import type { IInitHandler } from '../interfaces';
+import type { IConfigValidateHandler, IInitHandler } from '../interfaces';
 import { createCommandAction } from '../result/command-result-runner';
 
 /**
@@ -11,12 +11,11 @@ import { createCommandAction } from '../result/command-result-runner';
  */
 export function registerConfigCommandGroup(
   program: Readonly<Command>,
-  initHandler: Readonly<IInitHandler>
+  handlers: Readonly<{ init: Readonly<IInitHandler>; validate: Readonly<IConfigValidateHandler> }>
 ): void {
-  registerInitCommand(
-    program.command('config').description('Configuration management'),
-    initHandler
-  );
+  const configCommand = program.command('config').description('Configuration management');
+  registerInitCommand(configCommand, handlers.init);
+  registerValidateCommand(configCommand, handlers.validate);
 }
 
 /**
@@ -33,5 +32,27 @@ function registerInitCommand(parent: Readonly<Command>, initHandler: Readonly<II
       `Config file format (${CLI_CONSTANTS.VALID_FORMATS.join(', ')})`,
       CLI_CONSTANTS.DEFAULT_CONFIG_FORMAT
     )
+    .option(
+      '-t, --template <template>',
+      'Starter template (downloads, media-library, developer-workspace, photos-only)',
+      'downloads'
+    )
     .action(createCommandAction(initHandler.execute.bind(initHandler)));
+}
+
+/**
+ * Registers the validate command on a parent command.
+ * @param parent - Parent command.
+ * @param validateHandler - Validate command handler.
+ */
+function registerValidateCommand(
+  parent: Readonly<Command>,
+  validateHandler: Readonly<IConfigValidateHandler>
+): void {
+  parent
+    .command('validate')
+    .description('Validate an existing configuration file')
+    .option('-c, --config <path>', 'Path to config file')
+    .option('-d, --directory <path>', 'Directory to search for an auto-discovered config')
+    .action(createCommandAction(validateHandler.execute.bind(validateHandler)));
 }
