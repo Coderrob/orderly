@@ -164,9 +164,10 @@ function extractJpegDimensions(data: Readonly<Buffer>): IImageDimensions | null 
     if (markerOffset < 0) return null;
     const marker = readJpegMarker(data, markerOffset);
     if (isJpegStopMarker(marker)) return null;
+    if (SOF_MARKERS.has(marker)) return readSofDimensions(data, markerOffset);
+
     const segmentLength = readJpegSegmentLength(data, markerOffset);
     if (segmentLength < 0) return null;
-    if (SOF_MARKERS.has(marker)) return readSofDimensions(data, markerOffset);
 
     offset = markerOffset + JPEG_SEGMENT_HEADER_SIZE + segmentLength;
   }
