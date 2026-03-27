@@ -1,5 +1,6 @@
 import { IScannedFile } from '../scanner/interfaces';
 
+import { createCandidatePairs, type IPathPair } from './dedupe-candidate-pairs';
 import {
   appendIndexToRoot,
   buildDedupeResult,
@@ -9,7 +10,6 @@ import {
   buildSkipActionOutcome,
   buildStrategyExecution,
   createGroupIndexPairs,
-  createIndexPairs,
   createInitialParents,
   createPairId,
   createPairMatchMap,
@@ -22,6 +22,7 @@ import {
   type IStrategyExecution,
   type IStrategyMatch
 } from './dedupe-service.helpers';
+import { isDuplicateGroup, isDuplicatePairEvaluation, toFileIndexEntry, type IDuplicatePairEvaluation } from './dedupe-service.shared';
 import { IDedupeService, IDedupeStrategy } from './interfaces';
 import {
   DedupeAction,
@@ -32,10 +33,7 @@ import {
   IDuplicateGroup
 } from './types';
 
-interface IPairMatchResult {
-  readonly applicableStrategies: number;
-  readonly matched: readonly IStrategyMatch[];
-}
+interface IPairMatchResult { readonly applicableStrategies: number; readonly matched: readonly IStrategyMatch[]; }
 
 const MIN_DUPLICATE_GROUP_SIZE = 2;
 
@@ -114,13 +112,20 @@ export class DedupeService implements IDedupeService {
   private createStrategyExecutionPromises(
     files: readonly IScannedFile[]
   ): readonly Promise<IStrategyExecution | null>[] {
-    let executionPromises: readonly Promise<IStrategyExecution | null>[] = [];
+    return this.strategies.map(this.createStrategyExecutionPromise.bind(this, files));
+  }
 
-    for (const strategy of this.strategies) {
-      executionPromises = [...executionPromises, this.executeSingleStrategy(strategy, files)];
-    }
-
-    return executionPromises;
+  /**
+   * Creates one strategy execution promise.
+   * @param files - Files to evaluate.
+   * @param strategy - Strategy being executed.
+   * @returns Strategy execution promise.
+   */
+  private createStrategyExecutionPromise(
+    files: readonly IScannedFile[],
+    strategy: Readonly<IDedupeStrategy>
+  ): Promise<IStrategyExecution | null> {
+    return this.executeSingleStrategy(strategy, files);
   }
 
   /**
@@ -164,13 +169,20 @@ export class DedupeService implements IDedupeService {
     strategy: Readonly<IDedupeStrategy>,
     supportedFiles: readonly IScannedFile[]
   ): readonly Promise<IDedupeCandidate | null>[] {
-    let candidatePromises: readonly Promise<IDedupeCandidate | null>[] = [];
+    return supportedFiles.map(this.createCandidatePromise.bind(this, strategy));
+  }
 
-    for (const file of supportedFiles) {
-      candidatePromises = [...candidatePromises, this.createCandidate(strategy, file)];
-    }
-
-    return candidatePromises;
+  /**
+   * Creates one candidate promise for a supported file.
+   * @param strategy - Deduplication strategy to execute.
+   * @param file - File being evaluated.
+   * @returns Candidate promise.
+   */
+  private createCandidatePromise(
+    strategy: Readonly<IDedupeStrategy>,
+    file: Readonly<IScannedFile>
+  ): Promise<IDedupeCandidate | null> {
+    return this.createCandidate(strategy, file);
   }
 
   /**
@@ -216,26 +228,57 @@ export class DedupeService implements IDedupeService {
   private createDuplicatePairEvaluations(
     files: readonly IScannedFile[],
     strategyExecutions: readonly IStrategyExecution[]
-  ): readonly Readonly<{
-    leftIndex: number;
-    matched: readonly IStrategyMatch[];
-    rightIndex: number;
-  }>[] {
-    const pairs = createIndexPairs(files.length);
-    let duplicatePairs: readonly Readonly<{
-      leftIndex: number;
-      matched: readonly IStrategyMatch[];
-      rightIndex: number;
-    }>[] = [];
+  ): readonly IDuplicatePairEvaluation[] {
+    const fileIndexesByPath = this.createFileIndexesByPath(files);
+    return createCandidatePairs(strategyExecutions)
+      .map(this.evaluateCandidatePair.bind(this, files, fileIndexesByPath, strategyExecutions))
+      .filter(isDuplicatePairEvaluation);
+  }
 
-    for (const pair of pairs) {
-      const pairEvaluation = this.createDuplicatePairEvaluation(files, pair, strategyExecutions);
-      if (pairEvaluation !== null) {
-        duplicatePairs = [...duplicatePairs, pairEvaluation];
-      }
-    }
+  /**
+   * Creates file-index lookup data keyed by original path.
+   * @param files - Files being analyzed for duplicates.
+   * @returns File-index lookup map.
+   */
+  private createFileIndexesByPath(files: readonly IScannedFile[]): ReadonlyMap<string, number> {
+    return new Map(files.map(toFileIndexEntry));
+  }
 
-    return duplicatePairs;
+  /**
+   * Evaluates one candidate file-path pair for duplicate matching.
+   * @param files - Files being analyzed for duplicates.
+   * @param fileIndexesByPath - File-index lookup keyed by original path.
+   * @param strategyExecutions - Strategy outputs keyed by file path.
+   * @param pair - Candidate file-path pair.
+   * @returns Duplicate pair evaluation or null when not a duplicate.
+   */
+  private evaluateCandidatePair(
+    files: readonly IScannedFile[],
+    fileIndexesByPath: Readonly<ReadonlyMap<string, number>>,
+    strategyExecutions: readonly IStrategyExecution[],
+    pair: Readonly<IPathPair>
+  ): IDuplicatePairEvaluation | null {
+    const filePair = this.toIndexPair(pair, fileIndexesByPath);
+    return filePair
+      ? this.createDuplicatePairEvaluation(files, filePair, strategyExecutions)
+      : null;
+  }
+
+  /**
+   * Converts one file-path pair into file indexes when both paths are known.
+   * @param pair - Candidate file-path pair.
+   * @param fileIndexesByPath - File-index lookup keyed by original path.
+   * @returns File-index pair or null when either path is unknown.
+   */
+  private toIndexPair(
+    pair: Readonly<IPathPair>,
+    fileIndexesByPath: Readonly<ReadonlyMap<string, number>>
+  ): IIndexPair | null {
+    const leftIndex = fileIndexesByPath.get(pair.leftPath);
+    const rightIndex = fileIndexesByPath.get(pair.rightPath);
+    return leftIndex === undefined || rightIndex === undefined
+      ? null
+      : { leftIndex, rightIndex };
   }
 
   /**
@@ -383,16 +426,24 @@ export class DedupeService implements IDedupeService {
     groupedIndexes: readonly Readonly<{ indexes: readonly number[]; root: number }>[],
     pairMatches: Readonly<ReadonlyMap<string, readonly IStrategyMatch[]>>
   ): IDuplicateGroup[] {
-    let groups: readonly IDuplicateGroup[] = [];
+    return groupedIndexes
+      .map(this.createDuplicateGroupFromRoot.bind(this, files, pairMatches))
+      .filter(isDuplicateGroup);
+  }
 
-    for (const groupedRoot of groupedIndexes) {
-      const group = this.createDuplicateGroup(files, groupedRoot.indexes, pairMatches);
-      if (group !== null) {
-        groups = [...groups, group];
-      }
-    }
-
-    return [...groups];
+  /**
+   * Creates one duplicate group from grouped root indexes.
+   * @param files - Files being analyzed for duplicates.
+   * @param pairMatches - Matching strategies for each duplicate pair.
+   * @param groupedRoot - File indexes grouped by duplicate root.
+   * @returns Duplicate group or null when too small.
+   */
+  private createDuplicateGroupFromRoot(
+    files: readonly IScannedFile[],
+    pairMatches: Readonly<ReadonlyMap<string, readonly IStrategyMatch[]>>,
+    groupedRoot: Readonly<{ indexes: readonly number[]; root: number }>
+  ): IDuplicateGroup | null {
+    return this.createDuplicateGroup(files, groupedRoot.indexes, pairMatches);
   }
 
   /**

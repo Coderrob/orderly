@@ -1,5 +1,6 @@
 import type { IScannedFile } from '../scanner/interfaces';
 
+import type { ICollisionResolutionResult } from './collision-resolver';
 import type { IFileOperation, IOrganizationResult } from './types';
 
 /**
@@ -46,4 +47,17 @@ export interface IOperationExecutor {
    * @returns Result with success/failure counts
    */
   execute(operations: readonly IFileOperation[]): IOrganizationResult;
+}
+
+/**
+ * Collision resolution interface.
+ * Resolves destination conflicts before execution.
+ */
+export interface ICollisionResolver {
+  /**
+   * Resolves collision handling for a file operation.
+   * @param operation - File operation being prepared.
+   * @returns Final path details or a skip outcome.
+   */
+  resolve(operation: Readonly<IFileOperation>): Readonly<ICollisionResolutionResult>;
 }
