@@ -75,6 +75,14 @@ describe('image-parsers', () => {
       expect(extractImageDimensions(jpeg)).toEqual({ width: 640, height: 480 });
     });
 
+    it('should extract JPEG dimensions when a stuffed byte appears before the SOF marker', () => {
+      const jpeg = Buffer.from([
+        0xff, 0xd8, 0xff, 0x00, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x01, 0xe0, 0x02, 0x80
+      ]);
+
+      expect(extractImageDimensions(jpeg)).toEqual({ width: 640, height: 480 });
+    });
+
     it('should return null for JPEG with invalid segment length', () => {
       const jpeg = createBrokenJpeg();
       expect(extractImageDimensions(jpeg)).toBeNull();

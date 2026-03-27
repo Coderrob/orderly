@@ -69,12 +69,14 @@ const PNG_SIGNATURE = Buffer.from([
   PNG_SIGNATURE_BYTE_8
 ]);
 const PNG_IHDR = Buffer.from('IHDR', 'ascii');
-const IMAGE_DIMENSION_PARSERS = [
+type ImageDimensionParser = (data: Readonly<Buffer>) => IImageDimensions | null;
+
+const IMAGE_DIMENSION_PARSERS: readonly ImageDimensionParser[] = [
   extractPngDimensions,
   extractJpegDimensions,
   extractGifDimensions,
   extractBmpDimensions
-] as const;
+];
 
 const SOF_MARKERS = new Set([
   JpegStartOfFrameMarker.BaselineDct,
@@ -93,9 +95,9 @@ const SOF_MARKERS = new Set([
 ]);
 
 /**
- * Extracts dimensions from a GIF header when present.
+ * Extracts dimensions from a BMP header when present.
  * @param data - File bytes to inspect.
- * @returns Image dimensions, or null when the buffer is not a valid GIF header.
+ * @returns Image dimensions, or null when the buffer is not a supported BMP header.
  */
 function extractBmpDimensions(data: Readonly<Buffer>): IImageDimensions | null {
   if (
@@ -117,9 +119,9 @@ function extractBmpDimensions(data: Readonly<Buffer>): IImageDimensions | null {
 }
 
 /**
- * Attempts each supported parser until image dimensions are found.
+ * Extracts dimensions from a GIF header when present.
  * @param data - File bytes to inspect.
- * @returns Image dimensions, or null when the format is unsupported or incomplete.
+ * @returns Image dimensions, or null when the buffer is not a valid GIF header.
  */
 function extractGifDimensions(data: Readonly<Buffer>): IImageDimensions | null {
   if (data.length < GIF_MIN_LENGTH) return null;
@@ -135,9 +137,9 @@ function extractGifDimensions(data: Readonly<Buffer>): IImageDimensions | null {
 }
 
 /**
- * Extracts dimensions from a BMP header when present.
+ * Attempts each supported parser until image dimensions are found.
  * @param data - File bytes to inspect.
- * @returns Image dimensions, or null when the buffer is not a supported BMP header.
+ * @returns Image dimensions, or null when the format is unsupported or incomplete.
  */
 export function extractImageDimensions(data: Readonly<Buffer>): IImageDimensions | null {
   for (const parse of IMAGE_DIMENSION_PARSERS) {

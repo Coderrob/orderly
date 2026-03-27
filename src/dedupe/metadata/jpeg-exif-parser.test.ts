@@ -44,6 +44,13 @@ describe('jpeg-exif-parser', () => {
       expect(result).toEqual({ Make: 'Canon' });
     });
 
+    it('should extract EXIF when a stuffed byte appears before the APP1 marker', () => {
+      const exifPayload = createExifPayloadLittleEndian([{ tag: 0x010f, value: 'Canon' }]);
+      const result = extractExifFromJpeg(wrapApp1(exifPayload, { stuffedByteBeforeApp1: true }));
+
+      expect(result).toEqual({ Make: 'Canon' });
+    });
+
     it('should extract Model from big-endian EXIF APP1', () => {
       const exifPayload = createExifPayloadBigEndian([{ tag: 0x0110, value: 'X-T5' }]);
       const result = extractExifFromJpeg(wrapApp1(exifPayload));
@@ -105,7 +112,7 @@ type ExifAsciiField = {
 
 function wrapApp1(
   payload: Buffer,
-  options: Readonly<{ fillBytesBeforeApp1?: boolean }> = {}
+  options: Readonly<{ fillBytesBeforeApp1?: boolean; stuffedByteBeforeApp1?: boolean }> = {}
 ): Buffer {
   const app1Length = Buffer.alloc(2);
   app1Length.writeUInt16BE(payload.length + 2, 0);
@@ -113,6 +120,7 @@ function wrapApp1(
   return Buffer.concat([
     Buffer.from([0xff, 0xd8]),
     ...(options.fillBytesBeforeApp1 ? [Buffer.from([0xff])] : []),
+    ...(options.stuffedByteBeforeApp1 ? [Buffer.from([0xff, 0x00])] : []),
     Buffer.from([0xff, 0xe1]),
     app1Length,
     payload,
