@@ -1,6 +1,7 @@
 import { IImageDimensions } from '../types';
 
 import {
+  findJpegMarkerOffset,
   isJpeg,
   isJpegStopMarker,
   JPEG_SEGMENT_HEADER_SIZE,
@@ -23,10 +24,6 @@ const GIF_WIDTH_OFFSET = 6;
 const GIF_HEIGHT_OFFSET = 8;
 const GIF_HEADER_87A = Buffer.from('GIF87a', 'ascii');
 const GIF_HEADER_89A = Buffer.from('GIF89a', 'ascii');
-
-enum JpegByte {
-  MarkerPrefix = 0xff
-}
 
 enum JpegStartOfFrameMarker {
   BaselineDct = 0xc0,
@@ -72,6 +69,12 @@ const PNG_SIGNATURE = Buffer.from([
   PNG_SIGNATURE_BYTE_8
 ]);
 const PNG_IHDR = Buffer.from('IHDR', 'ascii');
+const IMAGE_DIMENSION_PARSERS = [
+  extractPngDimensions,
+  extractJpegDimensions,
+  extractGifDimensions,
+  extractBmpDimensions
+] as const;
 
 const SOF_MARKERS = new Set([
   JpegStartOfFrameMarker.BaselineDct,
@@ -137,13 +140,7 @@ function extractGifDimensions(data: Readonly<Buffer>): IImageDimensions | null {
  * @returns Image dimensions, or null when the buffer is not a supported BMP header.
  */
 export function extractImageDimensions(data: Readonly<Buffer>): IImageDimensions | null {
-  const parsers = [
-    extractPngDimensions,
-    extractJpegDimensions,
-    extractGifDimensions,
-    extractBmpDimensions
-  ];
-  for (const parse of parsers) {
+  for (const parse of IMAGE_DIMENSION_PARSERS) {
     const result = parse(data);
     if (result) return result;
   }
@@ -160,7 +157,7 @@ function extractJpegDimensions(data: Readonly<Buffer>): IImageDimensions | null 
 
   let offset = JPEG_START_OFFSET;
   while (offset + JPEG_DIMENSION_LOOKAHEAD_BYTES <= data.length) {
-    const markerOffset = seekMarker(data, offset);
+    const markerOffset = findJpegMarkerOffset(data, offset);
     if (markerOffset < 0) return null;
     const marker = readJpegMarker(data, markerOffset);
     if (isJpegStopMarker(marker)) return null;
@@ -217,17 +214,4 @@ function readSofDimensions(data: Readonly<Buffer>, markerOffset: number): IImage
   if (width <= 0 || height <= 0) return null;
 
   return { width, height };
-}
-
-/**
- * Seeks the next JPEG marker prefix starting at the provided offset.
- * @param data - File bytes to inspect.
- * @param start - Offset to begin searching from.
- * @returns The marker offset, or `-1` when no marker prefix is found.
- */
-function seekMarker(data: Readonly<Buffer>, start: number): number {
-  for (let i = start; i + 1 < data.length; i++) {
-    if (data[i] === Number(JpegByte.MarkerPrefix)) return i;
-  }
-  return -1;
 }

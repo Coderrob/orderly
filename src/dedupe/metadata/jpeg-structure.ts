@@ -38,6 +38,33 @@ export function isJpegStopMarker(marker: number): boolean {
 }
 
 /**
+ * Finds the next JPEG marker prefix whose following byte is a real marker value.
+ * Repeated `0xFF` fill bytes are collapsed, and stuffed `0x00` bytes are skipped.
+ * @param data - JPEG bytes.
+ * @param start - Offset to begin searching from.
+ * @returns Offset of the marker prefix byte, or `-1` when no marker is found.
+ */
+export function findJpegMarkerOffset(data: Readonly<Buffer>, start: number): number {
+  for (let i = start; i + 1 < data.length; i++) {
+    if (data[i] !== Number(JpegByte.Prefix)) {
+      continue;
+    }
+
+    while (i + 1 < data.length && data[i + 1] === Number(JpegByte.Prefix)) {
+      i++;
+    }
+
+    if (i + 1 >= data.length || data[i + 1] === 0x00) {
+      continue;
+    }
+
+    return i;
+  }
+
+  return -1;
+}
+
+/**
  * Returns the marker byte at a marker offset.
  * @param data - JPEG bytes.
  * @param markerOffset - Offset of the `0xFF` marker prefix.

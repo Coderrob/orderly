@@ -1,4 +1,5 @@
 import {
+  findJpegMarkerOffset,
   isJpeg,
   isJpegStopMarker,
   JPEG_SEGMENT_HEADER_SIZE,
@@ -124,14 +125,16 @@ function findApp1Payload(data: Readonly<Buffer>): Buffer | null {
  * @returns The APP1 payload bytes, or null when no valid APP1 segment exists.
  */
 function findApp1PayloadFromOffset(data: Readonly<Buffer>, offset: number): Buffer | null {
-  const length = readJpegSegmentLength(data, offset);
-  if (length < 0) return null;
+  const markerOffset = findJpegMarkerOffset(data, offset);
+  if (markerOffset < 0) return null;
 
-  const marker = readJpegMarker(data, offset);
+  const marker = readJpegMarker(data, markerOffset);
   if (isJpegStopMarker(marker)) return null;
-  if (marker === Number(JpegAppMarker.App1)) return getApp1Payload(data, offset, length);
+  const length = readJpegSegmentLength(data, markerOffset);
+  if (length < 0) return null;
+  if (marker === Number(JpegAppMarker.App1)) return getApp1Payload(data, markerOffset, length);
 
-  return findApp1PayloadFromOffset(data, offset + JPEG_SEGMENT_HEADER_SIZE + length);
+  return findApp1PayloadFromOffset(data, markerOffset + JPEG_SEGMENT_HEADER_SIZE + length);
 }
 
 /**
