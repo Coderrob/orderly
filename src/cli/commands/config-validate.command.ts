@@ -3,8 +3,6 @@ import * as path from 'node:path';
 import { ConfigLoader } from '../../config/config-loader';
 import type { OrderlyConfig } from '../../config/types';
 import { COMMAND_MESSAGES, ExitCode } from '../constants';
-import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
-import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
 import type {
   IConfigService,
   IConfigValidateHandler,
@@ -12,24 +10,44 @@ import type {
   ICommandResult
 } from '../interfaces';
 
+import {
+  getOptionalStringOption,
+  normalizeObjectOptions
+} from './command-option.helpers';
+import {
+  createSingleOptionsCommandExecutionRef,
+  createWrappedSingleOptionsCommand
+} from './command-wrapper.helpers';
+
 /**
  * Handler for config validation.
  */
 export class ConfigValidateHandler implements IConfigValidateHandler {
+  public readonly execute: (
+    options: Readonly<IConfigValidateOptions>
+  ) => Promise<ICommandResult>;
+
   /**
    * Creates a new config validation command handler.
    * @param configService - Config service used for discovery.
    */
-  constructor(private readonly configService: Readonly<IConfigService>) {}
+  constructor(private readonly configService: Readonly<IConfigService>) {
+    this.execute = createWrappedSingleOptionsCommand({
+      commandName: 'config-validate',
+      errorPrefix: COMMAND_MESSAGES.CONFIG_INVALID,
+      executeCoreRef: createSingleOptionsCommandExecutionRef({
+        executeCore: this.executeCore.bind(this),
+        normalizeOptions: normalizeConfigValidateOptions
+      })
+    });
+  }
 
   /**
    * Validates a config file.
    * @param options - Validation options.
    * @returns Command result.
    */
-  @WithCommandTelemetry('config-validate')
-  @HandleCommandErrors(COMMAND_MESSAGES.CONFIG_INVALID)
-  execute(options: Readonly<IConfigValidateOptions>): Promise<ICommandResult> {
+  private executeCore(options: Readonly<IConfigValidateOptions>): Promise<ICommandResult> {
     const configPath = this.resolveConfigPath(options);
     if (!configPath) {
       return Promise.resolve({
@@ -73,4 +91,32 @@ export class ConfigValidateHandler implements IConfigValidateHandler {
       String(config.categories.length)
     );
   }
+}
+
+enum ConfigValidateOptionKey {
+  CONFIG = 'config',
+  DIRECTORY = 'directory'
+}
+
+/**
+ * Creates normalized config-validation string options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized string options.
+ */
+function createConfigValidateStringOptions(value: object): Readonly<IConfigValidateOptions> {
+  const config = getOptionalStringOption(value, ConfigValidateOptionKey.CONFIG);
+  const directory = getOptionalStringOption(value, ConfigValidateOptionKey.DIRECTORY);
+  return {
+    ...(config ? { config } : {}),
+    ...(directory ? { directory } : {})
+  };
+}
+
+/**
+ * Normalizes an unknown command argument to config validation options.
+ * @param value - Candidate options value.
+ * @returns Normalized config validation options.
+ */
+function normalizeConfigValidateOptions(value: unknown): Readonly<IConfigValidateOptions> {
+  return normalizeObjectOptions<IConfigValidateOptions>(value, createConfigValidateStringOptions);
 }

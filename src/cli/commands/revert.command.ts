@@ -3,9 +3,17 @@ import * as path from 'node:path';
 import { FileSystemUtils } from '../../utils/file-system-utils';
 import { isArray, isObject, isString } from '../../utils/guards';
 import { COMMAND_MESSAGES, ExitCode } from '../constants';
-import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
-import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
 import type { ICommandResult, IRevertCommandOptions, IRevertHandler } from '../interfaces';
+
+import {
+  getOptionalBooleanOption,
+  getOptionalStringOption,
+  normalizeObjectOptions
+} from './command-option.helpers';
+import {
+  createSingleOptionsCommandExecutionRef,
+  createWrappedSingleOptionsCommand
+} from './command-wrapper.helpers';
 
 const SUCCESS_STATUS = 'success';
 
@@ -26,14 +34,28 @@ interface IRevertMode {
  * Handler for manifest-based revert operations.
  */
 export class RevertHandler implements IRevertHandler {
+  public readonly execute: (options: Readonly<IRevertCommandOptions>) => Promise<ICommandResult>;
+
+  /**
+   * Creates a new revert command handler.
+   */
+  constructor() {
+    this.execute = createWrappedSingleOptionsCommand({
+      commandName: 'revert',
+      errorPrefix: COMMAND_MESSAGES.REVERT_FAILED,
+      executeCoreRef: createSingleOptionsCommandExecutionRef({
+        executeCore: this.executeCore.bind(this),
+        normalizeOptions: normalizeRevertOptions
+      })
+    });
+  }
+
   /**
    * Executes the revert command.
    * @param options - Revert options.
    * @returns Command result.
    */
-  @WithCommandTelemetry('revert')
-  @HandleCommandErrors(COMMAND_MESSAGES.REVERT_FAILED)
-  execute(options: Readonly<IRevertCommandOptions>): Promise<ICommandResult> {
+  private executeCore(options: Readonly<IRevertCommandOptions>): Promise<ICommandResult> {
     const manifest = this.readManifest(options.manifest);
     const successfulEntries = this.getSuccessfulEntries(manifest.entries);
     const revertResult = this.revertEntries(reverseEntries(successfulEntries), {
@@ -126,6 +148,48 @@ export class RevertHandler implements IRevertHandler {
       return { reverted: 0, skipped: 0, failed: 1 };
     }
   }
+}
+
+enum RevertOptionKey {
+  DRY_RUN = 'dryRun',
+  MANIFEST = 'manifest'
+}
+
+/**
+ * Appends one entry while building a reversed manifest-entry list.
+ * @param reversedEntries - Entries accumulated so far.
+ * @param entry - Next entry from the right-hand traversal.
+ * @returns Updated reversed entries.
+ */
+function appendReversedEntry(
+  reversedEntries: readonly IManifestEntryLike[],
+  entry: Readonly<IManifestEntryLike>
+): readonly IManifestEntryLike[] {
+  return [...reversedEntries, entry];
+}
+
+/**
+ * Creates normalized revert boolean options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized boolean options.
+ */
+function createRevertBooleanOptions(value: object): Readonly<Partial<IRevertCommandOptions>> {
+  const dryRun = getOptionalBooleanOption(value, RevertOptionKey.DRY_RUN);
+  return {
+    ...(dryRun === undefined ? {} : { dryRun })
+  };
+}
+
+/**
+ * Creates normalized revert string options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized string options.
+ */
+function createRevertStringOptions(value: object): Readonly<Partial<IRevertCommandOptions>> {
+  const manifest = getOptionalStringOption(value, RevertOptionKey.MANIFEST);
+  return {
+    ...(manifest ? { manifest } : {})
+  };
 }
 
 /**
@@ -227,6 +291,22 @@ function isSuccessfulEntry(entry: Readonly<IManifestEntryLike>): boolean {
 }
 
 /**
+ * Normalizes an unknown command argument to revert options.
+ * @param value - Candidate options value.
+ * @returns Normalized revert options.
+ */
+function normalizeRevertOptions(value: unknown): Readonly<IRevertCommandOptions> {
+  return {
+    manifest: '',
+    ...normalizeObjectOptions<IRevertCommandOptions>(
+      value,
+      createRevertBooleanOptions,
+      createRevertStringOptions
+    )
+  };
+}
+
+/**
  * Parses manifest JSON content.
  * @param manifestContent - Raw manifest JSON content.
  * @returns Parsed manifest payload.
@@ -241,20 +321,5 @@ function parseManifestJson(manifestContent: string): unknown {
  * @returns Reversed entries.
  */
 function reverseEntries(entries: readonly IManifestEntryLike[]): readonly IManifestEntryLike[] {
-  return Array.from(entries, selectReversedEntry, entries);
-}
-
-/**
- * Maps a forward index to its corresponding reversed entry.
- * @param this - Source entries used for index mapping.
- * @param _entry - Current entry from the forward iteration.
- * @param index - Forward index in the source array.
- * @returns Entry from the mirrored index.
- */
-function selectReversedEntry(
-  this: readonly IManifestEntryLike[],
-  _entry: Readonly<IManifestEntryLike>,
-  index: number
-): IManifestEntryLike {
-  return this[this.length - 1 - index];
+  return entries.reduceRight<readonly IManifestEntryLike[]>(appendReversedEntry, []);
 }

@@ -1,5 +1,6 @@
 export {
   CONFIG_FILE_NAMES,
+  ConfigFileName,
   DEFAULT_DRY_RUN,
   DEFAULT_GENERATE_MANIFEST,
   DEFAULT_INCLUDE_HIDDEN,
@@ -12,7 +13,6 @@ export {
   MAX_FILENAME_LENGTH,
   RESERVED_NAMES
 } from './defaults.js';
-export type { ConfigFileName } from './defaults.js';
 export {
   ARCHIVE_EXTENSIONS,
   AUDIO_EXTENSIONS,
@@ -22,4 +22,4 @@ export {
   IMAGE_EXTENSIONS,
   VIDEO_EXTENSIONS
 } from './file-extensions.js';
-export type { FileCategoryName, IFileCategory, ReadonlyExtensionList } from './types.js';
+export { FileCategoryName, type IFileCategory, type ReadonlyExtensionList } from './types.js';

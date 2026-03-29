@@ -4,8 +4,8 @@ import { Clock } from '../../utils/clock';
 import type { ICommandResult } from '../interfaces';
 
 import {
-  createCommandMethodDecorator,
-  createWrappedDescriptor,
+  createCommandMiddlewareDecorator,
+  createCommandMiddlewareWrapper,
   invokeCommand,
   isCommandResult,
   type CommandExecution,
@@ -29,91 +29,14 @@ function appendAuditMetadata(result: Readonly<ICommandResult>, runId: string): I
 }
 
 /**
- * Produces a descriptor whose value includes audit behavior.
- * @param commandName - Name of the command being audited.
- * @param descriptor - Original method descriptor.
- * @returns Updated descriptor with audit wrapper.
- */
-function createAuditDescriptor(
-  commandName: string,
-  descriptor: Readonly<PropertyDescriptor>
-): PropertyDescriptor {
-  return createWrappedDescriptor(descriptor, createAuditWrapperFactory(commandName));
-}
-
-/**
- * Creates a descriptor wrapper factory for one command name.
- * @param commandName - Name of the command being audited.
- * @returns Descriptor wrapper factory.
- */
-function createAuditDescriptorFactory(
-  commandName: string
-): (descriptor: Readonly<PropertyDescriptor>) => PropertyDescriptor {
-  /**
-   * Wraps one descriptor with audit behavior.
-   * @param descriptor - Original method descriptor.
-   * @returns Updated descriptor.
-   */
-  function wrapAuditDescriptor(descriptor: Readonly<PropertyDescriptor>): PropertyDescriptor {
-    return createAuditDescriptor(commandName, descriptor);
-  }
-
-  return wrapAuditDescriptor;
-}
-
-/**
- * Wraps a command method with audit metadata behavior.
- * @param commandName - Name of the command being audited.
- * @param originalMethodRef - Original command method reference.
- * @returns Command method with audit metadata appended.
- */
-function createAuditedWrapper(
-  commandName: string,
-  originalMethodRef: Readonly<ICommandExecutionRef>
-): CommandExecution {
-  /**
-   * Executes the wrapped command and appends audit metadata.
-   * @param this - Invocation context.
-   * @param args - Command arguments.
-   * @returns Command result with audit suffix.
-   */
-  async function executeWithAudit(
-    this: object,
-    ...args: readonly unknown[]
-  ): Promise<ICommandResult> {
-    return runAuditedCommand(commandName, originalMethodRef, this, args);
-  }
-
-  return executeWithAudit;
-}
-
-/**
- * Creates a method decorator that applies audit metadata behavior.
- * @param commandName - Name of the command being audited.
- * @returns Method decorator implementation.
- */
-function createAuditMethodDecorator(commandName: string): MethodDecorator {
-  return createCommandMethodDecorator(createAuditDescriptorFactory(commandName));
-}
-
-/**
- * Creates a command wrapper factory for one audited command.
+ * Creates a plain command wrapper that appends audit metadata.
  * @param commandName - Name of the command being audited.
  * @returns Command wrapper factory.
  */
-function createAuditWrapperFactory(
+export function createAuditCommandWrapper(
   commandName: string
 ): (originalMethodRef: Readonly<ICommandExecutionRef>) => CommandExecution {
-  /**
-   * Wraps the original command method.
-   * @param originalMethodRef - Original command method reference.
-   * @returns Wrapped command execution.
-   */
-  function wrapAuditMethod(originalMethodRef: Readonly<ICommandExecutionRef>): CommandExecution {
-    return createAuditedWrapper(commandName, originalMethodRef);
-  }
-
-  return wrapAuditMethod;
+  return createCommandMiddlewareWrapper({ value: commandName }, { invoke: runAuditedCommand });
 }
 
 /**
@@ -162,5 +85,5 @@ async function runAuditedCommand(
  * @returns A method decorator that appends audit metadata to successful or failed command results.
  */
 export function WithCommandAudit(commandName: string): MethodDecorator {
-  return createAuditMethodDecorator(commandName);
+  return createCommandMiddlewareDecorator({ value: commandName }, { invoke: runAuditedCommand });
 }

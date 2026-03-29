@@ -1,13 +1,25 @@
 import type { ICommandResult } from '../interfaces';
 
+import {
+  createMethodDecorator,
+  createWrappedMethodDecorator,
+  createWrappedMethodDescriptor,
+  invokeMethod,
+  type IMethodExecutionRef
+} from './method-decorator.helpers';
+
 export type CommandExecution = (
   this: object,
   ...args: readonly unknown[]
 ) => Promise<ICommandResult> | ICommandResult;
 
-export interface ICommandExecutionRef {
-  readonly invoke: CommandExecution;
-}
+export type ICommandExecutionRef = IMethodExecutionRef<CommandExecution>;
+export type CommandMiddleware<TValue> = (
+  value: TValue,
+  originalMethodRef: Readonly<ICommandExecutionRef>,
+  context: object,
+  args: readonly unknown[]
+) => Promise<ICommandResult> | ICommandResult;
 
 /**
  * Creates a method decorator that wraps callable command handlers.
@@ -17,22 +29,127 @@ export interface ICommandExecutionRef {
 export function createCommandMethodDecorator(
   wrapDescriptor: (descriptor: Readonly<PropertyDescriptor>) => PropertyDescriptor
 ): MethodDecorator {
+  return createMethodDecorator(wrapDescriptor);
+}
+
+/**
+ * Creates a method decorator from a plain command middleware function.
+ * @param config - Configuration value forwarded to the middleware.
+ * @param middleware - Middleware that executes the wrapped command behavior.
+ * @returns Method decorator implementation.
+ */
+export function createCommandMiddlewareDecorator<TValue>(
+  config: Readonly<{ value: TValue }>,
+  middlewareRef: Readonly<{ invoke: CommandMiddleware<TValue> }>
+): MethodDecorator {
+  return createCommandMethodDecorator(
+    createCommandMiddlewareDescriptorFactory(config, middlewareRef)
+  );
+}
+
+/**
+ * Creates a descriptor wrapper factory from a plain command middleware function.
+ * @param config - Configuration value forwarded to the middleware.
+ * @param middlewareRef - Middleware reference that executes the wrapped command behavior.
+ * @returns Descriptor wrapper factory.
+ */
+function createCommandMiddlewareDescriptorFactory<TValue>(
+  config: Readonly<{ value: TValue }>,
+  middlewareRef: Readonly<{ invoke: CommandMiddleware<TValue> }>
+): (descriptor: Readonly<PropertyDescriptor>) => PropertyDescriptor {
   /**
-   * Applies command wrapping to the decorated method descriptor.
-   * @param _target - Decorated class prototype.
-   * @param _propertyKey - Decorated method key.
+   * Wraps one descriptor with the configured middleware-backed command wrapper.
    * @param descriptor - Original method descriptor.
    * @returns Updated descriptor.
    */
-  function applyCommandDecorator(
-    _target: object,
-    _propertyKey: string | symbol,
-    descriptor: Readonly<PropertyDescriptor>
-  ): PropertyDescriptor {
-    return wrapDescriptor(descriptor);
+  function wrapMiddlewareDescriptor(descriptor: Readonly<PropertyDescriptor>): PropertyDescriptor {
+    return createWrappedDescriptor(
+      descriptor,
+      createConfiguredCommandMiddleware(config, middlewareRef)
+    );
   }
 
-  return applyCommandDecorator;
+  return wrapMiddlewareDescriptor;
+}
+
+/**
+ * Creates a plain command wrapper from a command middleware function.
+ * @param config - Configuration value forwarded to the middleware.
+ * @param middlewareRef - Middleware that executes the wrapped command behavior.
+ * @returns Command wrapper factory.
+ */
+export function createCommandMiddlewareWrapper<TValue>(
+  config: Readonly<{ value: TValue }>,
+  middlewareRef: Readonly<{ invoke: CommandMiddleware<TValue> }>
+): (originalMethodRef: Readonly<ICommandExecutionRef>) => CommandExecution {
+  return createConfiguredCommandMiddleware(config, middlewareRef);
+}
+
+/**
+ * Creates a configured command middleware wrapper.
+ * @param config - Configuration value forwarded to the middleware.
+ * @param middlewareRef - Middleware reference that executes the wrapped command behavior.
+ * @returns Command wrapper factory.
+ */
+function createConfiguredCommandMiddleware<TValue>(
+  config: Readonly<{ value: TValue }>,
+  middlewareRef: Readonly<{ invoke: CommandMiddleware<TValue> }>
+): (originalMethodRef: Readonly<ICommandExecutionRef>) => CommandExecution {
+  /**
+   * Wraps the original command method with middleware behavior.
+   * @param originalMethodRef - Original command method reference.
+   * @returns Wrapped command execution.
+   */
+  function wrapCommandMethod(
+    originalMethodRef: Readonly<ICommandExecutionRef>
+  ): CommandExecution {
+    return createMiddlewareExecution(config, middlewareRef, originalMethodRef);
+  }
+
+  return wrapCommandMethod;
+}
+
+/**
+ * Creates one middleware-backed command execution.
+ * @param config - Configuration value forwarded to the middleware.
+ * @param middlewareRef - Middleware reference that executes the wrapped command behavior.
+ * @param originalMethodRef - Original command method reference.
+ * @returns Wrapped command execution.
+ */
+function createMiddlewareExecution<TValue>(
+  config: Readonly<{ value: TValue }>,
+  middlewareRef: Readonly<{ invoke: CommandMiddleware<TValue> }>,
+  originalMethodRef: Readonly<ICommandExecutionRef>
+): CommandExecution {
+  /**
+   * Executes the middleware-backed command wrapper.
+   * @param this - Invocation context.
+   * @param args - Command arguments.
+   * @returns Middleware result.
+   */
+  function executeWithMiddleware(
+    this: object,
+    ...args: readonly unknown[]
+  ): Promise<ICommandResult> | ICommandResult {
+    return middlewareRef.invoke(config.value, originalMethodRef, this, args);
+  }
+
+  return executeWithMiddleware;
+}
+
+/**
+ * Creates a method decorator from a parameterized command wrapper factory.
+ * @param value - Configuration value forwarded to the wrapper factory.
+ * @param createWrapperFactory - Factory that creates a command wrapper from the configuration value.
+ * @returns Method decorator implementation.
+ */
+export function createWrappedCommandMethodDecorator<TValue>(
+  config: Readonly<{ value: TValue }>,
+  createWrapperFactory: (
+    value: TValue
+  ) => (originalMethodRef: Readonly<ICommandExecutionRef>) => CommandExecution
+): MethodDecorator {
+  return createWrappedMethodDecorator(config, isCommandExecution, createWrapperFactory);
 }
 
 /**
@@ -45,15 +162,7 @@ export function createWrappedDescriptor(
   descriptor: Readonly<PropertyDescriptor>,
   createWrapper: (originalMethodRef: Readonly<ICommandExecutionRef>) => CommandExecution
 ): PropertyDescriptor {
-  const originalMethod: unknown = descriptor.value;
-  if (!isCommandExecution(originalMethod)) {
-    return { ...descriptor };
-  }
-
-  return {
-    ...descriptor,
-    value: createWrapper({ invoke: originalMethod })
-  };
+  return createWrappedMethodDescriptor(descriptor, isCommandExecution, createWrapper);
 }
 
 /**
@@ -63,12 +172,12 @@ export function createWrappedDescriptor(
  * @param args - Invocation arguments.
  * @returns Original command return value.
  */
-export async function invokeCommand(
+export function invokeCommand(
   originalMethodRef: Readonly<ICommandExecutionRef>,
   context: object,
   args: readonly unknown[]
-): Promise<unknown> {
-  return Promise.resolve(Function.prototype.apply.call(originalMethodRef.invoke, context, args));
+): unknown {
+  return invokeMethod(originalMethodRef, context, args);
 }
 
 /**

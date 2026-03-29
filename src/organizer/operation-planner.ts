@@ -104,9 +104,7 @@ export class OperationPlanner implements IOperationPlanner {
    * @returns Array of planned file operations (move, rename, or move-rename)
    */
   plan(files: readonly IScannedFile[]): IFileOperation[] {
-    return files
-      .map(this.planFileOperation.bind(this))
-      .filter(isPlannedOperation);
+    return files.map(this.planFileOperation.bind(this)).filter(isPlannedOperation);
   }
 
   /**

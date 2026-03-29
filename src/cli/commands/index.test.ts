@@ -11,4 +11,17 @@ describe('cli commands index exports', () => {
     expect(commands.ScanHandler).toBeDefined();
     expect(commands.WatchHandler).toBeDefined();
   });
+
+  it('should expose shared command wrapper helpers', () => {
+    expect(commands.getOptionalBooleanOption).toBeDefined();
+    expect(commands.getOptionalStringOption).toBeDefined();
+    expect(commands.normalizeObjectOptions).toBeDefined();
+    expect(commands.createScannerCommandContext).toBeDefined();
+    expect(commands.normalizeCommandContextOptions).toBeDefined();
+    expect(commands.createWrappedAutoConfigCommand).toBeDefined();
+    expect(commands.createDirectoryOptionsCommandExecutionRef).toBeDefined();
+    expect(commands.createWrappedCommand).toBeDefined();
+    expect(commands.createSingleOptionsCommandExecutionRef).toBeDefined();
+    expect(commands.createWrappedSingleOptionsCommand).toBeDefined();
+  });
 });

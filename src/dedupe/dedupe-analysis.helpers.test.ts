@@ -17,10 +17,10 @@ import {
   getSuccessfulExecutions,
   getSupportedFiles,
   replaceParent
-} from './dedupe-service.helpers';
+} from './dedupe-analysis.helpers';
 import { DedupeAction } from './types';
 
-describe('dedupe-service.helpers', () => {
+describe('dedupe-analysis.helpers', () => {
   const fileA = createScannedFile('/files/a.txt');
   const fileB = createScannedFile('/files/b.txt');
   const fileC = createScannedFile('/files/c.txt');

@@ -1,5 +1,8 @@
-import type { IStrategyExecution } from './dedupe-service.helpers';
-import { createCandidatePairs } from './dedupe-candidate-pairs';
+import type { IStrategyExecution } from './dedupe-analysis.helpers';
+import {
+  createCandidatePairs,
+  createDuplicateCandidateBuckets
+} from './dedupe-candidate-pairs';
 
 describe('dedupe-candidate-pairs', () => {
   it('should return empty when no strategy bucket has duplicates', () => {
@@ -42,6 +45,24 @@ describe('dedupe-candidate-pairs', () => {
     ]);
 
     expect(result).toEqual([{ leftPath: '/files/a.txt', rightPath: '/files/b.txt' }]);
+  });
+
+  it('should create duplicate candidate buckets with strategy metadata', () => {
+    const result = createDuplicateCandidateBuckets([
+      createStrategyExecution('name', [
+        ['/files/a.txt', 'dup'],
+        ['/files/b.txt', 'dup'],
+        ['/files/c.txt', 'unique']
+      ])
+    ]);
+
+    expect(result).toEqual([
+      {
+        strategy: 'name',
+        key: 'dup',
+        paths: ['/files/a.txt', '/files/b.txt']
+      }
+    ]);
   });
 });
 

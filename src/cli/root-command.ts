@@ -3,7 +3,12 @@ import { Command } from 'commander';
 import { version } from '../../package.json';
 
 import { registerConfigCommandGroup, registerFilesCommandGroup } from './command-groups';
-import { createRootHandlers, createRootServices, type IRootHandlers } from './composition-root';
+import {
+  createRootHandlers,
+  createRootServices,
+  createRootWorkflows,
+  type IRootHandlers
+} from './composition-root';
 import { CLI_CONSTANTS } from './constants';
 
 /**
@@ -21,7 +26,8 @@ function createProgram(): Command {
 export function createRootCommand(): Command {
   const program = createProgram();
   const services = createRootServices();
-  const handlers = createRootHandlers(services);
+  const workflows = createRootWorkflows(services);
+  const handlers = createRootHandlers(services, workflows);
 
   registerConfigCommands(program, handlers);
   registerFileCommands(program, handlers);
@@ -48,10 +54,7 @@ function registerConfigCommands(
  * @param program - Root commander program.
  * @param handlers - Root handlers.
  */
-function registerFileCommands(
-  program: Readonly<Command>,
-  handlers: Readonly<IRootHandlers>
-): void {
+function registerFileCommands(program: Readonly<Command>, handlers: Readonly<IRootHandlers>): void {
   registerFilesCommandGroup(program, {
     clean: handlers.clean,
     dedupe: handlers.dedupe,

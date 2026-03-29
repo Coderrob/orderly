@@ -2,6 +2,7 @@ import { IScannedFile } from '../scanner/interfaces';
 
 import { Sha256Hasher } from './hashers';
 import type { IDedupeStrategy } from './interfaces';
+import { findPairMatches, isDuplicatePair } from './dedupe-pair-evaluation';
 import { NameStrategy, Sha256Strategy, SizeStrategy } from './strategies';
 import { DedupeAction, DedupeMode } from './types';
 import { DedupeService } from './dedupe-service';
@@ -274,11 +275,11 @@ describe('DedupeService', () => {
 
   describe('private methods', () => {
     it('should treat ANY mode as non-duplicate when no strategies matched', () => {
-      expect(service['isDuplicatePair']([], 2)).toBe(false);
+      expect(isDuplicatePair([], 2, DedupeMode.ANY)).toBe(false);
     });
 
     it('should skip pair matches when either file is missing a strategy key', () => {
-      const result = service['findPairMatches']('/left', '/right', [
+      const result = findPairMatches('/left', '/right', [
         {
           strategy: 'name',
           keysByPath: new Map([['/left', 'same']])

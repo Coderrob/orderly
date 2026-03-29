@@ -4,8 +4,9 @@ import { DedupeAction } from '../../dedupe';
 import type { IDedupeResult } from '../../dedupe/types';
 import { Logger } from '../../logger/logger';
 import type { IScannedFile } from '../../scanner/interfaces';
-import { Clock } from '../../utils/clock';
 import { FileSystemUtils } from '../../utils/file-system-utils';
+
+import { resolveQuarantinePath } from './dedupe.command.helpers';
 
 export interface IDedupeActionContext {
   readonly action: DedupeAction;
@@ -166,17 +167,4 @@ function removeDuplicateFiles(
   }
 
   return [...uniqueFiles];
-}
-
-/**
- * Resolves a unique quarantine destination path for organize dedupe replacement.
- * @param filePath - Duplicate file path.
- * @param quarantineDir - Quarantine directory.
- * @returns Collision-safe quarantine destination path.
- */
-function resolveQuarantinePath(filePath: string, quarantineDir: string): string {
-  const destinationPath = path.join(quarantineDir, path.basename(filePath));
-  return FileSystemUtils.hasPath(destinationPath)
-    ? path.join(quarantineDir, `${Clock.nowMonotonicToken()}-${path.basename(filePath)}`)
-    : destinationPath;
 }

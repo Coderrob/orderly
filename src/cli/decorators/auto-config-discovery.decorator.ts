@@ -1,4 +1,10 @@
-interface IConfigDiscoveryCapable {
+import {
+  createWrappedMethodDecorator,
+  invokeMethod,
+  type IMethodExecutionRef
+} from './method-decorator.helpers';
+
+export interface IConfigDiscoveryCapable {
   readonly configService: {
     findConfigInDirectory(directory: string): string | null;
   };
@@ -7,7 +13,7 @@ interface IConfigDiscoveryCapable {
   };
 }
 
-interface IAutoConfigOptions {
+export interface IAutoConfigOptions {
   readonly config?: string;
   readonly autoConfig?: boolean;
 }
@@ -25,24 +31,9 @@ type AutoConfigMethod<TOptions extends IAutoConfigOptions> = (
   context?: Readonly<IAutoConfigContext<TOptions>>
 ) => unknown;
 
-interface IAutoConfigMethodRef<TOptions extends IAutoConfigOptions> {
-  readonly invoke: AutoConfigMethod<TOptions>;
-}
-
-/**
- * Applies auto-config behavior to the decorated descriptor.
- * @param _target - Decorated class prototype.
- * @param _propertyKey - Decorated method key.
- * @param descriptor - Original descriptor.
- * @returns Updated descriptor with auto-config behavior.
- */
-function applyAutoConfigDescriptor<TOptions extends IAutoConfigOptions>(
-  _target: object,
-  _propertyKey: string | symbol,
-  descriptor: Readonly<PropertyDescriptor>
-): PropertyDescriptor {
-  return createAutoConfigDescriptor<TOptions>(descriptor);
-}
+type IAutoConfigMethodRef<TOptions extends IAutoConfigOptions> = IMethodExecutionRef<
+  AutoConfigMethod<TOptions>
+>;
 
 /**
  * Builds an auto-config context for a target directory.
@@ -66,44 +57,59 @@ function buildAutoConfigContext<TOptions extends IAutoConfigOptions>(
 }
 
 /**
- * Creates a wrapper descriptor for auto-config behavior.
- * @param descriptor - Original method descriptor.
- * @returns Updated descriptor with auto-config behavior.
+ * Creates auto-config context for a command invocation.
+ * @param service - Auto-config capable command dependencies.
+ * @param directory - Command directory argument.
+ * @param options - Command options.
+ * @returns Auto-config context.
  */
-function createAutoConfigDescriptor<TOptions extends IAutoConfigOptions>(
-  descriptor: Readonly<PropertyDescriptor>
-): PropertyDescriptor {
-  const originalMethod: unknown = descriptor.value;
-  if (!isAutoConfigMethod<TOptions>(originalMethod)) return { ...descriptor };
-  return { ...descriptor, value: createAutoConfigWrapper({ invoke: originalMethod }) };
+export function createAutoConfigContext<TOptions extends IAutoConfigOptions>(
+  service: Readonly<IConfigDiscoveryCapable>,
+  directory: string,
+  options: Readonly<TOptions>
+): Readonly<IAutoConfigContext<TOptions>> {
+  return buildAutoConfigContext(service, directory, options);
 }
 
 /**
- * Applies auto-config behavior to the decorated descriptor.
- * @param _target - Decorated class prototype.
- * @param _propertyKey - Decorated method key.
- * @param descriptor - Original descriptor.
- * @returns Updated descriptor with auto-config behavior.
+ * Creates a resolver for plain command wrappers that support auto-config discovery.
+ * @param service - Auto-config capable command dependencies.
+ * @returns Context resolver for directory-options command wrappers.
  */
-function createAutoConfigWrapper<TOptions extends IAutoConfigOptions>(
-  originalMethodRef: Readonly<IAutoConfigMethodRef<TOptions>>
-): AutoConfigMethod<TOptions> {
+export function createAutoConfigContextResolver<TOptions extends IAutoConfigOptions>(
+  service: Readonly<IConfigDiscoveryCapable>
+): (
+  directory: string,
+  options: Readonly<TOptions>,
+  context: Readonly<IAutoConfigContext<TOptions>> | undefined
+) => Readonly<IAutoConfigContext<TOptions>> {
   /**
-   * Executes command method with injected auto-config context.
-   * @param this - Invocation context.
+   * Resolves the effective auto-config context for one plain wrapper invocation.
    * @param directory - Command directory argument.
    * @param options - Command options.
-   * @returns Original method return value.
+   * @param context - Optional pre-resolved auto-config context.
+   * @returns Effective auto-config context.
    */
-  function executeWithAutoConfig(
-    this: unknown,
+  function resolveContext(
     directory: string,
-    options: Readonly<TOptions>
-  ): unknown {
-    return executeWrappedAutoConfigMethod(originalMethodRef, this, directory, options);
+    options: Readonly<TOptions>,
+    context: Readonly<IAutoConfigContext<TOptions>> | undefined
+  ): Readonly<IAutoConfigContext<TOptions>> {
+    return resolveAutoConfigContext(service, directory, options, context);
   }
 
-  return executeWithAutoConfig;
+  return resolveContext;
+}
+
+/**
+ * Creates an auto-config wrapper factory.
+ * @param _value - Unused configuration placeholder for shared wrapper helpers.
+ * @returns Method wrapper factory.
+ */
+function createAutoConfigWrapperFactory<TOptions extends IAutoConfigOptions>(
+  _value: undefined
+): (originalMethodRef: Readonly<IAutoConfigMethodRef<TOptions>>) => AutoConfigMethod<TOptions> {
+  return wrapAutoConfigMethod;
 }
 
 /**
@@ -127,44 +133,20 @@ function discoverConfigOption<TOptions extends IAutoConfigOptions>(
 }
 
 /**
- * Executes wrapped auto-config method with resolved context.
- * @param method - Decorated method to invoke.
- * @param context - Invocation context.
- * @param directory - Command directory argument.
- * @param options - Command options.
- * @returns Original method return value.
+ * Returns whether an unknown value looks like auto-config context.
+ * @param value - Candidate context value.
+ * @returns True when the value matches auto-config context.
  */
-function executeWrappedAutoConfigMethod<TOptions extends IAutoConfigOptions>(
-  methodRef: Readonly<IAutoConfigMethodRef<TOptions>>,
-  context: unknown,
-  directory: string,
-  options: Readonly<TOptions>
-): unknown {
-  const autoConfigContext = resolveAutoConfigContext(context, directory, options);
-  return invokeAutoConfigMethod(methodRef, context, { autoConfigContext, directory, options });
-}
-
-/**
- * Invokes an auto-config method with explicit context and arguments.
- * @param methodRef - Decorated method reference to invoke.
- * @param context - Invocation context.
- * @param args - Wrapped invocation arguments.
- * @returns Original method return value.
- */
-function invokeAutoConfigMethod<TOptions extends IAutoConfigOptions>(
-  methodRef: Readonly<IAutoConfigMethodRef<TOptions>>,
-  context: unknown,
-  args: Readonly<{
-    autoConfigContext?: Readonly<IAutoConfigContext<TOptions>>;
-    directory: string;
-    options: Readonly<TOptions>;
-  }>
-): unknown {
-  return Function.prototype.apply.call(methodRef.invoke, context, [
-    args.directory,
-    args.options,
-    args.autoConfigContext
-  ]);
+function isAutoConfigContext<TOptions extends IAutoConfigOptions>(
+  value: unknown
+): value is Readonly<IAutoConfigContext<TOptions>> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'configOptions' in value &&
+    'targetDir' in value &&
+    typeof Reflect.get(value, 'targetDir') === 'string'
+  );
 }
 
 /**
@@ -200,13 +182,41 @@ function isConfigDiscoveryCapable(value: unknown): value is IConfigDiscoveryCapa
 }
 
 /**
+ * Normalizes an unknown value to auto-config context.
+ * @param value - Candidate context value.
+ * @returns Auto-config context when present.
+ */
+export function normalizeAutoConfigContext<TOptions extends IAutoConfigOptions>(
+  value: unknown
+): Readonly<IAutoConfigContext<TOptions>> | undefined {
+  return isAutoConfigContext<TOptions>(value) ? value : undefined;
+}
+
+/**
+ * Resolves the effective auto-config context for a command invocation.
+ * @param service - Auto-config capable command dependencies.
+ * @param directory - Command directory argument.
+ * @param options - Command options.
+ * @param context - Optional pre-resolved auto-config context.
+ * @returns Effective auto-config context.
+ */
+export function resolveAutoConfigContext<TOptions extends IAutoConfigOptions>(
+  service: Readonly<IConfigDiscoveryCapable>,
+  directory: string,
+  options: Readonly<TOptions>,
+  context?: Readonly<IAutoConfigContext<TOptions>>
+): Readonly<IAutoConfigContext<TOptions>> {
+  return context ?? createAutoConfigContext(service, directory, options);
+}
+
+/**
  * Resolves optional auto-config context from invocation state.
  * @param context - Invocation context.
  * @param directory - Command directory argument.
  * @param options - Command options.
  * @returns Auto-config context when discovery is available.
  */
-function resolveAutoConfigContext<TOptions extends IAutoConfigOptions>(
+function resolveMethodAutoConfigContext<TOptions extends IAutoConfigOptions>(
   context: unknown,
   directory: string,
   options: Readonly<TOptions>
@@ -217,9 +227,57 @@ function resolveAutoConfigContext<TOptions extends IAutoConfigOptions>(
 }
 
 /**
+ * Executes wrapped auto-config method with resolved context.
+ * @param methodRef - Decorated method to invoke.
+ * @param context - Invocation context.
+ * @param directory - Command directory argument.
+ * @param options - Command options.
+ * @returns Original method return value.
+ */
+function runAutoConfigMethod<TOptions extends IAutoConfigOptions>(
+  methodRef: Readonly<IAutoConfigMethodRef<TOptions>>,
+  context: unknown,
+  directory: string,
+  options: Readonly<TOptions>
+): unknown {
+  const autoConfigContext = resolveMethodAutoConfigContext(context, directory, options);
+  return invokeMethod(methodRef, context, [directory, options, autoConfigContext]);
+}
+
+/**
  * Decorates command execute methods with shared auto-config discovery behavior.
  * @returns A method decorator that resolves target-directory config files before execution.
  */
 export function WithAutoConfigDiscovery<TOptions extends IAutoConfigOptions>(): MethodDecorator {
-  return applyAutoConfigDescriptor<TOptions>;
+  return createWrappedMethodDecorator(
+    { value: undefined },
+    isAutoConfigMethod<TOptions>,
+    createAutoConfigWrapperFactory<TOptions>
+  );
+}
+
+/**
+ * Wraps an auto-config method reference with discovery behavior.
+ * @param originalMethodRef - Original method reference.
+ * @returns Wrapped method execution.
+ */
+function wrapAutoConfigMethod<TOptions extends IAutoConfigOptions>(
+  originalMethodRef: Readonly<IAutoConfigMethodRef<TOptions>>
+): AutoConfigMethod<TOptions> {
+  /**
+   * Executes command method with injected auto-config context.
+   * @param this - Invocation context.
+   * @param directory - Command directory argument.
+   * @param options - Command options.
+   * @returns Original method return value.
+   */
+  function executeWithAutoConfig(
+    this: unknown,
+    directory: string,
+    options: Readonly<TOptions>
+  ): unknown {
+    return runAutoConfigMethod(originalMethodRef, this, directory, options);
+  }
+
+  return executeWithAutoConfig;
 }

@@ -1,5 +1,6 @@
 import type { OrderlyConfig } from '../../config/types';
 import { Logger } from '../../logger/logger';
+import { FileScanner } from '../../scanner/file-scanner';
 import { COMMAND_MESSAGES } from '../constants';
 import type { IConfigService, IDirectoryValidator } from '../interfaces';
 
@@ -29,6 +30,17 @@ interface ICommandContextBaseResult<TOptions> {
   readonly configOptions: Readonly<TOptions>;
   readonly logger: Logger;
   readonly targetDir: string;
+}
+
+interface ICommandContextOptions<TOptions> {
+  readonly autoDiscoveredConfig?: string;
+  readonly configOptions: TOptions;
+  readonly targetDir: string;
+}
+
+interface IScannableCommandContext {
+  readonly config: OrderlyConfig;
+  readonly logger: Logger;
 }
 
 /**
@@ -101,6 +113,20 @@ function createMappedConfigLoader<TOptions, TConfigOptions>(
 }
 
 /**
+ * Adds a file scanner to a resolved command context.
+ * @param context - Base command context.
+ * @returns Command context with scanner.
+ */
+export function createScannerCommandContext<TContext extends IScannableCommandContext>(
+  context: Readonly<TContext>
+): Readonly<TContext & { readonly scanner: FileScanner }> {
+  return {
+    ...context,
+    scanner: new FileScanner(context.config, context.logger)
+  };
+}
+
+/**
  * Loads config directly from the resolved command options.
  * @param configService - Config loading service.
  * @param configOptions - Resolved command options.
@@ -125,4 +151,26 @@ export function logAutoDiscoveredConfig(
   if (autoDiscoveredConfig) {
     logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
   }
+}
+
+/**
+ * Normalizes the config options carried by an optional auto-config context.
+ * @param context - Optional auto-config context.
+ * @param normalizeOptions - Option normalizer.
+ * @returns Context with normalized config options.
+ */
+export function normalizeCommandContextOptions<TInputOptions, TOutputOptions>(
+  context: Readonly<ICommandContextOptions<TInputOptions>> | undefined,
+  normalizeOptions: (options: Readonly<TInputOptions>) => Readonly<TOutputOptions>
+):
+  | Readonly<ICommandContextOptions<TOutputOptions>>
+  | undefined {
+  if (!context) {
+    return undefined;
+  }
+
+  return {
+    ...context,
+    configOptions: normalizeOptions(context.configOptions)
+  };
 }

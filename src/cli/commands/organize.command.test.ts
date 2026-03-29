@@ -77,15 +77,11 @@ describe('OrganizeHandler', () => {
       skipped: 0,
       errors: []
     });
-    handler = new OrganizeHandler(
-      mockConfigService as any,
-      mockDirectoryValidator as any,
-      {
-        manifestService: mockManifestService as any,
-        cleaner: mockCleaner as any,
-        workflow: mockWorkflow as unknown as OrganizeWorkflow
-      }
-    );
+    handler = new OrganizeHandler(mockConfigService as any, mockDirectoryValidator as any, {
+      manifestService: mockManifestService as any,
+      cleaner: mockCleaner as any,
+      workflow: mockWorkflow as unknown as OrganizeWorkflow
+    });
   });
 
   it('should organize files successfully through the workflow', async () => {
@@ -212,14 +208,6 @@ describe('OrganizeHandler', () => {
       expect.objectContaining({ targetDir: '/test/dir' }),
       {}
     );
-  });
-
-  it('should log auto-discovered config paths through the private helper', () => {
-    const logger = { info: jest.fn() };
-
-    (handler as any).logAutoDiscoveredConfig(logger, '/test/dir/.orderly.yml');
-
-    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('/test/dir/.orderly.yml'));
   });
 
   it('should allow organize replace when config is in dry-run mode', () => {

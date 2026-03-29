@@ -1,5 +1,6 @@
 import { Logger } from '../../logger/logger';
 import { FileScanner } from '../../scanner/file-scanner';
+import { ScanWorkflow } from '../services';
 import { ScanHandler } from './scan.command';
 
 jest.mock('chalk');
@@ -16,145 +17,64 @@ describe('ScanHandler', () => {
   };
   const mockLogger = Logger as jest.MockedClass<typeof Logger>;
   const mockFileScanner = FileScanner as jest.MockedClass<typeof FileScanner>;
-  const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+  const mockWorkflow = {
+    run: jest.fn()
+  };
 
   let handler: ScanHandler;
 
   beforeEach(() => {
-    handler = new ScanHandler(mockConfigService as any, mockDirectoryValidator as any);
+    handler = new ScanHandler(
+      mockConfigService as any,
+      mockDirectoryValidator as any,
+      mockWorkflow as unknown as ScanWorkflow
+    );
     jest.clearAllMocks();
+    mockWorkflow.run.mockResolvedValue([]);
   });
 
-  afterAll(() => {
-    mockConsoleLog.mockRestore();
-  });
-
-  it('should scan files successfully in table format', async () => {
+  it('should scan files successfully through the workflow', async () => {
     const config = { logLevel: 'info' as any };
     const targetDir = '/test/dir';
-    const files = [
-      { filename: 'file1.txt', extension: '.txt', size: 10, category: 'document' } as any,
-      { filename: 'file2.txt', extension: '.txt', size: 20 } as any
-    ];
-    const summary = new Map([
-      ['document', 1],
-      ['uncategorized', 1]
-    ]);
 
     mockConfigService.loadWithOverrides.mockReturnValue(config);
     mockDirectoryValidator.validate.mockReturnValue(targetDir);
-    mockFileScanner.prototype.scan.mockResolvedValue(files);
-    mockFileScanner.prototype.getCategorySummary.mockReturnValue(summary);
+    mockWorkflow.run.mockResolvedValue([
+      { filename: 'file1.txt', extension: '.txt', size: 10, category: 'document' }
+    ]);
 
     const result = await handler.execute(targetDir, {});
 
     expect(result.success).toBe(true);
-    expect(result.message).toContain('Found 2 files');
-    expect(mockConsoleLog).toHaveBeenCalledWith('\nOrderly - File Scan Results\n');
-    expect(mockConsoleLog).toHaveBeenCalledWith('  document: 1');
-    expect(mockConsoleLog).toHaveBeenCalledWith('  uncategorized: 1');
-  });
-
-  it('should emit JSON output when format is json', async () => {
-    const config = { logLevel: 'info' as any };
-    const targetDir = '/test/dir';
-    const files = [
-      { filename: 'file1.txt', extension: '.txt', size: 10, category: 'document' } as any
-    ];
-    const summary = new Map([['document', 1]]);
-
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
-    mockDirectoryValidator.validate.mockReturnValue(targetDir);
-    mockFileScanner.prototype.scan.mockResolvedValue(files);
-    mockFileScanner.prototype.getCategorySummary.mockReturnValue(summary);
-
-    await handler.execute(targetDir, { format: 'json' });
-
-    expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('"summary"'));
-  });
-
-  it('should emit CSV output when format is csv', async () => {
-    const config = { logLevel: 'info' as any };
-    const targetDir = '/test/dir';
-    const files = [
-      { filename: 'file1.txt', extension: '.txt', size: 10, category: 'document' } as any
-    ];
-    const summary = new Map([['document', 1]]);
-
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
-    mockDirectoryValidator.validate.mockReturnValue(targetDir);
-    mockFileScanner.prototype.scan.mockResolvedValue(files);
-    mockFileScanner.prototype.getCategorySummary.mockReturnValue(summary);
-
-    await handler.execute(targetDir, { format: 'csv' });
-
-    expect(mockConsoleLog).toHaveBeenCalledWith(
-      expect.stringContaining('filename,extension,category,size')
+    expect(result.message).toContain('Found 1 files');
+    expect(mockWorkflow.run).toHaveBeenCalledWith(
+      expect.objectContaining({ targetDir: '/test/dir' }),
+      undefined
     );
   });
 
-  it('should use uncategorized in CSV output when category is missing', () => {
-    const output = (handler as any).formatResults(
-      [{ filename: 'file1.txt', extension: '.txt', size: 10 }],
-      { getCategorySummary: jest.fn().mockReturnValue(new Map()) },
-      'csv'
-    );
-
-    expect(output).toContain('file1.txt,.txt,uncategorized,10');
-  });
-
-  it('should escape CSV fields containing commas, quotes, and newlines', () => {
-    const output = (handler as any).formatResults(
-      [
-        {
-          filename: 'report, "final"\ncopy.txt',
-          extension: '.txt',
-          size: 10,
-          category: 'docs,notes'
-        }
-      ],
-      { getCategorySummary: jest.fn().mockReturnValue(new Map()) },
-      'csv'
-    );
-
-    expect(output).toContain('"report, ""final""\ncopy.txt",.txt,"docs,notes",10');
-  });
-
-  it('should fall back to table output for unknown formats', async () => {
-    const config = { logLevel: 'info' as any };
-    const targetDir = '/test/dir';
-    const files = [{ filename: 'file1.txt', extension: '.txt', size: 10, category: 'document' }];
-    const summary = new Map([['document', 1]]);
-
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
-    mockDirectoryValidator.validate.mockReturnValue(targetDir);
-    mockFileScanner.prototype.scan.mockResolvedValue(files as any);
-    mockFileScanner.prototype.getCategorySummary.mockReturnValue(summary);
-
-    await handler.execute(targetDir, { format: 'xml' });
-
-    expect(mockConsoleLog).toHaveBeenCalledWith('\nOrderly - File Scan Results\n');
-  });
-
-  it('should omit sample file lines when the scan is empty', async () => {
-    const config = { logLevel: 'info' as any };
-
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
+  it('should create scanner context for the workflow', async () => {
+    mockConfigService.loadWithOverrides.mockReturnValue({ logLevel: 'info' });
     mockDirectoryValidator.validate.mockReturnValue('/test/dir');
-    mockFileScanner.prototype.scan.mockResolvedValue([]);
-    mockFileScanner.prototype.getCategorySummary.mockReturnValue(new Map());
 
     await handler.execute('/test/dir', {});
 
-    expect(mockConsoleLog).not.toHaveBeenCalledWith('Sample files:');
+    expect(mockFileScanner).toHaveBeenCalledTimes(1);
+  });
+
+  it('should pass the requested output format to the workflow', async () => {
+    mockConfigService.loadWithOverrides.mockReturnValue({ logLevel: 'info' });
+    mockDirectoryValidator.validate.mockReturnValue('/test/dir');
+
+    await handler.execute('/test/dir', { format: 'json' });
+
+    expect(mockWorkflow.run).toHaveBeenCalledWith(expect.anything(), 'json');
   });
 
   it('should handle scan errors', async () => {
-    const config = { logLevel: 'info' as any };
-
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
+    mockConfigService.loadWithOverrides.mockReturnValue({ logLevel: 'info' });
     mockDirectoryValidator.validate.mockReturnValue('/test/dir');
-    mockFileScanner.prototype.scan.mockRejectedValue(new Error('Scan failed'));
+    mockWorkflow.run.mockRejectedValue(new Error('Scan failed'));
 
     const result = await handler.execute('/test/dir', {});
 
@@ -164,15 +84,11 @@ describe('ScanHandler', () => {
   });
 
   it('should accept auto-discovered config context', async () => {
-    const config = { logLevel: 'info' as any };
-
-    mockConfigService.loadWithOverrides.mockReturnValue(config);
+    mockConfigService.loadWithOverrides.mockReturnValue({ logLevel: 'info' });
     mockDirectoryValidator.validate.mockReturnValue('/test/dir');
-    mockFileScanner.prototype.scan.mockResolvedValue([]);
-    mockFileScanner.prototype.getCategorySummary.mockReturnValue(new Map());
 
     await handler.execute(
-      '/test/dir',
+      '/ignored',
       {},
       {
         autoDiscoveredConfig: '/test/dir/.orderly.yml',
@@ -181,43 +97,10 @@ describe('ScanHandler', () => {
       }
     );
 
-    expect(mockFileScanner.prototype.scan).toHaveBeenCalledWith('/test/dir');
-  });
-
-  it('should log auto-discovered config paths through the private helper', () => {
-    const logger = { info: jest.fn() };
-
-    (handler as any).logAutoDiscoveredConfig(logger, '/test/dir/.orderly.yml');
-
-    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('/test/dir/.orderly.yml'));
-  });
-
-  it('should build table output through the private formatter', () => {
-    const scanner = {
-      getCategorySummary: jest.fn().mockReturnValue(new Map([['document', 1]]))
-    };
-
-    const output = (handler as any).formatResults(
-      [{ filename: 'file1.txt', extension: '.txt', size: 10, category: 'document' }],
-      scanner,
-      'table'
+    expect(mockWorkflow.run).toHaveBeenCalledWith(
+      expect.objectContaining({ targetDir: '/test/dir' }),
+      undefined
     );
-
-    expect(output).toContain('File categories:');
-    expect(output).toContain('  document: 1');
-  });
-
-  it('should append a remaining-files line when more than the display limit exist', () => {
-    const files = Array.from({ length: 7 }, (_, index) => ({
-      filename: `file-${index + 1}.txt`,
-      extension: '.txt',
-      size: 10,
-      category: 'document'
-    }));
-
-    const lines = (handler as any).createSampleLines(files);
-
-    expect(lines).toContain('  ... and 2 more files');
   });
 
   it('should build command context from direct options when no auto-config context exists', () => {

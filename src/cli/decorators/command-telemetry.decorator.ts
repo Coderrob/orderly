@@ -2,8 +2,8 @@ import { Clock } from '../../utils/clock';
 import type { ICommandResult } from '../interfaces';
 
 import {
-  createCommandMethodDecorator,
-  createWrappedDescriptor,
+  createCommandMiddlewareDecorator,
+  createCommandMiddlewareWrapper,
   invokeCommand,
   isCommandResult,
   type CommandExecution,
@@ -30,80 +30,17 @@ function appendTelemetryMessage(
 }
 
 /**
- * Creates a descriptor wrapper factory for one telemetry command name.
- * @param commandName - Command name used in telemetry text.
- * @returns Descriptor wrapper factory.
- */
-function createTelemetryDescriptorFactory(
-  commandName: string
-): (descriptor: Readonly<PropertyDescriptor>) => PropertyDescriptor {
-  /**
-   * Wraps one descriptor with telemetry behavior.
-   * @param descriptor - Original method descriptor.
-   * @returns Updated descriptor.
-   */
-  function wrapTelemetryDescriptor(descriptor: Readonly<PropertyDescriptor>): PropertyDescriptor {
-    return telemetryDescriptorFrom(commandName, descriptor);
-  }
-
-  return wrapTelemetryDescriptor;
-}
-
-/**
- * Creates the method-decorator function that applies telemetry wrapping.
- * @param commandName - Command name used in telemetry text.
- * @returns Method decorator implementation.
- */
-function createTelemetryMethodDecorator(commandName: string): MethodDecorator {
-  return createCommandMethodDecorator(createTelemetryDescriptorFactory(commandName));
-}
-
-/**
- * Wraps a command method with telemetry timing behavior.
- * @param commandName - Command name used in telemetry text.
- * @param originalMethod - Command method to wrap.
- * @returns Telemetry-enabled command method.
- */
-function createTelemetryWrapper(
-  commandName: string,
-  originalMethodRef: Readonly<ICommandExecutionRef>
-): CommandExecution {
-  /**
-   * Executes the wrapped command and appends telemetry metadata.
-   * @param this - Invocation context.
-   * @param args - Command arguments.
-   * @returns Command result with telemetry suffix.
-   */
-  async function executeWithTelemetry(
-    this: object,
-    ...args: readonly unknown[]
-  ): Promise<ICommandResult> {
-    return runTelemetryCommand(commandName, originalMethodRef, this, args);
-  }
-
-  return executeWithTelemetry;
-}
-
-/**
- * Creates a command wrapper factory for one telemetry command.
- * @param commandName - Command name used in telemetry text.
+ * Creates a plain command wrapper that appends telemetry metadata.
+ * @param commandName - Name of the command being measured.
  * @returns Command wrapper factory.
  */
-function createTelemetryWrapperFactory(
+export function createTelemetryCommandWrapper(
   commandName: string
 ): (originalMethodRef: Readonly<ICommandExecutionRef>) => CommandExecution {
-  /**
-   * Wraps the original command method.
-   * @param originalMethodRef - Original command method reference.
-   * @returns Wrapped command execution.
-   */
-  function wrapTelemetryMethod(
-    originalMethodRef: Readonly<ICommandExecutionRef>
-  ): CommandExecution {
-    return createTelemetryWrapper(commandName, originalMethodRef);
-  }
-
-  return wrapTelemetryMethod;
+  return createCommandMiddlewareWrapper(
+    { value: commandName },
+    { invoke: runTelemetryCommand }
+  );
 }
 
 /**
@@ -129,23 +66,13 @@ async function runTelemetryCommand(
 }
 
 /**
- * Builds a telemetry-enabled descriptor from an existing method descriptor.
- * @param commandName - Command name used in telemetry text.
- * @param descriptor - Original method descriptor.
- * @returns Updated descriptor with telemetry wrapper.
- */
-function telemetryDescriptorFrom(
-  commandName: string,
-  descriptor: Readonly<PropertyDescriptor>
-): PropertyDescriptor {
-  return createWrappedDescriptor(descriptor, createTelemetryWrapperFactory(commandName));
-}
-
-/**
  * Adds lightweight timing telemetry to command handler results.
  * @param commandName - Name of the command being measured.
  * @returns A method decorator that appends duration metadata to the command result message.
  */
 export function WithCommandTelemetry(commandName: string): MethodDecorator {
-  return createTelemetryMethodDecorator(commandName);
+  return createCommandMiddlewareDecorator(
+    { value: commandName },
+    { invoke: runTelemetryCommand }
+  );
 }

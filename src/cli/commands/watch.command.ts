@@ -1,12 +1,20 @@
 import { COMMAND_MESSAGES, ExitCode } from '../constants';
-import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
-import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
 import type {
   ICommandResult,
   IOrganizeHandler,
   IWatchCommandOptions,
   IWatchHandler
 } from '../interfaces';
+
+import {
+  getOptionalBooleanOption,
+  getOptionalStringOption,
+  normalizeObjectOptions
+} from './command-option.helpers';
+import {
+  createDirectoryOptionsCommandExecutionRef,
+  createWrappedCommand
+} from './command-wrapper.helpers';
 
 const DEFAULT_INTERVAL_SECONDS = 5;
 const MINIMUM_INTERVAL_SECONDS = 1;
@@ -39,15 +47,44 @@ interface IRunCycleState extends IRunCycleBaseState {
   readonly resolve: (completedCycles: number) => void;
 }
 
+interface IWatchExecuteDependencies {
+  executeCore(directory: string, options: Readonly<IWatchCommandOptions>): Promise<ICommandResult>;
+}
+
+enum WatchOptionKey {
+  AUTO_CONFIG = 'autoConfig',
+  CLEAN_EMPTY_DIRS = 'cleanEmptyDirs',
+  CONFIG = 'config',
+  CONFIRM_REPLACE = 'confirmReplace',
+  CYCLES = 'cycles',
+  DEDUPE = 'dedupe',
+  DEDUPE_ACTION = 'dedupeAction',
+  DRY_RUN = 'dryRun',
+  INTERVAL = 'interval',
+  LOG_LEVEL = 'logLevel',
+  MANIFEST = 'manifest',
+  OUTPUT = 'output',
+  QUARANTINE_DIR = 'quarantineDir'
+}
+
 /**
  * Handler for continuous polling-based watch mode.
  */
 export class WatchHandler implements IWatchHandler {
+  public readonly execute: (
+    directory: string,
+    options: Readonly<IWatchCommandOptions>
+  ) => Promise<ICommandResult>;
+
   /**
    * Creates a new watch command handler.
    * @param organizeHandler - Organize handler used for each cycle.
    */
-  constructor(private readonly organizeHandler: Readonly<IOrganizeHandler>) {}
+  constructor(private readonly organizeHandler: Readonly<IOrganizeHandler>) {
+    this.execute = createWatchExecute({
+      executeCore: this.executeCore.bind(this)
+    });
+  }
 
   /**
    * Executes watch mode.
@@ -55,9 +92,7 @@ export class WatchHandler implements IWatchHandler {
    * @param options - Watch options.
    * @returns Command result.
    */
-  @WithCommandTelemetry('watch')
-  @HandleCommandErrors(COMMAND_MESSAGES.WATCH_FAILED)
-  async execute(
+  private async executeCore(
     directory: string,
     options: Readonly<IWatchCommandOptions>
   ): Promise<ICommandResult> {
@@ -188,6 +223,72 @@ function createUpdatedRunCycleState(runCycleState: Readonly<IRunCycleState>): IR
 }
 
 /**
+ * Creates normalized watch boolean options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized boolean options.
+ */
+function createWatchBooleanOptions(value: object): Readonly<IWatchCommandOptions> {
+  const autoConfig = getOptionalBooleanOption(value, WatchOptionKey.AUTO_CONFIG);
+  const cleanEmptyDirs = getOptionalBooleanOption(value, WatchOptionKey.CLEAN_EMPTY_DIRS);
+  const confirmReplace = getOptionalBooleanOption(value, WatchOptionKey.CONFIRM_REPLACE);
+  const dedupe = getOptionalBooleanOption(value, WatchOptionKey.DEDUPE);
+  const dryRun = getOptionalBooleanOption(value, WatchOptionKey.DRY_RUN);
+  const manifest = getOptionalBooleanOption(value, WatchOptionKey.MANIFEST);
+  return {
+    ...(autoConfig === undefined ? {} : { autoConfig }),
+    ...(cleanEmptyDirs === undefined ? {} : { cleanEmptyDirs }),
+    ...(confirmReplace === undefined ? {} : { confirmReplace }),
+    ...(dedupe === undefined ? {} : { dedupe }),
+    ...(dryRun === undefined ? {} : { dryRun }),
+    ...(manifest === undefined ? {} : { manifest })
+  };
+}
+
+/**
+ * Creates the wrapped execute function for the watch handler.
+ * @param handler - Watch handler dependencies.
+ * @returns Wrapped execute function.
+ */
+function createWatchExecute(
+  handler: Readonly<IWatchExecuteDependencies>
+): (directory: string, options: Readonly<IWatchCommandOptions>) => Promise<ICommandResult> {
+  return createWrappedCommand<[string, Readonly<IWatchCommandOptions>]>({
+    commandName: 'watch',
+    errorPrefix: COMMAND_MESSAGES.WATCH_FAILED,
+    executeCoreRef: createDirectoryOptionsCommandExecutionRef({
+      executeCore: handler.executeCore.bind(handler),
+      normalizeContext: normalizeAbsentWatchContext,
+      normalizeDirectory: normalizeWatchDirectory,
+      normalizeOptions: normalizeWatchOptions
+    })
+  });
+}
+
+/**
+ * Creates normalized watch string options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized string options.
+ */
+function createWatchStringOptions(value: object): Readonly<IWatchCommandOptions> {
+  const config = getOptionalStringOption(value, WatchOptionKey.CONFIG);
+  const cycles = getOptionalStringOption(value, WatchOptionKey.CYCLES);
+  const dedupeAction = getOptionalStringOption(value, WatchOptionKey.DEDUPE_ACTION);
+  const interval = getOptionalStringOption(value, WatchOptionKey.INTERVAL);
+  const logLevel = getOptionalStringOption(value, WatchOptionKey.LOG_LEVEL);
+  const output = getOptionalStringOption(value, WatchOptionKey.OUTPUT);
+  const quarantineDir = getOptionalStringOption(value, WatchOptionKey.QUARANTINE_DIR);
+  return {
+    ...(config ? { config } : {}),
+    ...(cycles ? { cycles } : {}),
+    ...(dedupeAction ? { dedupeAction } : {}),
+    ...(interval ? { interval } : {}),
+    ...(logLevel ? { logLevel } : {}),
+    ...(output ? { output } : {}),
+    ...(quarantineDir ? { quarantineDir } : {})
+  };
+}
+
+/**
  * Waits for the provided duration.
  * @param durationMs - Delay duration in milliseconds.
  * @returns Promise resolving after the delay.
@@ -260,6 +361,38 @@ function handleSuccessfulCycleResult(runCycleState: Readonly<IRunCycleState>): v
   delay(nextRunCycleState.intervalMs)
     .then(scheduleDelayedCycle.bind(null, nextRunCycleState))
     .catch(nextRunCycleState.reject);
+}
+
+/**
+ * Returns no explicit wrapper context for watch command execution.
+ * @param value - Candidate context value.
+ * @returns Undefined.
+ */
+function normalizeAbsentWatchContext(value: unknown): undefined {
+  void value;
+  return undefined;
+}
+
+/**
+ * Normalizes an unknown directory argument to a watch directory string.
+ * @param value - Candidate directory value.
+ * @returns Directory string.
+ */
+function normalizeWatchDirectory(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * Normalizes an unknown value to watch command options.
+ * @param value - Candidate options value.
+ * @returns Watch command options.
+ */
+function normalizeWatchOptions(value: unknown): Readonly<IWatchCommandOptions> {
+  return normalizeObjectOptions<IWatchCommandOptions>(
+    value,
+    createWatchBooleanOptions,
+    createWatchStringOptions
+  );
 }
 
 /**

@@ -6,11 +6,8 @@ import type { IOrganizationResult } from '../../organizer/types';
 import { FileScanner } from '../../scanner/file-scanner';
 import { ExitCode, COMMAND_MESSAGES } from '../constants';
 import {
-  IAutoConfigContext,
-  WithAutoConfigDiscovery
+  IAutoConfigContext
 } from '../decorators/auto-config-discovery.decorator';
-import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
-import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
 import type {
   ICleanerService,
   IOrganizeOptions,
@@ -22,7 +19,18 @@ import type {
 } from '../interfaces';
 import { OrganizeWorkflow } from '../services';
 
-import { createCommandContextBase, logAutoDiscoveredConfig } from './command-context.helpers';
+import {
+  createCommandContextBase,
+  createScannerCommandContext
+} from './command-context.helpers';
+import {
+  getOptionalBooleanOption,
+  getOptionalStringOption,
+  normalizeObjectOptions
+} from './command-option.helpers';
+import {
+  createWrappedAutoConfigCommand
+} from './command-wrapper.helpers';
 
 interface IOrganizeCommandContext {
   readonly config: OrderlyConfig;
@@ -38,10 +46,43 @@ interface IOrganizeHandlerDependencies {
   readonly workflow?: Readonly<OrganizeWorkflow>;
 }
 
+interface IOrganizeContextDependencies {
+  readonly configService: Readonly<IConfigService>;
+  readonly directoryValidator: Readonly<IDirectoryValidator>;
+}
+
+interface IOrganizeExecuteDependencies extends IOrganizeContextDependencies {
+  executeCore(
+    directory: string,
+    options: Readonly<IOrganizeOptions>,
+    context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
+  ): Promise<ICommandResult>;
+}
+
+enum OrganizeOptionKey {
+  AUTO_CONFIG = 'autoConfig',
+  CLEAN_EMPTY_DIRS = 'cleanEmptyDirs',
+  CONFIG = 'config',
+  CONFIRM_REPLACE = 'confirmReplace',
+  DEDUPE = 'dedupe',
+  DEDUPE_ACTION = 'dedupeAction',
+  DRY_RUN = 'dryRun',
+  LOG_LEVEL = 'logLevel',
+  MANIFEST = 'manifest',
+  OUTPUT = 'output',
+  QUARANTINE_DIR = 'quarantineDir'
+}
+
 /**
  * Handler for the organize command.
  */
 export class OrganizeHandler implements IOrganizeHandler {
+  public readonly execute: (
+    directory: string,
+    options: Readonly<IOrganizeOptions>,
+    context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
+  ) => Promise<ICommandResult>;
+
   /**
    * Creates a new OrganizeHandler instance
    * @param configService - Service for loading and managing configuration
@@ -56,6 +97,11 @@ export class OrganizeHandler implements IOrganizeHandler {
     this.workflow =
       dependencies.workflow ??
       new OrganizeWorkflow(dependencies.manifestService, dependencies.cleaner);
+    this.execute = createOrganizeExecute({
+      configService: this.configService,
+      directoryValidator: this.directoryValidator,
+      executeCore: this.executeCore.bind(this)
+    });
   }
 
   private readonly workflow: Readonly<OrganizeWorkflow>;
@@ -67,10 +113,7 @@ export class OrganizeHandler implements IOrganizeHandler {
    * @param context - Optional context injected by auto-config discovery.
    * @returns Promise resolving to command result
    */
-  @WithCommandTelemetry('organize')
-  @HandleCommandErrors(COMMAND_MESSAGES.ORGANIZATION_FAILED)
-  @WithAutoConfigDiscovery<IOrganizeOptions>()
-  async execute(
+  private async executeCore(
     directory: string,
     options: Readonly<IOrganizeOptions>,
     context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
@@ -96,29 +139,24 @@ export class OrganizeHandler implements IOrganizeHandler {
     options: Readonly<IOrganizeOptions>,
     context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
   ): Readonly<IOrganizeCommandContext> {
-    const { config, logger, targetDir } = createCommandContextBase({
+    const commandContext = createScannerCommandContext(createCommandContextBase({
       directory,
       options,
       context,
       configService: this.configService,
       directoryValidator: this.directoryValidator
-    });
+    }));
     return {
-      config,
-      logger,
-      organizer: new FileOrganizer(config, logger, targetDir),
-      scanner: new FileScanner(config, logger),
-      targetDir
+      config: commandContext.config,
+      logger: commandContext.logger,
+      organizer: new FileOrganizer(
+        commandContext.config,
+        commandContext.logger,
+        commandContext.targetDir
+      ),
+      scanner: commandContext.scanner,
+      targetDir: commandContext.targetDir
     };
-  }
-
-  /**
-   * Logs the discovered config path when auto-config resolution finds one.
-   * @param logger - Logger instance.
-   * @param autoDiscoveredConfig - Auto-discovered config path.
-   */
-  private logAutoDiscoveredConfig(logger: Readonly<Logger>, autoDiscoveredConfig?: string): void {
-    logAutoDiscoveredConfig(logger, autoDiscoveredConfig);
   }
 
   /**
@@ -160,4 +198,90 @@ export class OrganizeHandler implements IOrganizeHandler {
         }
       : undefined;
   }
+}
+
+/**
+ * Creates normalized organize boolean options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized boolean options.
+ */
+function createOrganizeBooleanOptions(value: object): Readonly<IOrganizeOptions> {
+  const autoConfig = getOptionalBooleanOption(value, OrganizeOptionKey.AUTO_CONFIG);
+  const cleanEmptyDirs = getOptionalBooleanOption(value, OrganizeOptionKey.CLEAN_EMPTY_DIRS);
+  const confirmReplace = getOptionalBooleanOption(value, OrganizeOptionKey.CONFIRM_REPLACE);
+  const dedupe = getOptionalBooleanOption(value, OrganizeOptionKey.DEDUPE);
+  const dryRun = getOptionalBooleanOption(value, OrganizeOptionKey.DRY_RUN);
+  const manifest = getOptionalBooleanOption(value, OrganizeOptionKey.MANIFEST);
+  return {
+    ...(autoConfig === undefined ? {} : { autoConfig }),
+    ...(cleanEmptyDirs === undefined ? {} : { cleanEmptyDirs }),
+    ...(confirmReplace === undefined ? {} : { confirmReplace }),
+    ...(dedupe === undefined ? {} : { dedupe }),
+    ...(dryRun === undefined ? {} : { dryRun }),
+    ...(manifest === undefined ? {} : { manifest })
+  };
+}
+
+/**
+ * Creates the wrapped execute function for the organize handler.
+ * @param handler - Organize handler dependencies.
+ * @returns Wrapped execute function.
+ */
+function createOrganizeExecute(
+  handler: Readonly<IOrganizeExecuteDependencies>
+): (
+  directory: string,
+  options: Readonly<IOrganizeOptions>,
+  context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
+) => Promise<ICommandResult> {
+  return createWrappedAutoConfigCommand<IOrganizeOptions>({
+    commandName: 'organize',
+    errorPrefix: COMMAND_MESSAGES.ORGANIZATION_FAILED,
+    executeCore: handler.executeCore.bind(handler),
+    normalizeDirectory: normalizeOrganizeDirectory,
+    normalizeOptions: normalizeOrganizeOptions,
+    service: handler
+  });
+}
+
+/**
+ * Creates normalized organize string options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized string options.
+ */
+function createOrganizeStringOptions(value: object): Readonly<IOrganizeOptions> {
+  const config = getOptionalStringOption(value, OrganizeOptionKey.CONFIG);
+  const dedupeAction = getOptionalStringOption(value, OrganizeOptionKey.DEDUPE_ACTION);
+  const logLevel = getOptionalStringOption(value, OrganizeOptionKey.LOG_LEVEL);
+  const output = getOptionalStringOption(value, OrganizeOptionKey.OUTPUT);
+  const quarantineDir = getOptionalStringOption(value, OrganizeOptionKey.QUARANTINE_DIR);
+  return {
+    ...(config ? { config } : {}),
+    ...(dedupeAction ? { dedupeAction } : {}),
+    ...(logLevel ? { logLevel } : {}),
+    ...(output ? { output } : {}),
+    ...(quarantineDir ? { quarantineDir } : {})
+  };
+}
+
+/**
+ * Normalizes an unknown directory argument to an organize directory string.
+ * @param value - Candidate directory value.
+ * @returns Directory string.
+ */
+function normalizeOrganizeDirectory(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * Normalizes an unknown value to organize command options.
+ * @param value - Candidate options value.
+ * @returns Organize command options.
+ */
+function normalizeOrganizeOptions(value: unknown): Readonly<IOrganizeOptions> {
+  return normalizeObjectOptions<IOrganizeOptions>(
+    value,
+    createOrganizeBooleanOptions,
+    createOrganizeStringOptions
+  );
 }

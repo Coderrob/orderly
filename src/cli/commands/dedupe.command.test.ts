@@ -360,14 +360,6 @@ describe('DedupeHandler', () => {
     );
   });
 
-  it('should log auto-discovered config paths through the private helper', () => {
-    const logger = { info: jest.fn() };
-
-    (handler as any).logAutoDiscoveredConfig(logger, '/target/.orderly.yml');
-
-    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('/target/.orderly.yml'));
-  });
-
   it('should resolve the explicit report action through the helper', () => {
     const action = resolveAction('report');
 
@@ -498,20 +490,6 @@ describe('DedupeHandler', () => {
       expect.anything(),
       '/tmp/report.md'
     );
-  });
-
-  it('should skip report writes when no report paths are resolved', async () => {
-    await (handler as any).writeReportsIfRequested(
-      {
-        dedupeConfig: { action: DedupeAction.SKIP },
-        options: {},
-        targetDir: '/target'
-      },
-      { groups: [], totalFiles: 0, totalDuplicates: 0, strategiesUsed: [] }
-    );
-
-    expect(mockReportWriter.write).not.toHaveBeenCalled();
-    expect(mockReportWriter.writeMarkdown).not.toHaveBeenCalled();
   });
 
   it('should use the default quarantine directory when none is provided to the private helper', () => {

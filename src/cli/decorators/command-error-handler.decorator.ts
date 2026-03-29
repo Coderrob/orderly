@@ -1,14 +1,14 @@
 import { ExitCode } from '../constants';
 import type { ICommandResult } from '../interfaces';
 
-type CommandMethod = (
-  this: object,
-  ...args: readonly unknown[]
-) => Promise<ICommandResult> | ICommandResult;
-
-interface ICommandMethodRef {
-  readonly invoke: CommandMethod;
-}
+import {
+  createCommandMiddlewareDecorator,
+  createCommandMiddlewareWrapper,
+  invokeCommand,
+  isCommandResult,
+  type CommandExecution,
+  type ICommandExecutionRef
+} from './command-decorator.helpers';
 
 /**
  * Builds a standardized failed command result.
@@ -25,75 +25,17 @@ function buildFailureResult(errorPrefix: string, error: unknown): ICommandResult
 }
 
 /**
- * Produces a descriptor whose value includes shared error handling behavior.
- * @param errorPrefix - Message prefix for command failures.
- * @param descriptor - Original method descriptor.
- * @returns Updated descriptor with error handling wrapper.
+ * Creates a plain command wrapper that applies command error handling.
+ * @param errorPrefix - Message prefix used for command failures.
+ * @returns Command wrapper factory.
  */
-function createErrorHandledDescriptor(
-  errorPrefix: string,
-  descriptor: Readonly<PropertyDescriptor>
-): PropertyDescriptor {
-  const originalMethod: unknown = descriptor.value;
-  if (!isCommandMethod(originalMethod)) {
-    return { ...descriptor };
-  }
-
-  return {
-    ...descriptor,
-    value: createErrorHandledWrapper(errorPrefix, { invoke: originalMethod })
-  };
-}
-
-/**
- * Wraps a command method with consistent error handling behavior.
- * @param errorPrefix - Message prefix for command failures.
- * @param originalMethod - Original command method.
- * @returns Error-handled command method.
- */
-function createErrorHandledWrapper(
-  errorPrefix: string,
-  originalMethodRef: Readonly<ICommandMethodRef>
-): CommandMethod {
-  /**
-   * Executes the wrapped command and normalizes thrown errors.
-   * @param this - Invocation context.
-   * @param args - Command arguments.
-   * @returns Successful or failed command result.
-   */
-  async function executeWithErrorHandling(
-    this: object,
-    ...args: readonly unknown[]
-  ): Promise<ICommandResult> {
-    return runErrorHandledCommand(errorPrefix, originalMethodRef, this, args);
-  }
-  return executeWithErrorHandling;
-}
-
-/**
- * Executes a command and maps thrown errors to a failed result payload.
- * @param errorPrefix - Message prefix for command failures.
- * @param originalMethod - Original command method.
- * @param context - Invocation context.
- * @param args - Command arguments.
- * @returns Successful or failed command result.
- */
-function createErrorHandlerMethodDecorator(errorPrefix: string): MethodDecorator {
-  /**
-   * Applies error handling wrapping to the decorated method.
-   * @param _target - Decorated class prototype.
-   * @param _propertyKey - Decorated method key.
-   * @param descriptor - Original method descriptor.
-   * @returns Updated descriptor with shared error handling behavior.
-   */
-  function applyCommandErrorHandling(
-    _target: object,
-    _propertyKey: string | symbol,
-    descriptor: Readonly<PropertyDescriptor>
-  ): PropertyDescriptor {
-    return createErrorHandledDescriptor(errorPrefix, descriptor);
-  }
-  return applyCommandErrorHandling;
+export function createErrorHandledCommandWrapper(
+  errorPrefix: string
+): (originalMethodRef: Readonly<ICommandExecutionRef>) => CommandExecution {
+  return createCommandMiddlewareWrapper(
+    { value: errorPrefix },
+    { invoke: runErrorHandledCommand }
+  );
 }
 
 /**
@@ -102,30 +44,9 @@ function createErrorHandlerMethodDecorator(errorPrefix: string): MethodDecorator
  * @returns Decorator implementation.
  */
 export function HandleCommandErrors(errorPrefix: string): MethodDecorator {
-  return createErrorHandlerMethodDecorator(errorPrefix);
-}
-
-/**
- * Checks whether a descriptor value can be wrapped as a command method.
- * @param value - Descriptor value.
- * @returns True when the value is a callable command method.
- */
-function isCommandMethod(value: unknown): value is CommandMethod {
-  return typeof value === 'function';
-}
-
-/**
- * Checks whether an unknown value matches ICommandResult.
- * @param value - Descriptor value.
- * @returns True when value matches ICommandResult shape.
- */
-function isCommandResult(value: unknown): value is ICommandResult {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'success' in value &&
-    'exitCode' in value &&
-    'message' in value
+  return createCommandMiddlewareDecorator(
+    { value: errorPrefix },
+    { invoke: runErrorHandledCommand }
   );
 }
 
@@ -139,14 +60,12 @@ function isCommandResult(value: unknown): value is ICommandResult {
  */
 async function runErrorHandledCommand(
   errorPrefix: string,
-  originalMethodRef: Readonly<ICommandMethodRef>,
+  originalMethodRef: Readonly<ICommandExecutionRef>,
   context: object,
   args: readonly unknown[]
 ): Promise<ICommandResult> {
   try {
-    const maybeResult: unknown = await Promise.resolve(
-      Function.prototype.apply.call(originalMethodRef.invoke, context, args)
-    );
+    const maybeResult = await invokeCommand(originalMethodRef, context, args);
     return isCommandResult(maybeResult)
       ? maybeResult
       : buildFailureResult(errorPrefix, 'Command returned an invalid result payload');

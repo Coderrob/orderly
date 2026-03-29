@@ -81,7 +81,9 @@ describe('OrganizeWorkflow', () => {
   });
 
   it('should run post-organize cleanup when requested', async () => {
-    await workflow.run(createCommandContext({ logger, organizer, scanner }), { cleanEmptyDirs: true });
+    await workflow.run(createCommandContext({ logger, organizer, scanner }), {
+      cleanEmptyDirs: true
+    });
 
     expect(cleaner.clean).toHaveBeenCalledWith(
       '/test/dir',
