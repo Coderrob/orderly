@@ -1,31 +1,31 @@
-const APP1_MARKER = 0xe1;
-const JPEG_SOI_PREFIX = 0xff;
-const JPEG_SOI_MARKER = 0xd8;
-const JPEG_EOI_MARKER = 0xd9;
-const JPEG_SOS_MARKER = 0xda;
-const JPEG_MIN_LENGTH = 4;
-const JPEG_INITIAL_OFFSET = 2;
-const JPEG_MARKER_TYPE_OFFSET = 1;
-const JPEG_SEGMENT_LENGTH_OFFSET = 2;
-const JPEG_SEGMENT_HEADER_BYTES = 2;
-const JPEG_SEGMENT_PAYLOAD_BYTES = 4;
-const JPEG_SEGMENT_MIN_LENGTH = 2;
+import {
+  findJpegMarkerOffset,
+  isJpeg,
+  isJpegStopMarker,
+  JPEG_SEGMENT_HEADER_SIZE,
+  JPEG_SEGMENT_PAYLOAD_OFFSET,
+  JPEG_START_OFFSET,
+  readJpegMarker,
+  readJpegSegmentLength
+} from './jpeg-structure';
 
-const EXIF_HEADER_BYTE_E = 0x45;
-const EXIF_HEADER_BYTE_X = 0x78;
-const EXIF_HEADER_BYTE_I = 0x69;
-const EXIF_HEADER_BYTE_F = 0x66;
-const EXIF_HEADER_BYTE_ZERO = 0x00;
-const EXIF_HEADER = Buffer.from([
-  EXIF_HEADER_BYTE_E,
-  EXIF_HEADER_BYTE_X,
-  EXIF_HEADER_BYTE_I,
-  EXIF_HEADER_BYTE_F,
-  EXIF_HEADER_BYTE_ZERO,
-  EXIF_HEADER_BYTE_ZERO
-]);
+enum JpegAppMarker {
+  App1 = 0xe1
+}
+
+enum ExifFieldType {
+  Ascii = 2
+}
+
+enum ExifTag {
+  Make = 0x010f,
+  Model = 0x0110,
+  Orientation = 0x0112,
+  DateTime = 0x0132
+}
+
+const EXIF_HEADER = Buffer.from('Exif\u0000\u0000', 'ascii');
 const EXIF_MIN_PAYLOAD_LENGTH = 14;
-const EXIF_HEADER_LENGTH = 6;
 
 const TIFF_MIN_LENGTH = 8;
 const TIFF_ENDIAN_MARK_LENGTH = 2;
@@ -38,13 +38,7 @@ const IFD_ENTRY_SIZE = 12;
 const IFD_TYPE_OFFSET = 2;
 const IFD_COUNT_OFFSET = 4;
 const IFD_VALUE_OFFSET = 8;
-const FIELD_TYPE_ASCII = 2;
 const INLINE_VALUE_MAX_LENGTH = 4;
-
-const TAG_MAKE = 0x010f;
-const TAG_MODEL = 0x0110;
-const TAG_ORIENTATION = 0x0112;
-const TAG_DATE_TIME = 0x0132;
 
 const BYTE_ORDER_II_BYTE = 0x49;
 const BYTE_ORDER_MM_BYTE = 0x4d;
@@ -105,7 +99,7 @@ export function extractExifFromJpeg(data: Readonly<Buffer>): Record<string, stri
   const payload = findApp1Payload(data);
   if (!payload || !isExifPayload(payload)) return null;
 
-  const tiff = payload.subarray(EXIF_HEADER_LENGTH);
+  const tiff = payload.subarray(EXIF_HEADER.length);
   const littleEndian = getByteOrder(tiff);
   if (littleEndian === null || tiff.length < TIFF_MIN_LENGTH) return null;
 
@@ -121,7 +115,7 @@ export function extractExifFromJpeg(data: Readonly<Buffer>): Record<string, stri
  * @returns The APP1 payload bytes, or null when no valid APP1 segment is found.
  */
 function findApp1Payload(data: Readonly<Buffer>): Buffer | null {
-  return isJpeg(data) ? findApp1PayloadFromOffset(data, JPEG_INITIAL_OFFSET) : null;
+  return isJpeg(data) ? findApp1PayloadFromOffset(data, JPEG_START_OFFSET) : null;
 }
 
 /**
@@ -131,16 +125,16 @@ function findApp1Payload(data: Readonly<Buffer>): Buffer | null {
  * @returns The APP1 payload bytes, or null when no valid APP1 segment exists.
  */
 function findApp1PayloadFromOffset(data: Readonly<Buffer>, offset: number): Buffer | null {
-  if (offset + JPEG_MIN_LENGTH >= data.length) return null;
+  const markerOffset = findJpegMarkerOffset(data, offset);
+  if (markerOffset < 0) return null;
 
-  const marker = data[offset + JPEG_MARKER_TYPE_OFFSET];
-  if (marker === JPEG_EOI_MARKER || marker === JPEG_SOS_MARKER) return null;
+  const marker = readJpegMarker(data, markerOffset);
+  if (isJpegStopMarker(marker)) return null;
+  const length = readJpegSegmentLength(data, markerOffset);
+  if (length < 0) return null;
+  if (marker === Number(JpegAppMarker.App1)) return getApp1Payload(data, markerOffset, length);
 
-  const length = data.readUInt16BE(offset + JPEG_SEGMENT_LENGTH_OFFSET);
-  if (isInvalidSegmentLength(length, offset, data.length)) return null;
-  if (marker === APP1_MARKER) return getApp1Payload(data, offset, length);
-
-  return findApp1PayloadFromOffset(data, offset + JPEG_SEGMENT_HEADER_BYTES + length);
+  return findApp1PayloadFromOffset(data, markerOffset + JPEG_SEGMENT_HEADER_SIZE + length);
 }
 
 /**
@@ -152,8 +146,8 @@ function findApp1PayloadFromOffset(data: Readonly<Buffer>, offset: number): Buff
  */
 function getApp1Payload(data: Readonly<Buffer>, offset: number, length: number): Buffer {
   return data.subarray(
-    offset + JPEG_SEGMENT_PAYLOAD_BYTES,
-    offset + JPEG_SEGMENT_HEADER_BYTES + length
+    offset + JPEG_SEGMENT_PAYLOAD_OFFSET,
+    offset + JPEG_SEGMENT_HEADER_SIZE + length
   );
 }
 
@@ -181,38 +175,12 @@ function isExifPayload(payload: Readonly<Buffer>): boolean {
   );
 }
 
-/**
- * Determines whether a JPEG segment length is valid for the remaining buffer.
- * @param length - Segment payload length.
- * @param offset - Segment start offset.
- * @param dataLength - Total JPEG buffer length.
- * @returns True when the segment length is invalid.
- */
-function isInvalidSegmentLength(length: number, offset: number, dataLength: number): boolean {
-  return (
-    length < JPEG_SEGMENT_MIN_LENGTH || offset + JPEG_SEGMENT_HEADER_BYTES + length > dataLength
-  );
-}
-
 const IFD0_TAGS: Record<number, string> = {
-  [TAG_MAKE]: 'Make',
-  [TAG_MODEL]: 'Model',
-  [TAG_ORIENTATION]: 'Orientation',
-  [TAG_DATE_TIME]: 'DateTime'
+  [ExifTag.Make]: 'Make',
+  [ExifTag.Model]: 'Model',
+  [ExifTag.Orientation]: 'Orientation',
+  [ExifTag.DateTime]: 'DateTime'
 };
-
-/**
- * Determines whether the buffer starts with a JPEG SOI marker.
- * @param data - File bytes to inspect.
- * @returns True when the buffer looks like JPEG data; otherwise false.
- */
-function isJpeg(data: Readonly<Buffer>): boolean {
-  return (
-    data.length >= JPEG_MIN_LENGTH &&
-    data[0] === JPEG_SOI_PREFIX &&
-    data[JPEG_MARKER_TYPE_OFFSET] === JPEG_SOI_MARKER
-  );
-}
 
 /**
  * Parses supported ASCII fields from the TIFF IFD0 table.
@@ -286,7 +254,7 @@ function readIfd0AsciiField(
   const fieldName = IFD0_TAGS[readU16(entryOffset)];
   const fieldType = readU16(entryOffset + IFD_TYPE_OFFSET);
   const fieldLength = readU32(entryOffset + IFD_COUNT_OFFSET);
-  if (!fieldName || fieldType !== FIELD_TYPE_ASCII || fieldLength <= 0) return null;
+  if (!fieldName || fieldType !== Number(ExifFieldType.Ascii) || fieldLength <= 0) return null;
 
   const text = readAsciiValue(tiff, entryOffset + IFD_VALUE_OFFSET, fieldLength, readU32);
   return text ? { [fieldName]: text } : null;

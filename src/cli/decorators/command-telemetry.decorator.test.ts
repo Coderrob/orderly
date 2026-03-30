@@ -1,6 +1,6 @@
 import { ExitCode } from '../constants';
 import { HandleCommandErrors } from './command-error-handler.decorator';
-import { WithCommandTelemetry } from './command-telemetry.decorator';
+import { createTelemetryCommandWrapper, WithCommandTelemetry } from './command-telemetry.decorator';
 
 jest.mock('../../utils/clock', () => ({
   Clock: {
@@ -104,5 +104,24 @@ describe('WithCommandTelemetry', () => {
     const result = decorator({}, 'execute', descriptor);
 
     expect(result).toEqual(descriptor);
+  });
+
+  it('should create plain telemetry wrappers', async () => {
+    mockClock.nowMonotonicMs.mockReturnValueOnce(30).mockReturnValueOnce(35);
+    const wrappedMethod = createTelemetryCommandWrapper('wrapped')({
+      invoke() {
+        return {
+          success: true,
+          exitCode: ExitCode.SUCCESS,
+          message: 'done'
+        };
+      }
+    });
+
+    await expect(wrappedMethod.call({})).resolves.toEqual({
+      success: true,
+      exitCode: ExitCode.SUCCESS,
+      message: 'done (wrapped completed in 5ms)'
+    });
   });
 });

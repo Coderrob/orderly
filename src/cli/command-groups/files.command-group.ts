@@ -27,6 +27,45 @@ interface IFileCommandHandlers {
 }
 
 /**
+ * Adds shared config and log-level options used by file commands.
+ * @param command - Command to configure.
+ * @returns Configured command.
+ */
+function addCommonFileCommandOptions(command: Readonly<Command>): Command {
+  return addAutoConfigOption(addLogLevelOption(addConfigOption(command)));
+}
+
+/**
+ * Adds the shared organize-style options used by organize and watch.
+ * @param command - Command to configure.
+ * @returns Configured command.
+ */
+function addManagedDirectoryOptions(command: Readonly<Command>): Command {
+  const configuredCommand = addCommonFileCommandOptions(command);
+  configuredCommand.option('-d, --dry-run', 'Preview changes without applying them');
+  configuredCommand.option('--no-manifest', 'Skip manifest generation');
+  configuredCommand.option('-o, --output <path>', 'Output directory for organized files');
+  configuredCommand.option('--dedupe', 'Enable duplicate detection before organization');
+  configuredCommand.option(
+    '--dedupe-action <action>',
+    `Duplicate action (${Object.values(DedupeAction).join(', ')})`
+  );
+  configuredCommand.option(
+    '--clean-empty-dirs',
+    'Remove empty directories after organization completes'
+  );
+  configuredCommand.option(
+    '--confirm-replace',
+    'Explicitly confirm destructive dedupe replace actions'
+  );
+  configuredCommand.option(
+    '--quarantine-dir <path>',
+    'Move replaced duplicate files into a quarantine directory'
+  );
+  return configuredCommand;
+}
+
+/**
  * Creates the clean command definition.
  * @param parent - Parent command.
  * @param handler - Clean handler.
@@ -136,8 +175,7 @@ function createWatchCommand(parent: Readonly<Command>, handler: Readonly<IWatchH
  * @param handler - Clean handler.
  */
 function registerCleanCommand(parent: Readonly<Command>, handler: Readonly<ICleanHandler>): void {
-  const command = createCleanCommand(parent, handler);
-  addAutoConfigOption(addLogLevelOption(addConfigOption(command)));
+  const command = addCommonFileCommandOptions(createCleanCommand(parent, handler));
   command.option('--dry-run', 'Preview directories that would be removed');
   command.option('--include-hidden', 'Allow deleting empty hidden directories');
   command.option('--remove-orderly-dir', 'Allow deleting an empty .orderly directory');
@@ -149,8 +187,7 @@ function registerCleanCommand(parent: Readonly<Command>, handler: Readonly<IClea
  * @param handler - Dedupe handler.
  */
 function registerDedupeCommand(parent: Readonly<Command>, handler: Readonly<IDedupeHandler>): void {
-  const command = createDedupeCommand(parent, handler);
-  addAutoConfigOption(addLogLevelOption(addConfigOption(command)));
+  const command = addCommonFileCommandOptions(createDedupeCommand(parent, handler));
   command.option('-d, --dry-run', 'Preview actions without deleting files');
   command.option('--action <action>', `Dedupe action (${Object.values(DedupeAction).join(', ')})`);
   command.option('--preset <preset>', 'Strategy preset (fast, safe, exact, media)', 'safe');
@@ -187,22 +224,7 @@ function registerOrganizeCommand(
   parent: Readonly<Command>,
   handler: Readonly<IOrganizeHandler>
 ): void {
-  const command = createOrganizeCommand(parent, handler);
-  addAutoConfigOption(addLogLevelOption(addConfigOption(command)));
-  command.option('-d, --dry-run', 'Preview changes without applying them');
-  command.option('--no-manifest', 'Skip manifest generation');
-  command.option('-o, --output <path>', 'Output directory for organized files');
-  command.option('--dedupe', 'Enable duplicate detection before organization');
-  command.option(
-    '--dedupe-action <action>',
-    `Duplicate action (${Object.values(DedupeAction).join(', ')})`
-  );
-  command.option('--clean-empty-dirs', 'Remove empty directories after organization completes');
-  command.option('--confirm-replace', 'Explicitly confirm destructive dedupe replace actions');
-  command.option(
-    '--quarantine-dir <path>',
-    'Move replaced duplicate files into a quarantine directory'
-  );
+  addManagedDirectoryOptions(createOrganizeCommand(parent, handler));
 }
 
 /**
@@ -220,9 +242,7 @@ function registerRevertCommand(parent: Readonly<Command>, handler: Readonly<IRev
  * @param handler - Scan handler.
  */
 function registerScanCommand(parent: Readonly<Command>, handler: Readonly<IScanHandler>): void {
-  const command = addAutoConfigOption(
-    addLogLevelOption(addConfigOption(createScanCommand(parent, handler)))
-  );
+  const command = addCommonFileCommandOptions(createScanCommand(parent, handler));
   command.option('--format <format>', 'Output format (table, json, csv)', 'table');
 }
 
@@ -232,22 +252,7 @@ function registerScanCommand(parent: Readonly<Command>, handler: Readonly<IScanH
  * @param handler - Watch handler.
  */
 function registerWatchCommand(parent: Readonly<Command>, handler: Readonly<IWatchHandler>): void {
-  const command = createWatchCommand(parent, handler);
-  addAutoConfigOption(addLogLevelOption(addConfigOption(command)));
-  command.option('-d, --dry-run', 'Preview changes without applying them');
-  command.option('--no-manifest', 'Skip manifest generation');
-  command.option('-o, --output <path>', 'Output directory for organized files');
-  command.option('--dedupe', 'Enable duplicate detection before organization');
-  command.option(
-    '--dedupe-action <action>',
-    `Duplicate action (${Object.values(DedupeAction).join(', ')})`
-  );
-  command.option('--clean-empty-dirs', 'Remove empty directories after organization completes');
-  command.option('--confirm-replace', 'Explicitly confirm destructive dedupe replace actions');
-  command.option(
-    '--quarantine-dir <path>',
-    'Move replaced duplicate files into a quarantine directory'
-  );
+  const command = addManagedDirectoryOptions(createWatchCommand(parent, handler));
   command.option('--interval <seconds>', 'Polling interval in seconds', '5');
   command.option('--cycles <count>', 'Number of cycles before exiting; 0 means continuous', '0');
 }

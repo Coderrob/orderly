@@ -1,39 +1,39 @@
 # Agent Expectations for Orderly Repository
 
-This document outlines the expectations and standards for AI agents and automated tools contributing to the Orderly repository. Orderly is a TypeScript CLI tool for file organization that maintains high code quality and reliability standards.
+This document defines the required standards for AI agents and automated contributors working in the Orderly repository. Orderly is a TypeScript CLI for file organization, so changes must favor correctness, safety, maintainability, and predictable behavior.
 
-## 🎯 Core Principles
+## Core Principles
 
-- **Quality First**: All contributions must pass all quality checks
-- **Test-Driven**: Comprehensive test coverage is mandatory
-- **Type Safety**: Strict TypeScript usage with no `any` types
-- **Documentation**: Clear, comprehensive documentation for all features
-- **Consistency**: Follow established patterns and conventions
+- Quality first: every change must pass repository validation before handoff.
+- Test-driven changes: behavior changes require test coverage for the changed path.
+- Type safety: keep strict TypeScript guarantees and avoid `any`.
+- Documentation consistency: update docs and JSDoc when public behavior changes.
+- Small safe steps: prefer narrow, reviewable changes over broad rewrites.
 
-## 📋 Code Quality Standards
+## Code Quality Standards
 
 ### TypeScript Requirements
 
-- **Strict Mode**: All TypeScript files must compile with strict settings
-- **No Any Types**: Avoid `any` types; use proper type definitions
-- **Interface Usage**: Define interfaces for all data structures
-- **Type Guards**: Implement type guards for runtime type checking
-- **Generic Constraints**: Use generics appropriately with proper constraints
+- Strict mode must remain enabled.
+- Avoid `any`; prefer precise types, unions, generics, and type guards.
+- Define interfaces for shared contracts and data structures.
+- Keep runtime validation aligned with static types.
+- Prefer immutable inputs and readonly types when practical.
 
 ### Code Style
 
-- **ESLint**: All code must pass ESLint checks (`npm run lint`)
-- **Prettier**: Code must be formatted with Prettier (`npm run format`)
-- **Naming Conventions**:
+- All code must pass ESLint with `npm run lint`.
+- Formatting must pass Prettier checks with `npm run format:check`.
+- Follow repository naming conventions:
   - Files: `kebab-case.ts`
   - Classes: `PascalCase`
-  - Methods/Properties: `camelCase`
+  - Methods and properties: `camelCase`
   - Constants: `UPPER_SNAKE_CASE`
-  - Interfaces: `PascalCase` with `I` prefix (e.g., `IConfigLoader`)
+  - Interfaces: `PascalCase` with `I` prefix where that pattern is already established
 
 ### File Organization
 
-```
+```text
 src/
 ├── cli/           # Command-line interface
 ├── config/        # Configuration management
@@ -47,199 +47,117 @@ src/
 └── utils/         # Shared utilities
 ```
 
-## 🧪 Testing Requirements
+## Refactoring Expectations
 
-### Test Coverage
+- Prefer refactorings that preserve behavior and are backed by tests.
+- Use small refactoring patterns:
+  - Extract function for repeated or branch-heavy logic.
+  - Introduce parameter object when argument lists become hard to follow.
+  - Replace magic values with named constants.
+  - Consolidate duplicate conditionals and duplicate parsing logic.
+  - Move shared low-level logic into focused helpers when multiple modules depend on it.
+- Preserve public APIs unless the task explicitly calls for a breaking change.
+- When refactoring behavior-critical code, add or update regression tests first or alongside the change.
 
-- **Minimum Coverage**: 95% statement coverage required
-- **Branch Coverage**: 90% branch coverage required
-- **Function Coverage**: 95% function coverage required
-- **Line Coverage**: 95% line coverage required
+## Design Pattern Expectations
 
-### Test Structure
+- Prefer established patterns already present in the repo over inventing new abstractions.
+- Use strategy pattern for pluggable dedupe behavior and comparison logic.
+- Use factory helpers for constructing command or dedupe services when that keeps wiring centralized.
+- Use small adapter/wrapper helpers for filesystem, clock, and external side effects to keep tests isolated.
+- Favor composition over inheritance unless an existing class hierarchy clearly requires inheritance.
+- Keep helpers single-purpose; avoid turning utility files into grab-bags.
 
-- **File Naming**: `*.test.ts` or `*.spec.ts`
-- **Test Organization**: Group related tests in describe blocks
-- **Mock Usage**: Mock external dependencies appropriately
-- **Edge Cases**: Test error conditions and edge cases
-- **Integration Tests**: Include integration tests for complex workflows
+## CLI Wrapping Standard
 
-### Test Categories
+- Production command handlers should prefer plain wrapper composition through command helper modules such as `src/cli/commands/command-wrapper.helpers.ts`.
+- Method decorators remain compatibility adapters over the same middleware/wrapper behavior and should not be the default for new production command handlers.
+- Preserve the established cross-cutting order for command execution:
+  1. auto-config or context resolution when applicable
+  2. error handling
+  3. telemetry
+  4. optional audit
+- When adding a new command, prefer constructor-built wrapped `execute` functions over adding new decorator-based handler methods.
 
-- **Unit Tests**: Test individual functions/classes in isolation
-- **Integration Tests**: Test component interactions
-- **CLI Tests**: Test command-line interface functionality
-- **Error Handling**: Test error scenarios and recovery
+## Testing Requirements
 
-## 📚 Documentation Standards
+### Coverage Targets
+
+- Minimum statement coverage: 95%
+- Minimum branch coverage: 90%
+- Minimum function coverage: 95%
+- Minimum line coverage: 95%
+
+### Test Expectations
+
+- Name test files `*.test.ts` or `*.spec.ts`.
+- Group related behavior in `describe` blocks.
+- Cover happy paths, failures, and edge conditions.
+- Mock external dependencies and side effects appropriately.
+- Add integration coverage when workflows cross module boundaries.
+- Add regression tests for bug fixes and parser boundary conditions.
+
+## Documentation Standards
 
 ### Code Documentation
 
-- **JSDoc Comments**: All public APIs must have JSDoc comments
-- **Parameter Documentation**: Document all parameters and return types
-- **Example Usage**: Include usage examples where appropriate
-- **Error Documentation**: Document thrown errors and exceptions
+- Public APIs should have JSDoc.
+- Document non-obvious parameters, return values, and thrown errors.
+- Keep comments factual and concise.
+- Remove stale comments during refactors.
 
-### README Updates
+### Repository Documentation
 
-- **Feature Documentation**: Update README.md for new features
-- **Usage Examples**: Provide clear usage examples
-- **Configuration**: Document configuration options
-- **API Reference**: Maintain up-to-date API documentation
+- Update `README.md` when user-facing features or workflows change.
+- Keep configuration examples current.
+- Document any new validation or development commands.
 
-## 🔄 Development Workflow
+## Validation Workflow
 
-### Quality Checks
+All substantive changes should pass `npm run verify`, which must cover:
 
-All changes must pass these checks (run `npm run verify`):
+1. `npm run typecheck`
+2. `npm run lint`
+3. `npm run format:check`
+4. `npm run test:coverage`
+5. `npm run duplication:check`
 
-1. **TypeScript Compilation** (`npm run typecheck`)
-2. **ESLint** (`npm run lint`)
-3. **Prettier Format Check** (`npm run format:check`)
-4. **Unit Tests with Coverage** (`npm run test:coverage`)
-5. **Code Duplication Check** (`npm run duplication:check`)
+Use `npm run quality` for the lint, format, and coverage gate:
 
-### Commit Conventions
+1. `npm run lint`
+2. `npm run format:check`
+3. `npm run test:coverage`
 
-- **Conventional Commits**: Use conventional commit format
-- **Clear Messages**: Write clear, descriptive commit messages
-- **Atomic Commits**: Each commit should be a single logical change
-- **Test Commits**: Include tests with feature commits
+Keep `package.json` scripts aligned with typical open-source expectations:
 
-### Pull Request Guidelines
+- Prefer stable contributor-facing commands such as `build`, `test`, `lint`, `format`, `typecheck`, and `verify`.
+- Avoid adding one-off maintenance aliases for dependency updates, local environment setup, or ad hoc wrappers unless they are required by CI or documented contributor workflows.
+- Remove redundant script aliases when one script is only a thin indirection over a single command and does not improve contributor ergonomics.
 
-- **Draft PRs**: Use draft PRs for work-in-progress
-- **Descriptive Titles**: Clear, descriptive PR titles
-- **Detailed Description**: Explain what, why, and how
-- **Link Issues**: Reference related issues
-- **Checklist**: Include testing and verification checklist
+## Security and Safety
 
-## 🔍 Code Review Expectations
+- Validate and sanitize user-controlled inputs.
+- Prevent path traversal and unsafe file operations.
+- Avoid exposing sensitive information in logs or errors.
+- Use custom errors and clear user-facing failure messages where appropriate.
+- Prefer safe wrappers around destructive filesystem operations.
 
-### Review Criteria
+## Agent-Specific Working Rules
 
-- **Functionality**: Code works as intended
-- **Tests**: Adequate test coverage and quality
-- **Style**: Follows code style guidelines
-- **Performance**: No obvious performance issues
-- **Security**: No security vulnerabilities
-- **Documentation**: Appropriate documentation included
-
-### Automated Checks
-
-- **CI/CD**: All CI checks must pass
-- **Coverage**: Coverage requirements met
-- **Quality Gates**: SonarQube quality gates passed
-- **Dependencies**: No vulnerable dependencies
-
-## 🛡️ Security Considerations
-
-### Input Validation
-
-- **Sanitize Inputs**: Validate and sanitize all user inputs
-- **Path Traversal**: Prevent path traversal attacks
-- **File Access**: Safe file system operations
-- **Command Injection**: Prevent command injection vulnerabilities
-
-### Error Handling
-
-- **Custom Errors**: Use custom error classes with proper categorization
-- **Logging**: Log errors appropriately without exposing sensitive data
-- **Recovery**: Implement graceful error recovery where possible
-- **User Feedback**: Provide clear error messages to users
-
-## 🚀 Feature Development
-
-### Planning
-
-- **Issue Creation**: Create GitHub issues for features
-- **Design Review**: Review design decisions before implementation
-- **Breaking Changes**: Plan for backward compatibility
-- **Documentation**: Plan documentation updates
-
-### Implementation
-
-- **Incremental Changes**: Break large features into smaller PRs
-- **Backward Compatibility**: Maintain backward compatibility
-- **Configuration**: Make features configurable where appropriate
-- **Logging**: Add appropriate logging for new features
-
-### Validation
-
-- **Manual Testing**: Test features manually before PR
-- **Integration Testing**: Ensure integration with existing features
-- **Performance Testing**: Verify performance impact
-- **Documentation Testing**: Verify documentation accuracy
-
-## 📊 Metrics and Monitoring
-
-### Quality Metrics
-
-- **Test Coverage**: Maintain >95% coverage
-- **Code Duplication**: Keep duplication <1%
-- **Maintainability**: Maintain A grade
-- **Technical Debt**: Minimize technical debt
-
-### Performance
-
-- **Memory Usage**: Monitor memory consumption
-- **Execution Time**: Track command execution times
-- **File Operations**: Efficient file system operations
-- **Scalability**: Handle large directory structures
-
-## 🤖 Agent-Specific Guidelines
-
-### Code Generation
-
-- **Pattern Consistency**: Follow existing code patterns
-- **Import Organization**: Organize imports consistently
-- **Error Patterns**: Use established error handling patterns
-- **Testing Patterns**: Follow existing testing patterns
-
-### Refactoring
-
-- **Safe Refactoring**: Ensure refactoring doesn't break functionality
-- **Test Updates**: Update tests for refactored code
-- **Documentation Updates**: Update documentation for changes
-- **Migration Path**: Provide migration guidance if needed
-
-### Debugging
-
-- **Logging**: Add appropriate debug logging
-- **Error Messages**: Provide clear error messages
-- **Stack Traces**: Include relevant context in errors
-- **Troubleshooting**: Document common issues and solutions
-
-## 📞 Communication
-
-### Issue Reporting
-
-- **Clear Description**: Provide clear issue descriptions
-- **Reproduction Steps**: Include steps to reproduce issues
-- **Environment Info**: Include relevant environment information
-- **Expected Behavior**: Describe expected vs actual behavior
-
-### Collaboration
-
-- **Respectful Communication**: Maintain professional communication
-- **Constructive Feedback**: Provide constructive feedback
-- **Knowledge Sharing**: Share learnings and best practices
-- **Team Coordination**: Coordinate with human maintainers
-
----
+- Match existing patterns before introducing new structure.
+- Keep imports organized and minimal.
+- Do not bypass failing validation with comment directives unless explicitly requested.
+- Do not remove tests to make validation pass.
+- If a refactor changes control flow, ensure tests still prove the same behavior.
+- If validation scripts are incomplete or inconsistent with documented standards, fix the scripts as part of the task.
 
 ## Verification Checklist
 
-Before submitting contributions, ensure:
+Before handing off changes, ensure:
 
-- [ ] All quality checks pass (`npm run verify`)
-- [ ] Test coverage meets requirements
-- [ ] Code follows established patterns
-- [ ] Documentation is updated
-- [ ] No breaking changes without migration plan
-- [ ] Security considerations addressed
-- [ ] Performance impact assessed
-- [ ] Manual testing completed
-
-This document is living and should be updated as standards evolve.</content>
-<parameter name="filePath">D:\orderly\AGENTS.md
+- [ ] `npm run verify` passes
+- [ ] Coverage remains at or above the repository thresholds
+- [ ] Lint and format checks pass
+- [ ] Tests cover the changed behavior
+- [ ] Documentation is updated when needed
+- [ ] Refactoring preserves intended behavior

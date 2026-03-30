@@ -1,5 +1,8 @@
 import { ExitCode } from '../constants';
-import { HandleCommandErrors } from './command-error-handler.decorator';
+import {
+  createErrorHandledCommandWrapper,
+  HandleCommandErrors
+} from './command-error-handler.decorator';
 
 describe('HandleCommandErrors', () => {
   it('should convert synchronous errors into a failed command result', async () => {
@@ -77,5 +80,19 @@ describe('HandleCommandErrors', () => {
     const decorator = HandleCommandErrors('Prefix: ');
     const result = decorator({} as object, 'prop', nonFunctionDescriptor);
     expect(result).toEqual(nonFunctionDescriptor);
+  });
+
+  it('should create plain error-handling wrappers', async () => {
+    const wrappedMethod = createErrorHandledCommandWrapper('Wrapped: ')({
+      invoke() {
+        throw new Error('boom');
+      }
+    });
+
+    await expect(wrappedMethod.call({})).resolves.toEqual({
+      success: false,
+      exitCode: ExitCode.ERROR,
+      message: 'Wrapped: boom'
+    });
   });
 });

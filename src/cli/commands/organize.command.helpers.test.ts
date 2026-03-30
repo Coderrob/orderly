@@ -106,7 +106,7 @@ describe('organize.command.helpers', () => {
     expect(FileSystemUtils.mkdirSync).toHaveBeenCalled();
     expect(FileSystemUtils.renameSync).toHaveBeenCalledWith(
       '/target/b.txt',
-      path.join('/target/.orderly/quarantine', 'b.txt')
+      path.resolve('/target/.orderly/quarantine', 'b.txt')
     );
     expect(logger.info).toHaveBeenCalledWith('Quarantined 1 duplicate files before organization');
   });
@@ -124,7 +124,7 @@ describe('organize.command.helpers', () => {
     expect(Clock.nowMonotonicToken).toHaveBeenCalled();
     expect(FileSystemUtils.renameSync).toHaveBeenCalledWith(
       '/target/b.txt',
-      path.join('/target/.orderly/quarantine', 'token-b.txt')
+      path.resolve('/target/.orderly/quarantine', 'token-b.txt')
     );
   });
 

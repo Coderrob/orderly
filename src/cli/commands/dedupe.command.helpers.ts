@@ -16,10 +16,6 @@ const DEFAULT_REPORT_DIRECTORY = '.orderly';
 const DEFAULT_REPORT_JSON_FILENAME = 'dedupe-report.json';
 const DEFAULT_REPORT_MARKDOWN_FILENAME = 'dedupe-report.md';
 const DEFAULT_QUARANTINE_DIRECTORY = '.orderly/quarantine';
-const PRESET_EXACT = 'exact';
-const PRESET_FAST = 'fast';
-const PRESET_MEDIA = 'media';
-const PRESET_SAFE = 'safe';
 const PRESET_EXACT_CONFIG: IDedupeStrategyConfig = {
   mode: DedupeMode.ALL,
   size: true,
@@ -40,9 +36,28 @@ const PRESET_MEDIA_CONFIG: IDedupeStrategyConfig = {
 const REPLACE_SAFETY_MESSAGE =
   'Dedupe replace requires --confirm-replace or --quarantine-dir when not running in dry-run mode';
 
+export enum DedupePreset {
+  EXACT = 'exact',
+  FAST = 'fast',
+  MEDIA = 'media',
+  SAFE = 'safe'
+}
+
+export interface IDedupeCommandInput {
+  readonly action?: Readonly<DedupeAction>;
+  readonly config?: string;
+  readonly confirmReplace: boolean;
+  readonly dryRun?: boolean;
+  readonly logLevel?: string;
+  readonly preset?: Readonly<DedupePreset>;
+  readonly quarantineDir?: string;
+  readonly reportJson?: string;
+  readonly reportMarkdown?: string;
+}
+
 export interface IDedupeCommandContext {
   readonly dedupeConfig: Readonly<IDedupeConfig>;
-  readonly options: Readonly<IDedupeCommandOptions>;
+  readonly options: Readonly<IDedupeCommandInput>;
   readonly targetDir: string;
 }
 
@@ -53,7 +68,7 @@ export interface IReportPaths {
 
 export interface IDeleteSafetyContext {
   readonly dedupeConfig: Readonly<IDedupeConfig>;
-  readonly options: Readonly<IDedupeCommandOptions>;
+  readonly options: Readonly<IDedupeCommandInput>;
 }
 
 export interface IFilePathSource {
@@ -65,10 +80,10 @@ export interface IFilePathSource {
  * @param options - Dedupe command options.
  * @returns Config override object.
  */
-export function createDedupeConfigOverrides(options: Readonly<IDedupeCommandOptions>): Readonly<{
+export function createDedupeConfigOverrides(options: Readonly<IDedupeCommandInput>): Readonly<{
   config?: string;
   dedupe?: boolean;
-  dedupeAction?: string;
+  dedupeAction?: DedupeAction;
   dryRun?: boolean;
   logLevel?: string;
 }> {
@@ -131,6 +146,27 @@ export function getOriginalPath(file: Readonly<IFilePathSource>): string {
 }
 
 /**
+ * Normalizes parsed dedupe command options into typed command input.
+ * @param options - Parsed dedupe command options.
+ * @returns Typed command input.
+ */
+export function normalizeDedupeCommandOptions(
+  options: Readonly<IDedupeCommandOptions>
+): Readonly<IDedupeCommandInput> {
+  return {
+    action: resolveAction(options.action),
+    config: options.config,
+    confirmReplace: options.confirmReplace ?? false,
+    dryRun: options.dryRun,
+    logLevel: options.logLevel,
+    preset: resolvePreset(options.preset),
+    quarantineDir: options.quarantineDir,
+    reportJson: options.reportJson,
+    reportMarkdown: options.reportMarkdown
+  };
+}
+
+/**
  * Resolves a CLI action string to an enum member.
  * @param action - CLI action string.
  * @returns Supported dedupe action when valid.
@@ -157,10 +193,10 @@ export function resolveAction(action?: string): DedupeAction | undefined {
  */
 export function resolveDedupeConfig(
   dedupeConfig: Readonly<IDedupeConfig> | undefined,
-  action?: string,
-  preset?: string
+  action?: Readonly<DedupeAction>,
+  preset?: Readonly<DedupePreset>
 ): Readonly<IDedupeConfig> {
-  const resolvedAction = resolveAction(action) ?? dedupeConfig?.action ?? DedupeAction.REPORT;
+  const resolvedAction = action ?? dedupeConfig?.action ?? DedupeAction.REPORT;
   const strategy = resolveStrategyPreset(preset) ??
     dedupeConfig?.strategy ?? { mode: DedupeMode.ANY };
 
@@ -170,6 +206,26 @@ export function resolveDedupeConfig(
     strategy,
     action: resolvedAction
   };
+}
+
+/**
+ * Resolves a CLI preset string to an enum member.
+ * @param preset - CLI preset string.
+ * @returns Supported dedupe preset when valid.
+ */
+export function resolvePreset(preset?: string): DedupePreset | undefined {
+  switch (preset) {
+    case DedupePreset.EXACT:
+      return DedupePreset.EXACT;
+    case DedupePreset.FAST:
+      return DedupePreset.FAST;
+    case DedupePreset.MEDIA:
+      return DedupePreset.MEDIA;
+    case DedupePreset.SAFE:
+      return DedupePreset.SAFE;
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -219,15 +275,17 @@ export function resolveReportPaths(
  * @param preset - Preset name.
  * @returns Strategy preset or undefined.
  */
-export function resolveStrategyPreset(preset?: string): IDedupeStrategyConfig | undefined {
+export function resolveStrategyPreset(
+  preset?: Readonly<DedupePreset>
+): IDedupeStrategyConfig | undefined {
   switch (preset) {
-    case PRESET_EXACT:
+    case DedupePreset.EXACT:
       return PRESET_EXACT_CONFIG;
-    case PRESET_FAST:
+    case DedupePreset.FAST:
       return PRESET_FAST_CONFIG;
-    case PRESET_MEDIA:
+    case DedupePreset.MEDIA:
       return PRESET_MEDIA_CONFIG;
-    case PRESET_SAFE:
+    case DedupePreset.SAFE:
       return PRESET_EXACT_CONFIG;
     default:
       return undefined;
@@ -242,7 +300,7 @@ export function resolveStrategyPreset(preset?: string): IDedupeStrategyConfig | 
  */
 export function shouldDeleteDuplicates(
   action: Readonly<DedupeAction>,
-  options: Readonly<IDedupeCommandOptions>
+  options: Readonly<{ dryRun?: boolean }>
 ): boolean {
   return action === DedupeAction.REPLACE && !options.dryRun;
 }
