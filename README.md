@@ -1,6 +1,50 @@
+<p align="center">
+  <img src="./public/img/orderly-logo.png" alt="Orderly logo" width="240" />
+</p>
+
 # Orderly
 
 A configurable CLI tool that scans folders, categorizes and organizes files by type and context, enforces naming conventions, detects duplicates, removes empty folders, generates manifests, and logs all actions for auditability.
+
+## What Orderly Is For
+
+Orderly is for directories that accumulate mixed, inconsistently named files over time: downloads folders, shared media drops, photo exports, project handoff folders, and similar working directories. It is designed to help you move from "messy but active" to "organized and repeatable" without having to write ad hoc scripts for each cleanup pass.
+
+At a product level, Orderly is not just a "move files by extension" utility. It combines scanning, categorization, naming normalization, duplicate review, cleanup, manifests, and logs into one workflow so you can preview changes, apply them, and audit what happened afterward.
+
+## How Orderly Works
+
+The main user flow is:
+
+1. Create or discover a config that defines categories, naming rules, exclusions, and dedupe behavior.
+2. Run `files scan` to inspect what Orderly sees before changing anything.
+3. Run `files organize --dry-run` to preview planned file moves and optional cleanup.
+4. Run `files organize` to apply the plan.
+5. Use generated manifests and logs to review or revert work when needed.
+
+Orderly also supports adjacent workflows:
+
+- `files dedupe` for duplicate review and reporting without running organization
+- `files clean` for removing empty folders only
+- `files watch` for repeated polling-based organization on active directories
+- `config validate` for checking that the resolved configuration is usable before execution
+
+## Safety Model
+
+Orderly is built to make destructive workflows explicit rather than implicit.
+
+- Dry-run mode is available on destructive or behavior-changing commands so you can inspect intent first.
+- Dedupe replacement is guarded: non-dry-run replace flows require `--confirm-replace` or `--quarantine-dir`.
+- Auto-generated manifests provide an operation record for later review.
+- Logs are written to `.orderly/orderly.log` so command activity is inspectable after execution.
+- Revert support is available for manifest-recorded move operations.
+
+## Typical Use Cases
+
+- Keep `~/Downloads` organized with a starter template and repeatable cleanup.
+- Sort a shared media folder into images, videos, and documents with naming normalization.
+- Review duplicates in a photo or archive directory before replacing or quarantining files.
+- Run organization repeatedly on an intake folder with `files watch`.
 
 ## Features
 
