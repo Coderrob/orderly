@@ -1,7 +1,7 @@
 import * as crypto from 'node:crypto';
 
 import { Clock } from '../../utils/clock';
-import { WithCommandAudit } from './command-audit.decorator';
+import { createAuditCommandWrapper, WithCommandAudit } from './command-audit.decorator';
 
 jest.mock('node:crypto', () => ({
   randomUUID: jest.fn()
@@ -70,5 +70,19 @@ describe('WithCommandAudit', () => {
     const result = decorator({}, 'execute', descriptor);
 
     expect(result).toEqual(descriptor);
+  });
+
+  it('should create plain audit wrappers', async () => {
+    const wrappedMethod = createAuditCommandWrapper('test')({
+      invoke() {
+        return { success: true, exitCode: 0, message: 'done' };
+      }
+    });
+
+    await expect(wrappedMethod.call({})).resolves.toEqual({
+      success: true,
+      exitCode: 0,
+      message: 'done [run=test-token-1-12345678]'
+    });
   });
 });

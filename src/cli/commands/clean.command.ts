@@ -1,11 +1,6 @@
 import { Logger } from '../../logger/logger';
 import { COMMAND_MESSAGES, ExitCode } from '../constants';
-import {
-  IAutoConfigContext,
-  WithAutoConfigDiscovery
-} from '../decorators/auto-config-discovery.decorator';
-import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
-import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
+import { IAutoConfigContext } from '../decorators/auto-config-discovery.decorator';
 import type {
   ICleanCommandOptions,
   ICleanHandler,
@@ -15,10 +10,46 @@ import type {
   IDirectoryValidator
 } from '../interfaces';
 
+import { createMappedCommandContextBase } from './command-context.helpers';
+import {
+  getOptionalBooleanOption,
+  getOptionalStringOption,
+  normalizeObjectOptions
+} from './command-option.helpers';
+import { createWrappedAutoConfigCommand } from './command-wrapper.helpers';
+
+enum CleanOptionKey {
+  AUTO_CONFIG = 'autoConfig',
+  CONFIG = 'config',
+  DRY_RUN = 'dryRun',
+  INCLUDE_HIDDEN = 'includeHidden',
+  LOG_LEVEL = 'logLevel',
+  REMOVE_ORDERLY_DIR = 'removeOrderlyDir'
+}
+
+interface ICleanContextDependencies {
+  readonly configService: Readonly<IConfigService>;
+  readonly directoryValidator: Readonly<IDirectoryValidator>;
+}
+
+interface ICleanExecuteDependencies extends ICleanContextDependencies {
+  executeCore(
+    directory: string,
+    options: Readonly<ICleanCommandOptions>,
+    context?: Readonly<IAutoConfigContext<ICleanCommandOptions>>
+  ): Promise<ICommandResult>;
+}
+
 /**
  * Handler for the clean command.
  */
 export class CleanHandler implements ICleanHandler {
+  public readonly execute: (
+    directory: string,
+    options: Readonly<ICleanCommandOptions>,
+    context?: Readonly<IAutoConfigContext<ICleanCommandOptions>>
+  ) => Promise<ICommandResult>;
+
   /**
    * Creates a new clean command handler.
    * @param cleaner - Empty-directory cleaner service.
@@ -29,7 +60,13 @@ export class CleanHandler implements ICleanHandler {
     private readonly cleaner: Readonly<ICleanerService>,
     readonly configService: Readonly<IConfigService>,
     readonly directoryValidator: Readonly<IDirectoryValidator>
-  ) {}
+  ) {
+    this.execute = createCleanExecute({
+      configService: this.configService,
+      directoryValidator: this.directoryValidator,
+      executeCore: this.executeCore.bind(this)
+    });
+  }
 
   /**
    * Executes the clean command.
@@ -38,10 +75,7 @@ export class CleanHandler implements ICleanHandler {
    * @param context - Optional auto-config context.
    * @returns Command result.
    */
-  @WithCommandTelemetry('clean')
-  @HandleCommandErrors(COMMAND_MESSAGES.CLEAN_FAILED)
-  @WithAutoConfigDiscovery<ICleanCommandOptions>()
-  execute(
+  private executeCore(
     directory: string,
     options: Readonly<ICleanCommandOptions>,
     context?: Readonly<IAutoConfigContext<ICleanCommandOptions>>
@@ -63,16 +97,15 @@ export class CleanHandler implements ICleanHandler {
     directory: string,
     options: Readonly<ICleanCommandOptions>,
     context?: Readonly<IAutoConfigContext<ICleanCommandOptions>>
-  ): Readonly<{
-    cleanOptions: Readonly<ICleanCommandOptions>;
-    logger: Logger;
-    targetDir: string;
-  }> {
-    const configOptions = context?.configOptions ?? { ...options };
-    const targetDir = context?.targetDir ?? this.directoryValidator.validate(directory);
-    const config = this.configService.loadWithOverrides(this.toConfigOverrides(configOptions));
-    const logger = new Logger(config.logLevel);
-    this.logAutoDiscoveredConfig(logger, context?.autoDiscoveredConfig);
+  ): Readonly<{ cleanOptions: Readonly<ICleanCommandOptions>; logger: Logger; targetDir: string }> {
+    const { config, configOptions, logger, targetDir } = createMappedCommandContextBase({
+      directory,
+      options,
+      context,
+      configService: this.configService,
+      directoryValidator: this.directoryValidator,
+      toConfigOverrides: this.toConfigOverrides.bind(this)
+    });
     return {
       cleanOptions: this.toCleanerOptions(configOptions, {
         dryRun: config.dryRun,
@@ -113,17 +146,6 @@ export class CleanHandler implements ICleanHandler {
       includeHidden: options.includeHidden ?? defaults.includeHidden,
       removeOrderlyDir: options.removeOrderlyDir ?? false
     };
-  }
-
-  /**
-   * Logs any auto-discovered config path.
-   * @param logger - Logger instance.
-   * @param autoDiscoveredConfig - Auto-discovered config path.
-   */
-  private logAutoDiscoveredConfig(logger: Readonly<Logger>, autoDiscoveredConfig?: string): void {
-    if (autoDiscoveredConfig) {
-      logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
-    }
   }
 
   /**
@@ -183,4 +205,80 @@ export class CleanHandler implements ICleanHandler {
       message: this.createSummaryMessage(result)
     };
   }
+}
+
+/**
+ * Creates normalized clean boolean options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized boolean options.
+ */
+function createCleanBooleanOptions(value: object): Readonly<ICleanCommandOptions> {
+  const autoConfig = getOptionalBooleanOption(value, CleanOptionKey.AUTO_CONFIG);
+  const dryRun = getOptionalBooleanOption(value, CleanOptionKey.DRY_RUN);
+  const includeHidden = getOptionalBooleanOption(value, CleanOptionKey.INCLUDE_HIDDEN);
+  const removeOrderlyDir = getOptionalBooleanOption(value, CleanOptionKey.REMOVE_ORDERLY_DIR);
+  return {
+    ...(autoConfig === undefined ? {} : { autoConfig }),
+    ...(dryRun === undefined ? {} : { dryRun }),
+    ...(includeHidden === undefined ? {} : { includeHidden }),
+    ...(removeOrderlyDir === undefined ? {} : { removeOrderlyDir })
+  };
+}
+
+/**
+ * Creates the wrapped execute function for the clean handler.
+ * @param handler - Clean handler dependencies.
+ * @returns Wrapped execute function.
+ */
+function createCleanExecute(
+  handler: Readonly<ICleanExecuteDependencies>
+): (
+  directory: string,
+  options: Readonly<ICleanCommandOptions>,
+  context?: Readonly<IAutoConfigContext<ICleanCommandOptions>>
+) => Promise<ICommandResult> {
+  return createWrappedAutoConfigCommand<ICleanCommandOptions>({
+    commandName: 'clean',
+    errorPrefix: COMMAND_MESSAGES.CLEAN_FAILED,
+    executeCore: handler.executeCore.bind(handler),
+    normalizeDirectory: normalizeCleanDirectory,
+    normalizeOptions: normalizeCleanOptions,
+    service: handler
+  });
+}
+
+/**
+ * Creates normalized clean string options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized string options.
+ */
+function createCleanStringOptions(value: object): Readonly<ICleanCommandOptions> {
+  const config = getOptionalStringOption(value, CleanOptionKey.CONFIG);
+  const logLevel = getOptionalStringOption(value, CleanOptionKey.LOG_LEVEL);
+  return {
+    ...(config ? { config } : {}),
+    ...(logLevel ? { logLevel } : {})
+  };
+}
+
+/**
+ * Normalizes an unknown directory argument to a clean directory string.
+ * @param value - Candidate directory value.
+ * @returns Directory string.
+ */
+function normalizeCleanDirectory(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * Normalizes an unknown value to clean command options.
+ * @param value - Candidate options value.
+ * @returns Clean command options.
+ */
+function normalizeCleanOptions(value: unknown): Readonly<ICleanCommandOptions> {
+  return normalizeObjectOptions<ICleanCommandOptions>(
+    value,
+    createCleanBooleanOptions,
+    createCleanStringOptions
+  );
 }

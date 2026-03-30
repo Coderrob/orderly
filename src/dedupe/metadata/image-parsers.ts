@@ -1,5 +1,15 @@
 import { IImageDimensions } from '../types';
 
+import {
+  findJpegMarkerOffset,
+  isJpeg,
+  isJpegStopMarker,
+  JPEG_SEGMENT_HEADER_SIZE,
+  JPEG_START_OFFSET,
+  readJpegMarker,
+  readJpegSegmentLength
+} from './jpeg-structure';
+
 const BITMAP_MIN_LENGTH = 26;
 const BITMAP_SIGNATURE_B = 0x42;
 const BITMAP_SIGNATURE_M = 0x4d;
@@ -15,16 +25,22 @@ const GIF_HEIGHT_OFFSET = 8;
 const GIF_HEADER_87A = Buffer.from('GIF87a', 'ascii');
 const GIF_HEADER_89A = Buffer.from('GIF89a', 'ascii');
 
-const JPEG_MIN_LENGTH = 4;
-const JPEG_SOI_PREFIX = 0xff;
-const JPEG_SOI_MARKER = 0xd8;
-const JPEG_EOI_MARKER = 0xd9;
-const JPEG_SOS_MARKER = 0xda;
-const JPEG_INITIAL_OFFSET = 2;
-const JPEG_MARKER_TYPE_OFFSET = 1;
-const JPEG_SEGMENT_LENGTH_OFFSET = 2;
-const JPEG_SEGMENT_MIN_LENGTH = 2;
-const JPEG_SEGMENT_HEADER_BYTES = 2;
+enum JpegStartOfFrameMarker {
+  BaselineDct = 0xc0,
+  ExtendedSequentialDct = 0xc1,
+  ProgressiveDct = 0xc2,
+  LosslessSequential = 0xc3,
+  DifferentialSequentialDct = 0xc5,
+  DifferentialProgressiveDct = 0xc6,
+  DifferentialLossless = 0xc7,
+  ExtendedSequentialArithmetic = 0xc9,
+  ProgressiveArithmetic = 0xca,
+  LosslessArithmetic = 0xcb,
+  DifferentialSequentialArithmetic = 0xcd,
+  DifferentialProgressiveArithmetic = 0xce,
+  DifferentialLosslessArithmetic = 0xcf
+}
+
 const JPEG_DIMENSION_LOOKAHEAD_BYTES = 9;
 const JPEG_SOF_HEIGHT_OFFSET = 5;
 const JPEG_SOF_WIDTH_OFFSET = 7;
@@ -53,46 +69,41 @@ const PNG_SIGNATURE = Buffer.from([
   PNG_SIGNATURE_BYTE_8
 ]);
 const PNG_IHDR = Buffer.from('IHDR', 'ascii');
+type ImageDimensionParser = (data: Readonly<Buffer>) => IImageDimensions | null;
 
-const SOF_0 = 0xc0;
-const SOF_1 = 0xc1;
-const SOF_2 = 0xc2;
-const SOF_3 = 0xc3;
-const SOF_5 = 0xc5;
-const SOF_6 = 0xc6;
-const SOF_7 = 0xc7;
-const SOF_9 = 0xc9;
-const SOF_10 = 0xca;
-const SOF_11 = 0xcb;
-const SOF_13 = 0xcd;
-const SOF_14 = 0xce;
-const SOF_15 = 0xcf;
+const IMAGE_DIMENSION_PARSERS: readonly ImageDimensionParser[] = [
+  extractPngDimensions,
+  extractJpegDimensions,
+  extractGifDimensions,
+  extractBmpDimensions
+];
+
 const SOF_MARKERS = new Set([
-  SOF_0,
-  SOF_1,
-  SOF_2,
-  SOF_3,
-  SOF_5,
-  SOF_6,
-  SOF_7,
-  SOF_9,
-  SOF_10,
-  SOF_11,
-  SOF_13,
-  SOF_14,
-  SOF_15
+  JpegStartOfFrameMarker.BaselineDct,
+  JpegStartOfFrameMarker.ExtendedSequentialDct,
+  JpegStartOfFrameMarker.ProgressiveDct,
+  JpegStartOfFrameMarker.LosslessSequential,
+  JpegStartOfFrameMarker.DifferentialSequentialDct,
+  JpegStartOfFrameMarker.DifferentialProgressiveDct,
+  JpegStartOfFrameMarker.DifferentialLossless,
+  JpegStartOfFrameMarker.ExtendedSequentialArithmetic,
+  JpegStartOfFrameMarker.ProgressiveArithmetic,
+  JpegStartOfFrameMarker.LosslessArithmetic,
+  JpegStartOfFrameMarker.DifferentialSequentialArithmetic,
+  JpegStartOfFrameMarker.DifferentialProgressiveArithmetic,
+  JpegStartOfFrameMarker.DifferentialLosslessArithmetic
 ]);
 
 /**
- * Extracts dimensions from a GIF header when present.
+ * Extracts dimensions from a BMP header when present.
  * @param data - File bytes to inspect.
- * @returns Image dimensions, or null when the buffer is not a valid GIF header.
+ * @returns Image dimensions, or null when the buffer is not a supported BMP header.
  */
 function extractBmpDimensions(data: Readonly<Buffer>): IImageDimensions | null {
   if (
     data.length < BITMAP_MIN_LENGTH ||
     data[0] !== BITMAP_SIGNATURE_B ||
-    data[JPEG_MARKER_TYPE_OFFSET] !== BITMAP_SIGNATURE_M
+    data[1] !== BITMAP_SIGNATURE_M
   ) {
     return null;
   }
@@ -108,9 +119,9 @@ function extractBmpDimensions(data: Readonly<Buffer>): IImageDimensions | null {
 }
 
 /**
- * Attempts each supported parser until image dimensions are found.
+ * Extracts dimensions from a GIF header when present.
  * @param data - File bytes to inspect.
- * @returns Image dimensions, or null when the format is unsupported or incomplete.
+ * @returns Image dimensions, or null when the buffer is not a valid GIF header.
  */
 function extractGifDimensions(data: Readonly<Buffer>): IImageDimensions | null {
   if (data.length < GIF_MIN_LENGTH) return null;
@@ -126,18 +137,12 @@ function extractGifDimensions(data: Readonly<Buffer>): IImageDimensions | null {
 }
 
 /**
- * Extracts dimensions from a BMP header when present.
+ * Attempts each supported parser until image dimensions are found.
  * @param data - File bytes to inspect.
- * @returns Image dimensions, or null when the buffer is not a supported BMP header.
+ * @returns Image dimensions, or null when the format is unsupported or incomplete.
  */
 export function extractImageDimensions(data: Readonly<Buffer>): IImageDimensions | null {
-  const parsers = [
-    extractPngDimensions,
-    extractJpegDimensions,
-    extractGifDimensions,
-    extractBmpDimensions
-  ];
-  for (const parse of parsers) {
+  for (const parse of IMAGE_DIMENSION_PARSERS) {
     const result = parse(data);
     if (result) return result;
   }
@@ -152,17 +157,18 @@ export function extractImageDimensions(data: Readonly<Buffer>): IImageDimensions
 function extractJpegDimensions(data: Readonly<Buffer>): IImageDimensions | null {
   if (!isJpeg(data)) return null;
 
-  let offset = JPEG_INITIAL_OFFSET;
-  while (offset + JPEG_DIMENSION_LOOKAHEAD_BYTES < data.length) {
-    const markerOffset = seekMarker(data, offset);
+  let offset = JPEG_START_OFFSET;
+  while (offset + JPEG_DIMENSION_LOOKAHEAD_BYTES <= data.length) {
+    const markerOffset = findJpegMarkerOffset(data, offset);
     if (markerOffset < 0) return null;
-    const marker = data[markerOffset + JPEG_MARKER_TYPE_OFFSET];
+    const marker = readJpegMarker(data, markerOffset);
     if (isJpegStopMarker(marker)) return null;
-    const segmentLength = getSegmentLength(data, markerOffset);
-    if (segmentLength < JPEG_SEGMENT_MIN_LENGTH) return null;
     if (SOF_MARKERS.has(marker)) return readSofDimensions(data, markerOffset);
 
-    offset = markerOffset + JPEG_SEGMENT_HEADER_BYTES + segmentLength;
+    const segmentLength = readJpegSegmentLength(data, markerOffset);
+    if (segmentLength < 0) return null;
+
+    offset = markerOffset + JPEG_SEGMENT_HEADER_SIZE + segmentLength;
   }
 
   return null;
@@ -181,43 +187,6 @@ function extractPngDimensions(data: Readonly<Buffer>): IImageDimensions | null {
   if (width === 0 || height === 0) return null;
 
   return { width, height };
-}
-
-/**
- * Reads the declared JPEG segment length for the marker at the provided offset.
- * @param data - File bytes to inspect.
- * @param markerOffset - Offset of the JPEG marker prefix byte.
- * @returns The segment length, or `-1` when the segment is incomplete or invalid.
- */
-function getSegmentLength(data: Readonly<Buffer>, markerOffset: number): number {
-  if (markerOffset + JPEG_MIN_LENGTH > data.length) return -1;
-
-  const segmentLength = data.readUInt16BE(markerOffset + JPEG_SEGMENT_LENGTH_OFFSET);
-  if (markerOffset + JPEG_SEGMENT_HEADER_BYTES + segmentLength > data.length) return -1;
-
-  return segmentLength;
-}
-
-/**
- * Determines whether the buffer starts with a JPEG SOI marker.
- * @param data - File bytes to inspect.
- * @returns True when the buffer looks like JPEG data; otherwise false.
- */
-function isJpeg(data: Readonly<Buffer>): boolean {
-  return (
-    data.length >= JPEG_MIN_LENGTH &&
-    data[0] === JPEG_SOI_PREFIX &&
-    data[JPEG_MARKER_TYPE_OFFSET] === JPEG_SOI_MARKER
-  );
-}
-
-/**
- * Determines whether the JPEG marker ends metadata scanning.
- * @param marker - Marker byte following the `0xFF` prefix.
- * @returns True when the marker is SOS or EOI; otherwise false.
- */
-function isJpegStopMarker(marker: number): boolean {
-  return marker === JPEG_EOI_MARKER || marker === JPEG_SOS_MARKER;
 }
 
 /**
@@ -240,24 +209,11 @@ function isPngWithIhdr(data: Readonly<Buffer>): boolean {
  * @returns Image dimensions, or null when the SOF segment is incomplete or invalid.
  */
 function readSofDimensions(data: Readonly<Buffer>, markerOffset: number): IImageDimensions | null {
-  if (markerOffset + JPEG_DIMENSION_LOOKAHEAD_BYTES >= data.length) return null;
+  if (markerOffset + JPEG_DIMENSION_LOOKAHEAD_BYTES > data.length) return null;
 
   const height = data.readUInt16BE(markerOffset + JPEG_SOF_HEIGHT_OFFSET);
   const width = data.readUInt16BE(markerOffset + JPEG_SOF_WIDTH_OFFSET);
   if (width <= 0 || height <= 0) return null;
 
   return { width, height };
-}
-
-/**
- * Seeks the next JPEG marker prefix starting at the provided offset.
- * @param data - File bytes to inspect.
- * @param start - Offset to begin searching from.
- * @returns The marker offset, or `-1` when no marker prefix is found.
- */
-function seekMarker(data: Readonly<Buffer>, start: number): number {
-  for (let i = start; i + 1 < data.length; i++) {
-    if (data[i] === JPEG_SOI_PREFIX) return i;
-  }
-  return -1;
 }

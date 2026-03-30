@@ -2,6 +2,8 @@ import { IScannedFile } from '../../scanner/interfaces';
 import { IDedupeStrategy, IMetadataExtractor } from '../interfaces';
 import { MetadataExtractor } from '../metadata';
 
+import { serializeKeyParts } from './strategy-helpers';
+
 const FILE_ATTRIBUTES_PRIORITY = 35;
 
 /**
@@ -43,14 +45,11 @@ export class FileAttributesStrategy implements IDedupeStrategy {
         return null;
       }
 
-      // Create a key from the attributes
-      const parts: string[] = [
-        `hidden:${attributes.hidden || false}`,
-        `readonly:${attributes.readonly || false}`,
-        `system:${attributes.system || false}`
-      ];
-
-      return parts.join('|');
+      return serializeKeyParts([
+        { name: 'hidden', value: attributes.hidden || false },
+        { name: 'readonly', value: attributes.readonly || false },
+        { name: 'system', value: attributes.system || false }
+      ]);
     } catch {
       return null;
     }

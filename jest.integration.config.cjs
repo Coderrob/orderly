@@ -6,6 +6,7 @@ module.exports = {
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^chalk$': '<rootDir>/test-support/chalk.ts',
     '^src/(.*)$': '<rootDir>/src/$1',
     '^dist/(.*)$': '<rootDir>/dist/$1'
   },

@@ -69,6 +69,15 @@ function getTargetFilename(file: Readonly<IScannedFile>, config: Readonly<Orderl
 }
 
 /**
+ * Returns whether an optional planned operation is present.
+ * @param operation - Optional planned file operation.
+ * @returns True when the operation is non-null.
+ */
+function isPlannedOperation(operation: IFileOperation | null): operation is IFileOperation {
+  return operation !== null;
+}
+
+/**
  * Builds a file operation reason and type from the computed targets.
  * @param file - The scanned file being planned.
  * @param targetFilename - The computed target filename.
@@ -95,16 +104,7 @@ export class OperationPlanner implements IOperationPlanner {
    * @returns Array of planned file operations (move, rename, or move-rename)
    */
   plan(files: readonly IScannedFile[]): IFileOperation[] {
-    let operations: IFileOperation[] = [];
-
-    for (const file of files) {
-      const operation = this.planFileOperation(file);
-      if (operation !== null) {
-        operations = [...operations, operation];
-      }
-    }
-
-    return operations;
+    return files.map(this.planFileOperation.bind(this)).filter(isPlannedOperation);
   }
 
   /**

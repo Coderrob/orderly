@@ -12,8 +12,10 @@ describe('Init Command Integration Tests', () => {
   let testEnv: TestEnvironmentSetup;
   let testDir: string;
   let initHandler: InitHandler;
+  let originalWorkingDirectory: string;
 
   beforeEach(() => {
+    originalWorkingDirectory = process.cwd();
     testEnv = new TestEnvironmentSetup();
     testDir = testEnv.createTempDir();
     initHandler = new InitHandler();
@@ -23,6 +25,7 @@ describe('Init Command Integration Tests', () => {
   });
 
   afterEach(() => {
+    process.chdir(originalWorkingDirectory);
     testEnv.cleanup();
   });
 

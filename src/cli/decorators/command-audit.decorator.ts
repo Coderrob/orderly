@@ -3,14 +3,14 @@ import * as crypto from 'node:crypto';
 import { Clock } from '../../utils/clock';
 import type { ICommandResult } from '../interfaces';
 
-type CommandExecution = (
-  this: object,
-  ...args: readonly unknown[]
-) => Promise<ICommandResult> | ICommandResult;
-
-interface ICommandExecutionRef {
-  readonly invoke: CommandExecution;
-}
+import {
+  createCommandMiddlewareDecorator,
+  createCommandMiddlewareWrapper,
+  invokeCommand,
+  isCommandResult,
+  type CommandExecution,
+  type ICommandExecutionRef
+} from './command-decorator.helpers';
 
 const RANDOM_TOKEN_LENGTH = 8;
 
@@ -29,72 +29,14 @@ function appendAuditMetadata(result: Readonly<ICommandResult>, runId: string): I
 }
 
 /**
- * Produces a descriptor whose value includes audit behavior.
+ * Creates a plain command wrapper that appends audit metadata.
  * @param commandName - Name of the command being audited.
- * @param descriptor - Original method descriptor.
- * @returns Updated descriptor with audit wrapper.
+ * @returns Command wrapper factory.
  */
-function createAuditDescriptor(
-  commandName: string,
-  descriptor: Readonly<PropertyDescriptor>
-): PropertyDescriptor {
-  const originalMethod: unknown = descriptor.value;
-  if (!isCommandExecution(originalMethod)) {
-    return { ...descriptor };
-  }
-
-  return {
-    ...descriptor,
-    value: createAuditedWrapper(commandName, { invoke: originalMethod })
-  };
-}
-
-/**
- * Wraps a command method with audit metadata behavior.
- * @param commandName - Name of the command being audited.
- * @param originalMethodRef - Original command method reference.
- * @returns Command method with audit metadata appended.
- */
-function createAuditedWrapper(
-  commandName: string,
-  originalMethodRef: Readonly<ICommandExecutionRef>
-): CommandExecution {
-  /**
-   * Executes the wrapped command and appends audit metadata.
-   * @param this - Invocation context.
-   * @param args - Command arguments.
-   * @returns Command result with audit suffix.
-   */
-  async function executeWithAudit(
-    this: object,
-    ...args: readonly unknown[]
-  ): Promise<ICommandResult> {
-    return runAuditedCommand(commandName, originalMethodRef, this, args);
-  }
-  return executeWithAudit;
-}
-
-/**
- * Creates a method decorator that applies audit metadata behavior.
- * @param commandName - Name of the command being audited.
- * @returns Method decorator implementation.
- */
-function createAuditMethodDecorator(commandName: string): MethodDecorator {
-  /**
-   * Applies audit behavior wrapping to the decorated method.
-   * @param _target - Decorated class prototype.
-   * @param _propertyKey - Decorated method key.
-   * @param descriptor - Original method descriptor.
-   * @returns Updated descriptor with audit behavior.
-   */
-  function applyCommandAudit(
-    _target: object,
-    _propertyKey: string | symbol,
-    descriptor: Readonly<PropertyDescriptor>
-  ): PropertyDescriptor {
-    return createAuditDescriptor(commandName, descriptor);
-  }
-  return applyCommandAudit;
+export function createAuditCommandWrapper(
+  commandName: string
+): (originalMethodRef: Readonly<ICommandExecutionRef>) => CommandExecution {
+  return createCommandMiddlewareWrapper({ value: commandName }, { invoke: runAuditedCommand });
 }
 
 /**
@@ -117,31 +59,7 @@ function createRunId(commandName: string): string {
 }
 
 /**
- * Checks whether a descriptor value can be wrapped as a command method.
- * @param value - Descriptor value.
- * @returns True when the value is a callable command method.
- */
-function isCommandExecution(value: unknown): value is CommandExecution {
-  return typeof value === 'function';
-}
-
-/**
- * Checks whether a descriptor value can be wrapped as a command method.
- * @param value - Descriptor value.
- * @returns True when the value is a callable command method.
- */
-function isCommandResult(value: unknown): value is ICommandResult {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'success' in value &&
-    'exitCode' in value &&
-    'message' in value
-  );
-}
-
-/**
- * Checks whether an unknown value matches ICommandResult.
+ * Executes the original command and appends audit metadata.
  * @param commandName - Name of the command being audited.
  * @param originalMethodRef - Original command method reference.
  * @param context - Invocation context.
@@ -155,9 +73,7 @@ async function runAuditedCommand(
   args: readonly unknown[]
 ): Promise<ICommandResult> {
   const runId = createRunId(commandName);
-  const maybeResult: unknown = await Promise.resolve(
-    Function.prototype.apply.call(originalMethodRef.invoke, context, args)
-  );
+  const maybeResult = await invokeCommand(originalMethodRef, context, args);
   return isCommandResult(maybeResult)
     ? appendAuditMetadata(maybeResult, runId)
     : appendAuditMetadata({ success: false, exitCode: 1, message: '' }, runId);
@@ -169,5 +85,5 @@ async function runAuditedCommand(
  * @returns A method decorator that appends audit metadata to successful or failed command results.
  */
 export function WithCommandAudit(commandName: string): MethodDecorator {
-  return createAuditMethodDecorator(commandName);
+  return createCommandMiddlewareDecorator({ value: commandName }, { invoke: runAuditedCommand });
 }

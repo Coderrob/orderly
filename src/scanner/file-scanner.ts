@@ -17,17 +17,7 @@ export type { IScannedFile, IFileScanner } from './interfaces';
  * @returns Category-to-count map source object.
  */
 function buildCategoryCounts(files: readonly IScannedFile[]): Readonly<Record<string, number>> {
-  let categoryCounts: Record<string, number> = {};
-
-  for (const file of files) {
-    const category = file.category || 'uncategorized';
-    categoryCounts = {
-      ...categoryCounts,
-      [category]: (categoryCounts[category] ?? 0) + 1
-    };
-  }
-
-  return categoryCounts;
+  return files.reduce<Record<string, number>>(toNextCategoryCounts, {});
 }
 
 export class FileScanner implements IFileScanner {
@@ -81,16 +71,7 @@ export class FileScanner implements IFileScanner {
    * @returns Array of processed and categorized scanned files
    */
   private processFiles(directory: string, files: readonly string[]): IScannedFile[] {
-    let scannedFiles: readonly IScannedFile[] = [];
-
-    for (const file of files) {
-      const scannedFile = this.processFile(directory, file);
-      if (scannedFile) {
-        scannedFiles = [...scannedFiles, scannedFile];
-      }
-    }
-
-    return [...scannedFiles];
+    return files.map(this.toProcessedFile.bind(this, directory)).filter(isScannedFile);
   }
 
   /**
@@ -136,4 +117,40 @@ export class FileScanner implements IFileScanner {
   getCategorySummary(files: readonly IScannedFile[]): Map<string, number> {
     return new Map(Object.entries(buildCategoryCounts(files)));
   }
+
+  /**
+   * Processes one discovered file path.
+   * @param directory - Base scan directory.
+   * @param file - Relative file path.
+   * @returns Scanned file or null.
+   */
+  private toProcessedFile(directory: string, file: string): IScannedFile | null {
+    return this.processFile(directory, file);
+  }
+}
+
+/**
+ * Returns whether a processed file is non-null.
+ * @param scannedFile - Candidate processed file.
+ * @returns True when the file is scanned metadata.
+ */
+function isScannedFile(scannedFile: IScannedFile | null): scannedFile is IScannedFile {
+  return scannedFile !== null;
+}
+
+/**
+ * Creates the next immutable category-count object.
+ * @param categoryCounts - Current category counts.
+ * @param file - Scanned file.
+ * @returns Updated category counts.
+ */
+function toNextCategoryCounts(
+  categoryCounts: Readonly<Record<string, number>>,
+  file: Readonly<IScannedFile>
+): Record<string, number> {
+  const category = file.category || 'uncategorized';
+  return {
+    ...categoryCounts,
+    [category]: (categoryCounts[category] ?? 0) + 1
+  };
 }

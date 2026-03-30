@@ -42,7 +42,9 @@ describe('Dedupe Integration Tests', () => {
     configService = new ConfigService();
     directoryValidator = new DirectoryValidator();
     manifestService = new ManifestService();
-    organizeHandler = new OrganizeHandler(configService, directoryValidator, manifestService);
+    organizeHandler = new OrganizeHandler(configService, directoryValidator, {
+      manifestService
+    });
 
     // Capture console output
     jest.spyOn(console, 'log').mockImplementation(() => {});

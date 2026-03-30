@@ -13,10 +13,13 @@ import {
 } from '../../constants';
 import { DedupeAction, DedupeMode, type IDedupeConfig } from '../../dedupe/types';
 import { CLI_CONSTANTS, COMMAND_MESSAGES, ConfigFileFormat, ExitCode } from '../constants';
-import { WithCommandAudit } from '../decorators/command-audit.decorator';
-import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
-import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
 import type { ICommandResult, IInitHandler, IInitOptions } from '../interfaces';
+
+import { getOptionalStringOption, normalizeObjectOptions } from './command-option.helpers';
+import {
+  createSingleOptionsCommandExecutionRef,
+  createWrappedSingleOptionsCommand
+} from './command-wrapper.helpers';
 
 const TEMPLATE_DOWNLOADS = 'downloads';
 const TEMPLATE_MEDIA_LIBRARY = 'media-library';
@@ -29,19 +32,38 @@ const CATEGORY_DOCUMENTS = 'documents';
 const CATEGORY_PHOTOS = 'photos';
 const CATEGORY_VIDEOS = 'videos';
 
+enum InitOptionKey {
+  FORMAT = 'format',
+  TEMPLATE = 'template'
+}
+
 /**
  * Handler for the init command.
  */
 export class InitHandler implements IInitHandler {
+  public readonly execute: (options: Readonly<IInitOptions>) => Promise<ICommandResult>;
+
+  /**
+   * Creates a new init command handler.
+   */
+  constructor() {
+    this.execute = createWrappedSingleOptionsCommand({
+      auditCommandName: 'init',
+      commandName: 'init',
+      errorPrefix: COMMAND_MESSAGES.INIT_FAILED,
+      executeCoreRef: createSingleOptionsCommandExecutionRef({
+        executeCore: this.executeCore.bind(this),
+        normalizeOptions: normalizeInitOptions
+      })
+    });
+  }
+
   /**
    * Executes the init command.
    * @param options - Init command options
    * @returns Command result
    */
-  @WithCommandAudit('init')
-  @WithCommandTelemetry('init')
-  @HandleCommandErrors(COMMAND_MESSAGES.INIT_FAILED)
-  execute(options: Readonly<IInitOptions>): Promise<ICommandResult> {
+  private executeCore(options: Readonly<IInitOptions>): Promise<ICommandResult> {
     const format = options.format || CLI_CONSTANTS.DEFAULT_CONFIG_FORMAT;
     const configPath = this.getConfigPath(format);
     const templateName = this.resolveTemplateName(options.template);
@@ -195,6 +217,20 @@ function createDownloadsTemplate(): OrderlyConfig {
 }
 
 /**
+ * Creates normalized init string options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized string options.
+ */
+function createInitStringOptions(value: object): Readonly<IInitOptions> {
+  const format = getOptionalStringOption(value, InitOptionKey.FORMAT);
+  const template = getOptionalStringOption(value, InitOptionKey.TEMPLATE);
+  return {
+    ...(format ? { format } : {}),
+    ...(template ? { template } : {})
+  };
+}
+
+/**
  * Creates the media-library categories.
  * @returns Media-library categories.
  */
@@ -222,7 +258,6 @@ function createMediaLibraryTemplate(): OrderlyConfig {
     dedupe: createReportedMediaDedupeConfig()
   };
 }
-
 /**
  * Creates the photos-only dedupe config.
  * @returns Photos-only dedupe config.
@@ -291,4 +326,13 @@ function createTemplate(templateName: string): OrderlyConfig {
     default:
       return createDownloadsTemplate();
   }
+}
+
+/**
+ * Normalizes an unknown command argument to init options.
+ * @param value - Candidate options value.
+ * @returns Normalized init options.
+ */
+function normalizeInitOptions(value: unknown): Readonly<IInitOptions> {
+  return normalizeObjectOptions<IInitOptions>(value, createInitStringOptions);
 }

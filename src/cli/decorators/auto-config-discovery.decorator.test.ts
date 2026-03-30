@@ -1,4 +1,10 @@
-import { IAutoConfigContext, WithAutoConfigDiscovery } from './auto-config-discovery.decorator';
+import {
+  IAutoConfigContext,
+  WithAutoConfigDiscovery,
+  createAutoConfigContextResolver,
+  normalizeAutoConfigContext,
+  resolveAutoConfigContext
+} from './auto-config-discovery.decorator';
 
 interface ITestOptions {
   config?: string;
@@ -140,5 +146,68 @@ describe('WithAutoConfigDiscovery', () => {
     const result = decorator({}, 'execute', descriptor);
 
     expect(result).toEqual(descriptor);
+  });
+});
+
+describe('auto-config plain wrapper helpers', () => {
+  it('should normalize values matching auto-config context', () => {
+    const context = normalizeAutoConfigContext<ITestOptions>({
+      autoDiscoveredConfig: '/resolved/.orderly.yml',
+      configOptions: { config: '/resolved/.orderly.yml' },
+      targetDir: '/resolved'
+    });
+
+    expect(context).toEqual({
+      autoDiscoveredConfig: '/resolved/.orderly.yml',
+      configOptions: { config: '/resolved/.orderly.yml' },
+      targetDir: '/resolved'
+    });
+  });
+
+  it('should return undefined for values that are not auto-config context', () => {
+    expect(normalizeAutoConfigContext<ITestOptions>({ targetDir: 123 })).toBeUndefined();
+  });
+
+  it('should reuse provided context when resolving plain wrapper auto-config', () => {
+    const findConfigInDirectory = jest.fn();
+    const validate = jest.fn();
+    const context: Readonly<IAutoConfigContext<ITestOptions>> = {
+      autoDiscoveredConfig: '/provided/.orderly.yml',
+      configOptions: { config: '/provided/.orderly.yml' },
+      targetDir: '/provided'
+    };
+
+    const result = resolveAutoConfigContext(
+      {
+        configService: { findConfigInDirectory },
+        directoryValidator: { validate }
+      },
+      '/input',
+      {},
+      context
+    );
+
+    expect(result).toBe(context);
+    expect(validate).not.toHaveBeenCalled();
+    expect(findConfigInDirectory).not.toHaveBeenCalled();
+  });
+
+  it('should create a plain wrapper resolver that discovers config when needed', () => {
+    const validate = jest.fn().mockReturnValue('/resolved');
+    const findConfigInDirectory = jest.fn().mockReturnValue('/resolved/.orderly.yml');
+    const resolveContext = createAutoConfigContextResolver<ITestOptions>({
+      configService: { findConfigInDirectory },
+      directoryValidator: { validate }
+    });
+
+    const context = resolveContext('/input', {}, undefined);
+
+    expect(validate).toHaveBeenCalledWith('/input');
+    expect(findConfigInDirectory).toHaveBeenCalledWith('/resolved');
+    expect(context).toEqual({
+      autoDiscoveredConfig: '/resolved/.orderly.yml',
+      configOptions: { config: '/resolved/.orderly.yml' },
+      targetDir: '/resolved'
+    });
   });
 });

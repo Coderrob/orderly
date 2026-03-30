@@ -1,4 +1,15 @@
-export { ConfigLoader } from './config-loader.js';
-export type { IConfigLoader } from './config-loader.js';
-export { ConfigFormat, DEFAULT_CONFIG, NamingConventionType } from './types.js';
-export type { CategoryRule, NamingConvention, OrderlyConfig } from './types.js';
+export { ConfigLoader, type IConfigLoader } from './config-loader.js';
+export {
+  CollisionResolutionStrategy,
+  ConfigFormat,
+  DEFAULT_CONFIG,
+  NamingConventionType,
+  type CategoryRule,
+  type CollisionResolutionConfig,
+  type ICategoryRule,
+  type ICollisionResolutionConfig,
+  type INamingConvention,
+  type IOrderlyConfig,
+  type NamingConvention,
+  type OrderlyConfig
+} from './types.js';

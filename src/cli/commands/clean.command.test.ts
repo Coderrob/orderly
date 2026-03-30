@@ -103,6 +103,83 @@ describe('CleanHandler', () => {
     });
   });
 
+  it('should auto-discover config through the plain wrapper path', async () => {
+    mockConfigService.findConfigInDirectory.mockReturnValue('/target/.orderly.yml');
+    mockConfigService.loadWithOverrides.mockReturnValue({
+      dryRun: false,
+      includeHidden: false,
+      logLevel: 'info'
+    });
+    mockDirectoryValidator.validate.mockReturnValue('/target');
+    mockCleaner.clean.mockReturnValue({
+      scannedDirectories: 0,
+      removedDirectories: 0,
+      skippedDirectories: 0,
+      removed: [],
+      errors: []
+    });
+
+    await handler.execute('/input', {});
+
+    expect(mockDirectoryValidator.validate).toHaveBeenCalledWith('/input');
+    expect(mockConfigService.findConfigInDirectory).toHaveBeenCalledWith('/target');
+    expect(mockConfigService.loadWithOverrides).toHaveBeenCalledWith({
+      config: '/target/.orderly.yml',
+      dryRun: undefined,
+      logLevel: undefined
+    });
+  });
+
+  it('should skip auto-discovery when explicit config is provided', async () => {
+    mockConfigService.loadWithOverrides.mockReturnValue({
+      dryRun: false,
+      includeHidden: false,
+      logLevel: 'info'
+    });
+    mockDirectoryValidator.validate.mockReturnValue('/target');
+    mockCleaner.clean.mockReturnValue({
+      scannedDirectories: 0,
+      removedDirectories: 0,
+      skippedDirectories: 0,
+      removed: [],
+      errors: []
+    });
+
+    await handler.execute('/input', { config: '/explicit/.orderly.yml' });
+
+    expect(mockConfigService.findConfigInDirectory).not.toHaveBeenCalled();
+    expect(mockConfigService.loadWithOverrides).toHaveBeenCalledWith({
+      config: '/explicit/.orderly.yml',
+      dryRun: undefined,
+      logLevel: undefined
+    });
+  });
+
+  it('should skip auto-discovery when auto-config is disabled', async () => {
+    mockConfigService.loadWithOverrides.mockReturnValue({
+      dryRun: false,
+      includeHidden: false,
+      logLevel: 'info'
+    });
+    mockDirectoryValidator.validate.mockReturnValue('/target');
+    mockCleaner.clean.mockReturnValue({
+      scannedDirectories: 0,
+      removedDirectories: 0,
+      skippedDirectories: 0,
+      removed: [],
+      errors: []
+    });
+
+    await handler.execute('/input', { autoConfig: false });
+
+    expect(mockConfigService.findConfigInDirectory).not.toHaveBeenCalled();
+    expect(mockConfigService.loadWithOverrides).toHaveBeenCalledWith({
+      config: undefined,
+      dryRun: undefined,
+      logLevel: undefined
+    });
+  });
+
   it('should honor explicit clean option overrides', async () => {
     mockConfigService.loadWithOverrides.mockReturnValue({
       dryRun: false,
@@ -131,14 +208,6 @@ describe('CleanHandler', () => {
     });
   });
 
-  it('should log auto-discovered config paths through the private helper', () => {
-    const logger = { info: jest.fn() };
-
-    (handler as any).logAutoDiscoveredConfig(logger, '/target/.orderly.yml');
-
-    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('/target/.orderly.yml'));
-  });
-
   it('should log cleaner errors through the private summary logger', () => {
     const logger = { info: jest.fn(), error: jest.fn() };
 
@@ -157,7 +226,7 @@ describe('CleanHandler', () => {
   });
 
   it('should build a successful result through the private result builder', () => {
-    const result = (handler as any).buildResult({
+    const result = handler['buildResult']({
       scannedDirectories: 2,
       removedDirectories: 1,
       skippedDirectories: 1,
@@ -169,14 +238,6 @@ describe('CleanHandler', () => {
       exitCode: 0,
       message: 'Scanned 2 directories, removed 1, skipped 1'
     });
-  });
-
-  it('should not log auto-discovered config when none is present', () => {
-    const logger = { info: jest.fn() };
-
-    (handler as any).logAutoDiscoveredConfig(logger, undefined);
-
-    expect(logger.info).not.toHaveBeenCalled();
   });
 
   it('should build command context from direct options when no auto-config context exists', () => {

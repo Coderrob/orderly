@@ -44,8 +44,10 @@ describe('CLI Integration Tests — Common Scenarios', () => {
   let configService: ConfigService;
   let directoryValidator: DirectoryValidator;
   let manifestService: ManifestService;
+  let originalWorkingDirectory: string;
 
   beforeEach(() => {
+    originalWorkingDirectory = process.cwd();
     testEnv = new TestEnvironmentSetup();
     testDir = testEnv.createTempDir();
     configService = new ConfigService();
@@ -64,8 +66,10 @@ describe('CLI Integration Tests — Common Scenarios', () => {
     organizeHandler = new OrganizeHandler(
       configService,
       directoryValidator,
-      manifestService,
-      new EmptyDirectoryCleaner()
+      {
+        cleaner: new EmptyDirectoryCleaner(),
+        manifestService
+      }
     );
 
     jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -75,6 +79,7 @@ describe('CLI Integration Tests — Common Scenarios', () => {
   });
 
   afterEach(() => {
+    process.chdir(originalWorkingDirectory);
     testEnv.cleanup();
     jest.restoreAllMocks();
   });
