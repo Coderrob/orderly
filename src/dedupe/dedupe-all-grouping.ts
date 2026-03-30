@@ -17,7 +17,6 @@ import { resolvePathPairIndexes } from './dedupe-resolved-pair-evaluation';
 import { DedupeMode, type IDuplicateGroup } from './types';
 
 interface IAllModeGroupState {
-  readonly pairMatches: Readonly<ReadonlyMap<string, readonly IStrategyMatch[]>>;
   readonly parents: readonly number[];
 }
 
@@ -28,46 +27,28 @@ interface IAllModeGroupState {
  */
 function appendAllModePair(
   params: Readonly<{
-    fileIndexesByPath: Readonly<ReadonlyMap<string, number>>;
-    matchedPathPair: Readonly<{
-      leftPath: string;
-      matched: readonly IStrategyMatch[];
-      rightPath: string;
-    }>;
+    pairIndexes: Readonly<{ leftIndex: number; rightIndex: number }>;
     state: Readonly<IAllModeGroupState>;
-    strategyExecutions: readonly IStrategyExecution[];
   }>
 ): Readonly<IAllModeGroupState> {
-  const pairIndexes = resolvePathPairIndexes(params.fileIndexesByPath, params.matchedPathPair);
-  if (!pairIndexes || !shouldAppendAllModePair(params)) {
-    return params.state;
-  }
-
   return {
-    parents: unionParents(params.state.parents, pairIndexes.leftIndex, pairIndexes.rightIndex),
-    pairMatches: appendPairMatch(
-      params.state.pairMatches,
-      pairIndexes,
-      params.matchedPathPair.matched
+    parents: unionParents(
+      params.state.parents,
+      params.pairIndexes.leftIndex,
+      params.pairIndexes.rightIndex
     )
   };
 }
 
 /**
- * Adds one pair-match entry into the pair-match lookup map.
- * @param pairMatches - Existing pair-match lookup.
- * @param pairIndexes - Duplicate pair indexes.
- * @param matched - Matching strategies for the pair.
- * @returns Updated pair-match lookup.
+ * Creates the initial grouping state for `ALL` mode.
+ * @param fileCount - Number of scanned files.
+ * @returns Initial grouping state.
  */
-function appendPairMatch(
-  pairMatches: Readonly<ReadonlyMap<string, readonly IStrategyMatch[]>>,
-  pairIndexes: Readonly<{ leftIndex: number; rightIndex: number }>,
-  matched: readonly IStrategyMatch[]
-): Readonly<ReadonlyMap<string, readonly IStrategyMatch[]>> {
-  const nextPairMatches = new Map(pairMatches);
-  nextPairMatches.set(createPairId(pairIndexes.leftIndex, pairIndexes.rightIndex), matched);
-  return nextPairMatches;
+function createInitialAllModeGroupState(fileCount: number): Readonly<IAllModeGroupState> {
+  return {
+    parents: createInitialParents(fileCount)
+  };
 }
 
 /**
@@ -85,21 +66,46 @@ export function groupAllModeCandidates(
   }
 
   const fileIndexesByPath = createFileIndexesByPath(files);
-  let state: Readonly<IAllModeGroupState> = {
-    parents: createInitialParents(files.length),
-    pairMatches: new Map()
-  };
+  const pairMatches = new Map<string, readonly IStrategyMatch[]>();
+  let state = createInitialAllModeGroupState(files.length);
 
   for (const matchedPathPair of createMatchedPathPairMap(strategyExecutions).values()) {
-    state = appendAllModePair({
+    const pairIndexes = resolveAcceptedAllModePair(
       fileIndexesByPath,
       matchedPathPair,
-      state,
       strategyExecutions
-    });
+    );
+    if (!pairIndexes) {
+      continue;
+    }
+
+    pairMatches.set(createPairId(pairIndexes.leftIndex, pairIndexes.rightIndex), matchedPathPair.matched);
+    state = appendAllModePair({ pairIndexes, state });
   }
 
-  return buildGroupsFromParents(files, state.parents, state.pairMatches);
+  return buildGroupsFromParents(files, state.parents, pairMatches);
+}
+
+/**
+ * Resolves accepted duplicate pair indexes for one `ALL`-mode path pair.
+ * @param fileIndexesByPath - File-index lookup keyed by original path.
+ * @param matchedPathPair - Matched path-pair metadata.
+ * @param strategyExecutions - Strategy outputs keyed by file path.
+ * @returns Accepted duplicate pair indexes, or undefined when rejected.
+ */
+function resolveAcceptedAllModePair(
+  fileIndexesByPath: Readonly<ReadonlyMap<string, number>>,
+  matchedPathPair: Readonly<{
+    leftPath: string;
+    matched: readonly IStrategyMatch[];
+    rightPath: string;
+  }>,
+  strategyExecutions: readonly IStrategyExecution[]
+): Readonly<{ leftIndex: number; rightIndex: number }> | undefined {
+  const pairIndexes = resolvePathPairIndexes(fileIndexesByPath, matchedPathPair);
+  return pairIndexes && shouldAppendAllModePair({ matchedPathPair, strategyExecutions })
+    ? pairIndexes
+    : undefined;
 }
 
 /**

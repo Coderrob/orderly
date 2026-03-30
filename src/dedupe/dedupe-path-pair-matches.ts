@@ -1,8 +1,5 @@
 import { type IStrategyExecution, type IStrategyMatch } from './dedupe-analysis.helpers';
-import {
-  createDuplicateCandidateBuckets,
-  type IDuplicateCandidateBucket
-} from './dedupe-candidate-pairs';
+import { createDuplicateCandidateBuckets } from './dedupe-candidate-pairs';
 import { isDuplicatePair } from './dedupe-pair-evaluation';
 import { DedupeMode } from './types';
 
@@ -15,37 +12,18 @@ interface IResolvedPathPairMatch {
 export type { IResolvedPathPairMatch };
 
 /**
- * Adds matched path pairs for one duplicate bucket.
- * @param bucket - Duplicate candidate bucket.
- * @param matchedPathPairs - Path-pair match accumulator keyed by path pair id.
- * @returns Updated path-pair match accumulator.
+ * Appends one strategy match to an existing matched-strategy list.
+ * @param matched - Existing matched strategies.
+ * @param strategy - Strategy identifier.
+ * @param key - Strategy key.
+ * @returns Updated matched-strategy list.
  */
-function appendMatchedPathPairs(
-  bucket: Readonly<IDuplicateCandidateBucket>,
-  matchedPathPairs: Readonly<ReadonlyMap<string, Readonly<IResolvedPathPairMatch>>>
-): ReadonlyMap<string, Readonly<IResolvedPathPairMatch>> {
-  const nextMatchedPathPairs = new Map(matchedPathPairs);
-
-  for (let leftIndex = 0; leftIndex < bucket.paths.length - 1; leftIndex++) {
-    for (let rightIndex = leftIndex + 1; rightIndex < bucket.paths.length; rightIndex++) {
-      const leftPath = bucket.paths[leftIndex];
-      const rightPath = bucket.paths[rightIndex];
-      const orderedPaths =
-        leftPath < rightPath
-          ? { leftPath, rightPath }
-          : { leftPath: rightPath, rightPath: leftPath };
-      const pairId = `${orderedPaths.leftPath}::${orderedPaths.rightPath}`;
-      const existingMatch = nextMatchedPathPairs.get(pairId);
-
-      nextMatchedPathPairs.set(pairId, {
-        leftPath: orderedPaths.leftPath,
-        rightPath: orderedPaths.rightPath,
-        matched: [...(existingMatch?.matched ?? []), { strategy: bucket.strategy, key: bucket.key }]
-      });
-    }
-  }
-
-  return nextMatchedPathPairs;
+function appendMatchedStrategy(
+  matched: readonly IStrategyMatch[] | undefined,
+  strategy: string,
+  key: string
+): readonly IStrategyMatch[] {
+  return [...(matched ?? []), { strategy, key }];
 }
 
 /**
@@ -79,13 +57,42 @@ export function countApplicableStrategies(
 export function createMatchedPathPairMap(
   strategyExecutions: readonly IStrategyExecution[]
 ): ReadonlyMap<string, Readonly<IResolvedPathPairMatch>> {
-  let matchedPathPairs: ReadonlyMap<string, Readonly<IResolvedPathPairMatch>> = new Map();
+  const matchedPathPairs = new Map<string, Readonly<IResolvedPathPairMatch>>();
 
   for (const bucket of createDuplicateCandidateBuckets(strategyExecutions)) {
-    matchedPathPairs = appendMatchedPathPairs(bucket, matchedPathPairs);
+    for (let leftIndex = 0; leftIndex < bucket.paths.length - 1; leftIndex++) {
+      for (let rightIndex = leftIndex + 1; rightIndex < bucket.paths.length; rightIndex++) {
+        const leftPath = bucket.paths[leftIndex];
+        const rightPath = bucket.paths[rightIndex];
+        const orderedPaths = createOrderedPaths(leftPath, rightPath);
+        const pairId = `${orderedPaths.leftPath}::${orderedPaths.rightPath}`;
+        const existingMatch = matchedPathPairs.get(pairId);
+
+        matchedPathPairs.set(pairId, {
+          leftPath: orderedPaths.leftPath,
+          rightPath: orderedPaths.rightPath,
+          matched: appendMatchedStrategy(existingMatch?.matched, bucket.strategy, bucket.key)
+        });
+      }
+    }
   }
 
   return matchedPathPairs;
+}
+
+/**
+ * Creates alphabetically ordered file paths for stable pair ids.
+ * @param leftPath - First file path.
+ * @param rightPath - Second file path.
+ * @returns Ordered file paths.
+ */
+function createOrderedPaths(
+  leftPath: string,
+  rightPath: string
+): Readonly<{ leftPath: string; rightPath: string }> {
+  return leftPath < rightPath
+    ? { leftPath, rightPath }
+    : { leftPath: rightPath, rightPath: leftPath };
 }
 
 /**
