@@ -156,6 +156,27 @@ enum RevertOptionKey {
 }
 
 /**
+ * Creates a selector that maps reverse-order indexes to manifest entries.
+ * @param entries - Source manifest entries.
+ * @returns Reverse-order entry selector.
+ */
+function createReversedEntrySelector(
+  entries: readonly IManifestEntryLike[]
+): (_: unknown, index: number) => IManifestEntryLike {
+  /**
+   * Selects one entry from the source array in reverse order.
+   * @param _value - Unused array-like source value.
+   * @param index - Reverse-order output index.
+   * @returns Entry at the mirrored source position.
+   */
+  function selectReversedEntry(_value: unknown, index: number): IManifestEntryLike {
+    return entries[entries.length - index - 1];
+  }
+
+  return selectReversedEntry;
+}
+
+/**
  * Creates normalized revert boolean options from an unknown object.
  * @param value - Candidate options object.
  * @returns Normalized boolean options.
@@ -308,5 +329,5 @@ function parseManifestJson(manifestContent: string): unknown {
  * @returns Reversed entries.
  */
 function reverseEntries(entries: readonly IManifestEntryLike[]): readonly IManifestEntryLike[] {
-  return entries.toReversed();
+  return Array.from({ length: entries.length }, createReversedEntrySelector(entries));
 }

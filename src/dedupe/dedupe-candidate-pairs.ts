@@ -16,16 +16,24 @@ const MIN_DUPLICATE_GROUP_SIZE = 2;
 export type { IDuplicateCandidateBucket, IPathPair };
 
 /**
- * Adds one file path to a bucket set.
- * @param bucketPaths - Existing bucket paths.
- * @param filePath - File path to add.
- * @returns Updated bucket-path set.
+ * Creates a selector that maps pair indexes to stable path pairs within one bucket.
+ * @param bucketPaths - File paths sharing one strategy key.
+ * @returns Pair selector.
  */
-function addBucketPath(
-  bucketPaths: Readonly<Set<string>> | undefined,
-  filePath: string
-): Set<string> {
-  return new Set([...(bucketPaths ?? []), filePath]);
+function createBucketPairSelector(
+  bucketPaths: readonly string[]
+): (_: unknown, pairIndex: number) => Readonly<IPathPair> {
+  /**
+   * Selects one bucket pair by flattened pair index.
+   * @param _value - Unused array-like source value.
+   * @param pairIndex - Flattened pair index.
+   * @returns Stable path pair for the requested flattened index.
+   */
+  function selectBucketPair(_value: unknown, pairIndex: number): Readonly<IPathPair> {
+    return toBucketPair(bucketPaths, pairIndex);
+  }
+
+  return selectBucketPair;
 }
 
 /**
@@ -55,18 +63,31 @@ export function createCandidatePairs(
 export function createDuplicateCandidateBuckets(
   strategyExecutions: readonly IStrategyExecution[]
 ): readonly Readonly<IDuplicateCandidateBucket>[] {
-  let buckets: readonly Readonly<IDuplicateCandidateBucket>[] = [];
+  return strategyExecutions.flatMap(toExecutionDuplicateCandidateBuckets);
+}
 
-  for (const execution of strategyExecutions) {
-    for (const bucketEntry of createStrategyBuckets(execution).entries()) {
-      const bucket = toDuplicateCandidateBucket(execution.strategy, bucketEntry);
-      if (bucket) {
-        buckets = [...buckets, bucket];
-      }
-    }
+/**
+ * Creates a selector that maps bucket entries to duplicate candidate buckets.
+ * @param strategy - Strategy identifier.
+ * @returns Duplicate candidate bucket selector.
+ */
+function createDuplicateCandidateBucketSelector(
+  strategy: string
+): (
+  bucketEntry: Readonly<readonly [string, readonly string[]]>
+) => Readonly<IDuplicateCandidateBucket> | null {
+  /**
+   * Selects a duplicate candidate bucket from one strategy bucket entry.
+   * @param bucketEntry - Bucket entry keyed by duplicate key.
+   * @returns Duplicate candidate bucket or null when too small.
+   */
+  function selectDuplicateCandidateBucket(
+    bucketEntry: Readonly<readonly [string, readonly string[]]>
+  ): Readonly<IDuplicateCandidateBucket> | null {
+    return toDuplicateCandidateBucket(strategy, bucketEntry);
   }
 
-  return buckets;
+  return selectDuplicateCandidateBucket;
 }
 
 /**
@@ -102,7 +123,11 @@ function createStrategyBuckets(
   const bucketSets = new Map<string, Set<string>>();
 
   for (const [filePath, key] of strategyExecution.keysByPath.entries()) {
-    bucketSets.set(key, addBucketPath(bucketSets.get(key), filePath));
+    const bucketPaths = bucketSets.get(key) ?? new Set<string>();
+    bucketPaths.add(filePath);
+    if (!bucketSets.has(key)) {
+      bucketSets.set(key, bucketPaths);
+    }
   }
 
   return new Map([...bucketSets.entries()].map(toBucketEntry));
@@ -118,6 +143,17 @@ function isDuplicateCandidateBucket(paths: readonly string[]): boolean {
 }
 
 /**
+ * Returns whether an optional duplicate candidate bucket is present.
+ * @param bucket - Optional duplicate candidate bucket.
+ * @returns True when the bucket is present.
+ */
+function isPresentDuplicateCandidateBucket(
+  bucket: Readonly<IDuplicateCandidateBucket> | null
+): bucket is Readonly<IDuplicateCandidateBucket> {
+  return bucket !== null;
+}
+
+/**
  * Converts one bucket-set entry into a bucket-array entry.
  * @param entry - Bucket-set entry.
  * @returns Bucket-array entry.
@@ -129,20 +165,37 @@ function toBucketEntry(
 }
 
 /**
+ * Converts a flattened pair index into one stable bucket path pair.
+ * @param bucketPaths - File paths sharing one strategy key.
+ * @param pairIndex - Flattened pair index.
+ * @returns Stable path pair for the requested flattened index.
+ */
+function toBucketPair(bucketPaths: readonly string[], pairIndex: number): Readonly<IPathPair> {
+  let remainingPairIndex = pairIndex;
+
+  for (let leftIndex = 0; leftIndex < bucketPaths.length - 1; leftIndex++) {
+    const pairCount = bucketPaths.length - leftIndex - 1;
+    if (remainingPairIndex < pairCount) {
+      return createPathPair(
+        bucketPaths[leftIndex],
+        bucketPaths[leftIndex + remainingPairIndex + 1]
+      );
+    }
+
+    remainingPairIndex -= pairCount;
+  }
+
+  return createPathPair(bucketPaths[0], bucketPaths[0]);
+}
+
+/**
  * Converts one duplicate-candidate bucket into file-path pairs.
  * @param bucketPaths - File paths sharing one strategy key.
  * @returns Unique file-path pairs within the bucket.
  */
 function toBucketPairs(bucketPaths: readonly string[]): readonly Readonly<IPathPair>[] {
-  let pairs: readonly Readonly<IPathPair>[] = [];
-
-  for (let leftIndex = 0; leftIndex < bucketPaths.length - 1; leftIndex++) {
-    for (let rightIndex = leftIndex + 1; rightIndex < bucketPaths.length; rightIndex++) {
-      pairs = [...pairs, createPathPair(bucketPaths[leftIndex], bucketPaths[rightIndex])];
-    }
-  }
-
-  return pairs;
+  const pairCount = (bucketPaths.length * (bucketPaths.length - 1)) / MIN_DUPLICATE_GROUP_SIZE;
+  return Array.from({ length: pairCount }, createBucketPairSelector(bucketPaths));
 }
 
 /**
@@ -158,4 +211,17 @@ function toDuplicateCandidateBucket(
   return isDuplicateCandidateBucket(bucketEntry[1])
     ? { strategy, key: bucketEntry[0], paths: bucketEntry[1] }
     : null;
+}
+
+/**
+ * Converts one strategy execution into duplicate candidate buckets.
+ * @param strategyExecution - Strategy execution keyed by original file path.
+ * @returns Duplicate candidate buckets from the execution.
+ */
+function toExecutionDuplicateCandidateBuckets(
+  strategyExecution: Readonly<IStrategyExecution>
+): readonly Readonly<IDuplicateCandidateBucket>[] {
+  return [...createStrategyBuckets(strategyExecution).entries()]
+    .map(createDuplicateCandidateBucketSelector(strategyExecution.strategy))
+    .filter(isPresentDuplicateCandidateBucket);
 }

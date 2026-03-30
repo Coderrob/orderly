@@ -9,6 +9,26 @@ interface IKeyPart {
 }
 
 /**
+ * Creates a selector that serializes one sorted record key.
+ * @param record - Record being serialized.
+ * @returns Serialized record-part selector.
+ */
+function createSerializedRecordPartSelector(
+  record: Readonly<Record<string, string>>
+): (key: string) => string {
+  /**
+   * Serializes one sorted record key.
+   * @param key - Record key to serialize.
+   * @returns Serialized `key:value` fragment.
+   */
+  function serializeRecordPart(key: string): string {
+    return `${key}:${record[key]}`;
+  }
+
+  return serializeRecordPart;
+}
+
+/**
  * Creates a sorted list of record keys without mutating the source.
  * @param record - Record whose keys should be sorted.
  * @returns Sorted keys.
@@ -73,13 +93,7 @@ export function serializeKeyParts(parts: readonly IKeyPart[]): string {
  * @returns Sorted pipe-delimited key-value pairs.
  */
 export function serializeSortedRecord(record: Readonly<Record<string, string>>): string {
-  let parts: readonly string[] = [];
-
-  for (const key of createSortedKeys(record)) {
-    parts = [...parts, `${key}:${record[key]}`];
-  }
-
-  return parts.join('|');
+  return createSortedKeys(record).map(createSerializedRecordPartSelector(record)).join('|');
 }
 
 /**

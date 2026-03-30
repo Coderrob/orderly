@@ -132,15 +132,32 @@ export class OrganizeHandler implements IOrganizeHandler {
     options: Readonly<IOrganizeOptions>,
     context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
   ): Readonly<IOrganizeCommandContext> {
-    const commandContext = createScannerCommandContext(
-      createCommandContextBase({
-        directory,
-        options,
-        context,
-        configService: this.configService,
-        directoryValidator: this.directoryValidator
-      })
+    return this.buildOrganizeCommandContext(
+      createScannerCommandContext(
+        createCommandContextBase({
+          directory,
+          options,
+          context,
+          configService: this.configService,
+          directoryValidator: this.directoryValidator
+        })
+      )
     );
+  }
+
+  /**
+   * Builds the final organize command context from the shared base context.
+   * @param commandContext - Shared scanner command context.
+   * @returns Organize command context.
+   */
+  private buildOrganizeCommandContext(
+    commandContext: Readonly<{
+      config: OrderlyConfig;
+      logger: Logger;
+      scanner: FileScanner;
+      targetDir: string;
+    }>
+  ): Readonly<IOrganizeCommandContext> {
     return {
       config: commandContext.config,
       logger: commandContext.logger,

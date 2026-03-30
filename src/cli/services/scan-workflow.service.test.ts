@@ -32,9 +32,11 @@ describe('ScanWorkflow', () => {
 
     await workflow.run(createCommandContext(scanner), undefined);
 
-    expect(mockConsoleLog).toHaveBeenCalledWith('\nOrderly - File Scan Results\n');
-    expect(mockConsoleLog).toHaveBeenCalledWith('  document: 1');
-    expect(mockConsoleLog).toHaveBeenCalledWith('  uncategorized: 1');
+    expect(mockConsoleLog).toHaveBeenCalledWith(
+      expect.stringContaining('\nOrderly - File Scan Results\n')
+    );
+    expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('  document: 1'));
+    expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('  uncategorized: 1'));
   });
 
   it('should emit JSON output when format is json', async () => {
@@ -98,7 +100,9 @@ describe('ScanWorkflow', () => {
 
     await workflow.run(createCommandContext(scanner), 'xml');
 
-    expect(mockConsoleLog).toHaveBeenCalledWith('\nOrderly - File Scan Results\n');
+    expect(mockConsoleLog).toHaveBeenCalledWith(
+      expect.stringContaining('\nOrderly - File Scan Results\n')
+    );
   });
 
   it('should omit sample file lines when the scan is empty', async () => {
@@ -107,7 +111,7 @@ describe('ScanWorkflow', () => {
 
     await workflow.run(createCommandContext(scanner), undefined);
 
-    expect(mockConsoleLog).not.toHaveBeenCalledWith('Sample files:');
+    expect(mockConsoleLog).toHaveBeenCalledWith(expect.not.stringContaining('Sample files:'));
   });
 
   it('should append a remaining-files line when more than the display limit exist', async () => {
@@ -123,7 +127,7 @@ describe('ScanWorkflow', () => {
 
     await workflow.run(createCommandContext(scanner), undefined);
 
-    expect(mockConsoleLog).toHaveBeenCalledWith('  ... and 2 more files');
+    expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('  ... and 2 more files'));
   });
 });
 

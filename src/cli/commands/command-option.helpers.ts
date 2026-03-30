@@ -35,12 +35,10 @@ export function getOptionalStringOption<TKey extends string>(
 }
 
 /**
- * Merges one normalized-options fragment into an accumulated options object.
- * @param normalizedOptions - Options accumulated so far.
- * @param normalize - Next normalizer to apply.
- * @param _index - Current reducer index.
- * @param normalizers - Full normalizer list.
- * @returns Updated normalized options.
+ * Merges normalized option fragments from a list of normalizers.
+ * @param value - Candidate options object.
+ * @param normalizers - Option normalizers to apply and merge in order.
+ * @returns Merged normalized options.
  */
 function mergeNormalizedOptionParts<TOptions extends object>(
   value: object,

@@ -42,21 +42,7 @@ export class ScanWorkflow {
     scanner: Readonly<FileScanner>,
     format?: string
   ): void {
-    if (format === FORMAT_JSON || format === FORMAT_CSV) {
-      console.log(this.formatResults(files, scanner, format));
-      return;
-    }
-
-    console.log('\nOrderly - File Scan Results\n');
-    console.log(`Found ${files.length} files\n`);
-    console.log('File categories:');
-    for (const [category, count] of scanner.getCategorySummary(files)) {
-      console.log(`  ${category}: ${count}`);
-    }
-
-    for (const line of this.createSampleLines(files)) {
-      console.log(line);
-    }
+    console.log(this.formatResults(files, scanner, format));
   }
 
   /**
