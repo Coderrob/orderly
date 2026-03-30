@@ -1,8 +1,10 @@
-export interface IMethodExecutionRef<TExecution extends MethodExecution> {
+type MethodLike = (this: never, ...args: readonly never[]) => unknown;
+
+export interface IMethodExecutionRef<TExecution extends MethodLike> {
   readonly invoke: TExecution;
 }
 
-export type MethodExecution = (...args: readonly never[]) => unknown;
+export type MethodExecution = (this: unknown, ...args: readonly unknown[]) => unknown;
 
 /**
  * Creates a method decorator that wraps callable methods.
@@ -37,7 +39,7 @@ export function createMethodDecorator(
  * @param createWrapperFactory - Factory that creates a method wrapper from the configuration value.
  * @returns Method decorator implementation.
  */
-export function createWrappedMethodDecorator<TValue, TExecution extends MethodExecution>(
+export function createWrappedMethodDecorator<TValue, TExecution extends MethodLike>(
   config: Readonly<{ value: TValue }>,
   isExecution: (value: unknown) => value is TExecution,
   createWrapperFactory: (
@@ -56,7 +58,7 @@ export function createWrappedMethodDecorator<TValue, TExecution extends MethodEx
  * @param createWrapper - Wrapper factory for the original method.
  * @returns Updated descriptor or the original descriptor copy when not callable.
  */
-export function createWrappedMethodDescriptor<TExecution extends MethodExecution>(
+export function createWrappedMethodDescriptor<TExecution extends MethodLike>(
   descriptor: Readonly<PropertyDescriptor>,
   isExecution: (value: unknown) => value is TExecution,
   createWrapper: (originalMethodRef: Readonly<IMethodExecutionRef<TExecution>>) => TExecution
@@ -79,7 +81,7 @@ export function createWrappedMethodDescriptor<TExecution extends MethodExecution
  * @param createWrapperFactory - Factory that creates a method wrapper from the configuration value.
  * @returns Descriptor wrapper factory.
  */
-function createWrappedMethodDescriptorFactory<TValue, TExecution extends MethodExecution>(
+function createWrappedMethodDescriptorFactory<TValue, TExecution extends MethodLike>(
   config: Readonly<{ value: TValue }>,
   isExecution: (value: unknown) => value is TExecution,
   createWrapperFactory: (
@@ -109,7 +111,7 @@ function createWrappedMethodDescriptorFactory<TValue, TExecution extends MethodE
  * @param args - Invocation arguments.
  * @returns Original method return value.
  */
-export function invokeMethod<TExecution extends MethodExecution>(
+export function invokeMethod<TExecution extends MethodLike>(
   originalMethodRef: Readonly<IMethodExecutionRef<TExecution>>,
   context: unknown,
   args: readonly unknown[]

@@ -40,6 +40,61 @@ interface IRunCycleState {
   readonly signal?: AbortSignal;
 }
 
+interface ITimeoutHandleState {
+  readonly clearHandle: () => void;
+  readonly getHandle: () => NodeJS.Timeout | undefined;
+  readonly setHandle: (handle: Readonly<NodeJS.Timeout>) => void;
+}
+
+interface ICleanupRef {
+  readonly invokeCleanup: () => void;
+  readonly setCleanup: (nextCleanup: () => void) => void;
+}
+
+/**
+ * Creates the scheduler cleanup for one watch execution.
+ * @param runOptions - Initial cycle options.
+ * @param cleanupRef - Mutable cleanup callback reference.
+ * @param onAbort - Abort event listener.
+ * @param timeoutHandleState - Mutable timeout-handle accessors.
+ */
+function configureWatchSchedulerCleanup(
+  runOptions: Readonly<IRunCyclesOptions>,
+  cleanupRef: Readonly<ICleanupRef>,
+  onAbort: () => void,
+  timeoutHandleState: Readonly<ITimeoutHandleState>
+): void {
+  cleanupRef.setCleanup(
+    createWatchSchedulerCleanup(
+      runOptions.signal,
+      onAbort,
+      timeoutHandleState.getHandle,
+      timeoutHandleState.clearHandle
+    )
+  );
+}
+
+/**
+ * Creates mutable cleanup accessors for one watch execution.
+ * @returns Cleanup callback accessors.
+ */
+function createCleanupRef(): Readonly<ICleanupRef> {
+  let cleanup = createWatchSchedulerNoop;
+  return {
+    /** Invokes the current cleanup callback. */
+    invokeCleanup(): void {
+      cleanup();
+    },
+    /**
+     * Replaces the current cleanup callback.
+     * @param nextCleanup - Next cleanup callback.
+     */
+    setCleanup(nextCleanup: () => void): void {
+      cleanup = nextCleanup;
+    }
+  };
+}
+
 /**
  * Converts an unsuccessful cycle result into a scheduler error.
  * @param cycleResult - Command result returned by one organize cycle.
@@ -77,8 +132,35 @@ function createRunCycleState(
  * @param runCycleState - Immutable cycle state snapshot.
  * @returns Next cycle state snapshot.
  */
-function createSuccessfulCycleState(runCycleState: Readonly<IRunCycleState>): Readonly<IRunCycleState> {
+function createSuccessfulCycleState(
+  runCycleState: Readonly<IRunCycleState>
+): Readonly<IRunCycleState> {
   return createUpdatedRunCycleState(runCycleState);
+}
+
+/**
+ * Creates mutable timeout-handle accessors for one watch execution.
+ * @returns Timeout-handle state accessors.
+ */
+function createTimeoutHandleState(): Readonly<ITimeoutHandleState> {
+  let timeoutHandle: NodeJS.Timeout | undefined;
+  return {
+    /** Clears the stored timeout handle reference. */
+    clearHandle(): void {
+      timeoutHandle = undefined;
+    },
+    /** @returns Current timeout handle, if any. */
+    getHandle(): NodeJS.Timeout | undefined {
+      return timeoutHandle;
+    },
+    /**
+     * Stores the active timeout handle.
+     * @param handle - Active timeout handle.
+     */
+    setHandle(handle: Readonly<NodeJS.Timeout>): void {
+      timeoutHandle = handle;
+    }
+  };
 }
 
 /**
@@ -86,7 +168,9 @@ function createSuccessfulCycleState(runCycleState: Readonly<IRunCycleState>): Re
  * @param runCycleState - Current cycle state.
  * @returns Updated cycle state.
  */
-function createUpdatedRunCycleState(runCycleState: Readonly<IRunCycleState>): Readonly<IRunCycleState> {
+function createUpdatedRunCycleState(
+  runCycleState: Readonly<IRunCycleState>
+): Readonly<IRunCycleState> {
   return {
     ...runCycleState,
     completedCycles: runCycleState.completedCycles + 1
@@ -192,21 +276,23 @@ function createWatchSchedulerCallbacks(
   runOptions: Readonly<IRunCyclesOptions>,
   resolve: (completedCycles: number) => void,
   reject: (error?: unknown) => void
-): Readonly<{ onAbort: () => void; scheduleDelay: (durationMs: number, callback: () => void) => void; wrappedReject: (error?: unknown) => void; wrappedResolve: (completedCycles: number) => void; }> {
-  let timeoutHandle: NodeJS.Timeout | undefined;
-  let cleanup = createWatchSchedulerNoop;
-  /** Clears the stored timeout handle. */ function clearHandle(): void { timeoutHandle = undefined; }
-  /** @returns Current timeout handle. */ function getHandle(): NodeJS.Timeout | undefined { return timeoutHandle; }
-  /** @param handle - Scheduled timeout handle. */ function setHandle(handle: Readonly<NodeJS.Timeout>): void { timeoutHandle = handle; }
-  /** Invokes the latest cleanup callback. */ function invokeCleanup(): void { cleanup(); }
-  const wrappedReject = createWatchRejectCallback(invokeCleanup, reject);
+): Readonly<{
+  onAbort: () => void;
+  scheduleDelay: (durationMs: number, callback: () => void) => void;
+  wrappedReject: (error?: unknown) => void;
+  wrappedResolve: (completedCycles: number) => void;
+}> {
+  const timeoutHandleState = createTimeoutHandleState();
+  const cleanupRef = createCleanupRef();
+  const wrappedReject = createWatchRejectCallback(cleanupRef.invokeCleanup, reject);
   const onAbort = createWatchAbortListener(wrappedReject);
-  cleanup = createWatchSchedulerCleanup(runOptions.signal, onAbort, getHandle, clearHandle);
+  configureWatchSchedulerCleanup(runOptions, cleanupRef, onAbort, timeoutHandleState);
+
   return {
     onAbort,
-    scheduleDelay: createWatchDelayScheduler(setHandle),
+    scheduleDelay: createWatchDelayScheduler(timeoutHandleState.setHandle),
     wrappedReject,
-    wrappedResolve: createWatchResolveCallback(invokeCleanup, resolve)
+    wrappedResolve: createWatchResolveCallback(cleanupRef.invokeCleanup, resolve)
   };
 }
 
