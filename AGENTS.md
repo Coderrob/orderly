@@ -68,6 +68,17 @@ src/
 - Favor composition over inheritance unless an existing class hierarchy clearly requires inheritance.
 - Keep helpers single-purpose; avoid turning utility files into grab-bags.
 
+## CLI Wrapping Standard
+
+- Production command handlers should prefer plain wrapper composition through command helper modules such as `src/cli/commands/command-wrapper.helpers.ts`.
+- Method decorators remain compatibility adapters over the same middleware/wrapper behavior and should not be the default for new production command handlers.
+- Preserve the established cross-cutting order for command execution:
+  1. auto-config or context resolution when applicable
+  2. error handling
+  3. telemetry
+  4. optional audit
+- When adding a new command, prefer constructor-built wrapped `execute` functions over adding new decorator-based handler methods.
+
 ## Testing Requirements
 
 ### Coverage Targets

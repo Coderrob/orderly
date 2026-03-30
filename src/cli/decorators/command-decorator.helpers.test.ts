@@ -39,7 +39,9 @@ describe('command decorator helpers', () => {
       success: true
     } satisfies ICommandResult);
     const wrapper = jest.fn((originalMethodRef: { readonly invoke: CommandExecution }) => {
-      const wrappedMethod: CommandExecution = async function executeWrapped(this: object): Promise<ICommandResult> {
+      const wrappedMethod: CommandExecution = async function executeWrapped(
+        this: object
+      ): Promise<ICommandResult> {
         const result = await originalMethodRef.invoke.call(this);
         return result as ICommandResult;
       };
@@ -71,7 +73,9 @@ describe('command decorator helpers', () => {
     } satisfies PropertyDescriptor;
     const createWrapperFactory = jest.fn((label: string) => {
       const wrapperFactory = jest.fn((originalMethodRef: { readonly invoke: CommandExecution }) => {
-        const wrappedMethod: CommandExecution = async function executeWrapped(this: object): Promise<ICommandResult> {
+        const wrappedMethod: CommandExecution = async function executeWrapped(
+          this: object
+        ): Promise<ICommandResult> {
           const result = await originalMethodRef.invoke.call(this);
           return { ...(result as ICommandResult), message: `${label}:wrapped` };
         };
@@ -82,10 +86,7 @@ describe('command decorator helpers', () => {
       return wrapperFactory;
     });
 
-    const decorator = createWrappedCommandMethodDecorator(
-      { value: 'test' },
-      createWrapperFactory
-    );
+    const decorator = createWrappedCommandMethodDecorator({ value: 'test' }, createWrapperFactory);
     const wrappedDescriptor = decorator({}, 'run', descriptor) as PropertyDescriptor;
     const result = await wrappedDescriptor.value.call({});
 
@@ -113,26 +114,19 @@ describe('command decorator helpers', () => {
       }
     );
 
-    const decorator = createCommandMiddlewareDecorator(
-      { value: 'test' },
-      { invoke: middleware }
-    );
+    const decorator = createCommandMiddlewareDecorator({ value: 'test' }, { invoke: middleware });
     const wrappedDescriptor = decorator({}, 'run', descriptor) as PropertyDescriptor;
     const result = await wrappedDescriptor.value.call({});
 
-    expect(middleware).toHaveBeenCalledWith(
-      'test',
-      { invoke: descriptor.value },
-      {},
-      []
-    );
+    expect(middleware).toHaveBeenCalledWith('test', { invoke: descriptor.value }, {}, []);
     expect(result).toEqual({ exitCode: 0, message: 'test:middleware', success: true });
   });
 
   it('should create plain command middleware wrappers', async () => {
-    const originalMethod: CommandExecution = async function executeOriginal(): Promise<ICommandResult> {
-      return { exitCode: 0, message: 'ok', success: true };
-    };
+    const originalMethod: CommandExecution =
+      async function executeOriginal(): Promise<ICommandResult> {
+        return { exitCode: 0, message: 'ok', success: true };
+      };
     const middleware = jest.fn(
       async (
         label: string,
@@ -144,10 +138,7 @@ describe('command decorator helpers', () => {
       }
     );
 
-    const wrapper = createCommandMiddlewareWrapper(
-      { value: 'test' },
-      { invoke: middleware }
-    );
+    const wrapper = createCommandMiddlewareWrapper({ value: 'test' }, { invoke: middleware });
     const wrappedMethod = wrapper({ invoke: originalMethod });
     const result = await wrappedMethod.call({});
 

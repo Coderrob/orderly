@@ -156,19 +156,6 @@ enum RevertOptionKey {
 }
 
 /**
- * Appends one entry while building a reversed manifest-entry list.
- * @param reversedEntries - Entries accumulated so far.
- * @param entry - Next entry from the right-hand traversal.
- * @returns Updated reversed entries.
- */
-function appendReversedEntry(
-  reversedEntries: readonly IManifestEntryLike[],
-  entry: Readonly<IManifestEntryLike>
-): readonly IManifestEntryLike[] {
-  return [...reversedEntries, entry];
-}
-
-/**
  * Creates normalized revert boolean options from an unknown object.
  * @param value - Candidate options object.
  * @returns Normalized boolean options.
@@ -321,5 +308,5 @@ function parseManifestJson(manifestContent: string): unknown {
  * @returns Reversed entries.
  */
 function reverseEntries(entries: readonly IManifestEntryLike[]): readonly IManifestEntryLike[] {
-  return entries.reduceRight<readonly IManifestEntryLike[]>(appendReversedEntry, []);
+  return entries.toReversed();
 }

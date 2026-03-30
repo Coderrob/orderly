@@ -1,10 +1,7 @@
 import * as crypto from 'node:crypto';
 
 import { Clock } from '../../utils/clock';
-import {
-  createAuditCommandWrapper,
-  WithCommandAudit
-} from './command-audit.decorator';
+import { createAuditCommandWrapper, WithCommandAudit } from './command-audit.decorator';
 
 jest.mock('node:crypto', () => ({
   randomUUID: jest.fn()

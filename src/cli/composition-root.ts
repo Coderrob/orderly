@@ -14,6 +14,7 @@ import {
 import type {
   ICleanHandler,
   IConfigValidateHandler,
+  IDedupeHandler,
   IInitHandler,
   IOrganizeHandler,
   IRevertHandler,
@@ -40,7 +41,7 @@ export interface IRootServices {
 
 export interface IRootHandlers {
   readonly clean: Readonly<ICleanHandler>;
-  readonly dedupe: Readonly<DedupeHandler>;
+  readonly dedupe: Readonly<IDedupeHandler>;
   readonly init: Readonly<IInitHandler>;
   readonly organize: Readonly<IOrganizeHandler>;
   readonly revert: Readonly<IRevertHandler>;

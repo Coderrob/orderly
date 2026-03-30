@@ -100,9 +100,7 @@ function createConfiguredCommandMiddleware<TValue>(
    * @param originalMethodRef - Original command method reference.
    * @returns Wrapped command execution.
    */
-  function wrapCommandMethod(
-    originalMethodRef: Readonly<ICommandExecutionRef>
-  ): CommandExecution {
+  function wrapCommandMethod(originalMethodRef: Readonly<ICommandExecutionRef>): CommandExecution {
     return createMiddlewareExecution(config, middlewareRef, originalMethodRef);
   }
 

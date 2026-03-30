@@ -46,7 +46,9 @@ export function createDuplicatePairEvaluation(
  * @param files - Files being analyzed for duplicates.
  * @returns File-index lookup map.
  */
-export function createFileIndexesByPath(files: readonly IScannedFile[]): ReadonlyMap<string, number> {
+export function createFileIndexesByPath(
+  files: readonly IScannedFile[]
+): ReadonlyMap<string, number> {
   return new Map(files.map(toFileIndexEntry));
 }
 

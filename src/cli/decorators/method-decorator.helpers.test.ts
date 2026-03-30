@@ -44,11 +44,7 @@ describe('method decorator helpers', () => {
       writable: true
     } satisfies PropertyDescriptor;
 
-    const wrappedDescriptor = createWrappedMethodDescriptor(
-      descriptor,
-      isMethodExecution,
-      wrapper
-    );
+    const wrappedDescriptor = createWrappedMethodDescriptor(descriptor, isMethodExecution, wrapper);
     const result = await wrappedDescriptor.value.call({});
 
     expect(wrapper).toHaveBeenCalledWith({ invoke: originalMethod });
@@ -64,11 +60,7 @@ describe('method decorator helpers', () => {
     } satisfies PropertyDescriptor;
     const wrapper = jest.fn();
 
-    const wrappedDescriptor = createWrappedMethodDescriptor(
-      descriptor,
-      isMethodExecution,
-      wrapper
-    );
+    const wrappedDescriptor = createWrappedMethodDescriptor(descriptor, isMethodExecution, wrapper);
 
     expect(wrappedDescriptor).toEqual(descriptor);
     expect(wrappedDescriptor).not.toBe(descriptor);
@@ -113,7 +105,10 @@ describe('method decorator helpers', () => {
 
   it('should invoke methods with the provided context and arguments', async () => {
     const context = { value: 3 };
-    const invoke: MethodExecution = function execute(this: unknown, ...args: readonly unknown[]): string {
+    const invoke: MethodExecution = function execute(
+      this: unknown,
+      ...args: readonly unknown[]
+    ): string {
       return String((this as { value: number }).value + (args[0] as number));
     };
 

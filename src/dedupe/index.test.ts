@@ -19,6 +19,7 @@ describe('dedupe index exports', () => {
     expect(dedupe.groupAllModeCandidates).toBeDefined();
     expect(dedupe.groupCandidates).toBeDefined();
     expect(dedupe.groupAnyModeCandidates).toBeDefined();
+    expect(dedupe.hasGroupableInput).toBeDefined();
     expect(dedupe.isDuplicateGroup).toBeDefined();
     expect(dedupe.isDuplicatePair).toBeDefined();
     expect(dedupe.isDuplicatePairEvaluation).toBeDefined();

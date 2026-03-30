@@ -32,10 +32,7 @@ function buildFailureResult(errorPrefix: string, error: unknown): ICommandResult
 export function createErrorHandledCommandWrapper(
   errorPrefix: string
 ): (originalMethodRef: Readonly<ICommandExecutionRef>) => CommandExecution {
-  return createCommandMiddlewareWrapper(
-    { value: errorPrefix },
-    { invoke: runErrorHandledCommand }
-  );
+  return createCommandMiddlewareWrapper({ value: errorPrefix }, { invoke: runErrorHandledCommand });
 }
 
 /**

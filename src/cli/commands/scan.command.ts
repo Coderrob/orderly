@@ -1,8 +1,6 @@
 import { FileScanner } from '../../scanner/file-scanner';
 import { ExitCode, COMMAND_MESSAGES } from '../constants';
-import {
-  IAutoConfigContext
-} from '../decorators/auto-config-discovery.decorator';
+import { IAutoConfigContext } from '../decorators/auto-config-discovery.decorator';
 import type {
   IConfigService,
   IDirectoryValidator,
@@ -12,18 +10,13 @@ import type {
 } from '../interfaces';
 import { ScanWorkflow } from '../services';
 
-import {
-  createCommandContextBase,
-  createScannerCommandContext
-} from './command-context.helpers';
+import { createCommandContextBase, createScannerCommandContext } from './command-context.helpers';
 import {
   getOptionalBooleanOption,
   getOptionalStringOption,
   normalizeObjectOptions
 } from './command-option.helpers';
-import {
-  createWrappedAutoConfigCommand
-} from './command-wrapper.helpers';
+import { createWrappedAutoConfigCommand } from './command-wrapper.helpers';
 
 enum ScanOptionKey {
   AUTO_CONFIG = 'autoConfig',
@@ -110,16 +103,17 @@ export class ScanHandler implements IScanHandler {
     options: Readonly<IScanOptions>,
     context?: Readonly<IAutoConfigContext<IScanOptions>>
   ): Readonly<{ scanner: FileScanner; targetDir: string }> {
-    const commandContext = createScannerCommandContext(createCommandContextBase({
-      directory,
-      options,
-      context,
-      configService: this.configService,
-      directoryValidator: this.directoryValidator
-    }));
+    const commandContext = createScannerCommandContext(
+      createCommandContextBase({
+        directory,
+        options,
+        context,
+        configService: this.configService,
+        directoryValidator: this.directoryValidator
+      })
+    );
     return { scanner: commandContext.scanner, targetDir: commandContext.targetDir };
   }
-
 }
 
 /**

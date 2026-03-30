@@ -10,10 +10,7 @@ import type {
   ICommandResult
 } from '../interfaces';
 
-import {
-  getOptionalStringOption,
-  normalizeObjectOptions
-} from './command-option.helpers';
+import { getOptionalStringOption, normalizeObjectOptions } from './command-option.helpers';
 import {
   createSingleOptionsCommandExecutionRef,
   createWrappedSingleOptionsCommand
@@ -23,9 +20,7 @@ import {
  * Handler for config validation.
  */
 export class ConfigValidateHandler implements IConfigValidateHandler {
-  public readonly execute: (
-    options: Readonly<IConfigValidateOptions>
-  ) => Promise<ICommandResult>;
+  public readonly execute: (options: Readonly<IConfigValidateOptions>) => Promise<ICommandResult>;
 
   /**
    * Creates a new config validation command handler.

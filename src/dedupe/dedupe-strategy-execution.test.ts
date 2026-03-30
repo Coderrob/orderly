@@ -15,7 +15,11 @@ describe('dedupe-strategy-execution', () => {
   const fileB = createScannedFile('/files/b.txt');
 
   it('should create a candidate when a strategy returns a key', async () => {
-    const strategy = createStrategy('name', async () => 'same', () => true);
+    const strategy = createStrategy(
+      'name',
+      async () => 'same',
+      () => true
+    );
 
     await expect(createCandidate(strategy, fileA)).resolves.toEqual({
       file: fileA,
@@ -25,13 +29,21 @@ describe('dedupe-strategy-execution', () => {
   });
 
   it('should return null when a strategy does not produce a key', async () => {
-    const strategy = createStrategy('name', async () => null, () => true);
+    const strategy = createStrategy(
+      'name',
+      async () => null,
+      () => true
+    );
 
     await expect(createCandidate(strategy, fileA)).resolves.toBeNull();
   });
 
   it('should create candidate promises for supported files', async () => {
-    const strategy = createStrategy('name', async (file) => file.filename, () => true);
+    const strategy = createStrategy(
+      'name',
+      async file => file.filename,
+      () => true
+    );
 
     const results = await Promise.all(createCandidatePromises(strategy, [fileA, fileB]));
 
@@ -44,8 +56,8 @@ describe('dedupe-strategy-execution', () => {
   it('should execute one strategy and filter unsupported or null-key files', async () => {
     const strategy = createStrategy(
       'name',
-      async (file) => (file.originalPath === fileA.originalPath ? 'same' : null),
-      (file) => file.originalPath === fileA.originalPath
+      async file => (file.originalPath === fileA.originalPath ? 'same' : null),
+      file => file.originalPath === fileA.originalPath
     );
 
     await expect(executeStrategy(strategy, [fileA, fileB])).resolves.toEqual([
@@ -54,13 +66,21 @@ describe('dedupe-strategy-execution', () => {
   });
 
   it('should return null for a strategy execution with no candidates', async () => {
-    const strategy = createStrategy('name', async () => null, () => true);
+    const strategy = createStrategy(
+      'name',
+      async () => null,
+      () => true
+    );
 
     await expect(executeSingleStrategy(strategy, [fileA])).resolves.toBeNull();
   });
 
   it('should create keyed strategy execution metadata for a successful strategy', async () => {
-    const strategy = createStrategy('name', async () => 'same', () => true);
+    const strategy = createStrategy(
+      'name',
+      async () => 'same',
+      () => true
+    );
 
     const result = await executeSingleStrategy(strategy, [fileA, fileB]);
 
@@ -71,8 +91,16 @@ describe('dedupe-strategy-execution', () => {
 
   it('should create strategy execution promises for all strategies', async () => {
     const strategies = [
-      createStrategy('name', async () => 'same', () => true),
-      createStrategy('size', async () => '100', () => true)
+      createStrategy(
+        'name',
+        async () => 'same',
+        () => true
+      ),
+      createStrategy(
+        'size',
+        async () => '100',
+        () => true
+      )
     ];
 
     const results = await Promise.all(createStrategyExecutionPromises(strategies, [fileA]));
@@ -84,8 +112,16 @@ describe('dedupe-strategy-execution', () => {
 
   it('should execute strategies and discard empty strategy outputs', async () => {
     const strategies = [
-      createStrategy('name', async () => 'same', () => true),
-      createStrategy('size', async () => null, () => true)
+      createStrategy(
+        'name',
+        async () => 'same',
+        () => true
+      ),
+      createStrategy(
+        'size',
+        async () => null,
+        () => true
+      )
     ];
 
     const result = await executeStrategies(strategies, [fileA]);

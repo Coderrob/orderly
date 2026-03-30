@@ -1,7 +1,5 @@
 import type { IStrategyExecution } from './dedupe-analysis.helpers';
-import {
-  type IDuplicatePairEvaluation
-} from './dedupe-pair-evaluation';
+import { type IDuplicatePairEvaluation } from './dedupe-pair-evaluation';
 import {
   shouldCreateDuplicatePairEvaluation,
   type IResolvedPathPairMatch
@@ -35,9 +33,7 @@ export function toDuplicatePairEvaluation(
   fileIndexesByPath: Readonly<ReadonlyMap<string, number>>,
   strategyExecutions: readonly IStrategyExecution[],
   mode: Readonly<DedupeMode>
-): (
-  matchedPathPair: Readonly<IResolvedPathPairMatch>
-) => IDuplicatePairEvaluation | null {
+): (matchedPathPair: Readonly<IResolvedPathPairMatch>) => IDuplicatePairEvaluation | null {
   /**
    * Resolves one matched path pair into file indexes when the mode passes.
    * @param matchedPathPair - Matched path-pair metadata.

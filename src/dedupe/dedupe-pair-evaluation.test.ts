@@ -13,10 +13,7 @@ import {
 import { DedupeMode } from './types';
 
 describe('dedupe-pair-evaluation', () => {
-  const files = [
-    createScannedFile('/path/file1.txt'),
-    createScannedFile('/path/file2.txt')
-  ];
+  const files = [createScannedFile('/path/file1.txt'), createScannedFile('/path/file2.txt')];
 
   it('should create file-index lookup entries', () => {
     expect(toFileIndexEntry(files[0], 0)).toEqual(['/path/file1.txt', 0]);

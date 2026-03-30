@@ -2,9 +2,7 @@ import { type OrderlyConfig } from '../../config/types';
 import { type IDedupeResult } from '../../dedupe';
 import { FileScanner } from '../../scanner/file-scanner';
 import { COMMAND_MESSAGES, ExitCode } from '../constants';
-import {
-  IAutoConfigContext
-} from '../decorators/auto-config-discovery.decorator';
+import { IAutoConfigContext } from '../decorators/auto-config-discovery.decorator';
 import type {
   IConfigService,
   IDedupeCommandOptions,
@@ -25,9 +23,7 @@ import {
   getOptionalStringOption,
   normalizeObjectOptions
 } from './command-option.helpers';
-import {
-  createWrappedAutoConfigCommand
-} from './command-wrapper.helpers';
+import { createWrappedAutoConfigCommand } from './command-wrapper.helpers';
 import {
   createDedupeConfigOverrides,
   normalizeDedupeCommandOptions,
@@ -135,14 +131,16 @@ export class DedupeHandler implements IDedupeHandler {
     context?: Readonly<IAutoConfigContext<IDedupeCommandOptions>>
   ): Readonly<IDedupeCommandContext & { readonly scanner: FileScanner }> {
     const commandOptions = normalizeDedupeCommandOptions(context?.configOptions ?? { ...options });
-    const commandContext = createScannerCommandContext(createMappedCommandContextBase({
-      directory,
-      options: commandOptions,
-      context: normalizeCommandContextOptions(context, normalizeDedupeCommandOptions),
-      configService: this.configService,
-      directoryValidator: this.directoryValidator,
-      toConfigOverrides: createDedupeConfigOverrides
-    }));
+    const commandContext = createScannerCommandContext(
+      createMappedCommandContextBase({
+        directory,
+        options: commandOptions,
+        context: normalizeCommandContextOptions(context, normalizeDedupeCommandOptions),
+        configService: this.configService,
+        directoryValidator: this.directoryValidator,
+        toConfigOverrides: createDedupeConfigOverrides
+      })
+    );
     return this.buildCommandContext({
       config: commandContext.config,
       options: commandContext.configOptions,

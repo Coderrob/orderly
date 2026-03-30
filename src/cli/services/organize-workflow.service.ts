@@ -181,5 +181,4 @@ export class OrganizeWorkflow implements IOrganizeWorkflow {
       logger.warn(`  ${index + 1}. ${error.file}: ${error.error}`);
     }
   }
-
 }

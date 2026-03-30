@@ -77,9 +77,13 @@ describe('command wrapper helpers', () => {
     expect(normalizeDirectory).toHaveBeenCalledWith('/input');
     expect(normalizeOptions).toHaveBeenCalledWith({ format: 'json' });
     expect(resolveContext).toHaveBeenCalledWith('/resolved', { format: 'json' }, undefined);
-    expect(executeCore).toHaveBeenCalledWith('/resolved', { format: 'json' }, {
-      targetDir: '/resolved'
-    });
+    expect(executeCore).toHaveBeenCalledWith(
+      '/resolved',
+      { format: 'json' },
+      {
+        targetDir: '/resolved'
+      }
+    );
     expect(result).toEqual({
       success: true,
       exitCode: ExitCode.SUCCESS,

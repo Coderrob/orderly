@@ -4,13 +4,9 @@ export { createCandidatePairs, type IPathPair } from './dedupe-candidate-pairs.j
 export { DedupeStrategyFactory } from './dedupe-factory.js';
 export { createDuplicatePairEvaluations } from './dedupe-duplicate-pair-evaluations.js';
 export { groupCandidates } from './dedupe-group-resolution.js';
-export {
-  isDuplicateGroup,
-  unionParents
-} from './dedupe-grouping.js';
-export {
-  DedupeService,
-} from './dedupe-service.js';
+export { hasGroupableInput } from './dedupe-grouping-input.js';
+export { isDuplicateGroup, unionParents } from './dedupe-grouping.js';
+export { DedupeService } from './dedupe-service.js';
 export {
   createDuplicatePairEvaluation,
   createFileIndexesByPath,

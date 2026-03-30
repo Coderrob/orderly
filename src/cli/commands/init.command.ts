@@ -15,10 +15,7 @@ import { DedupeAction, DedupeMode, type IDedupeConfig } from '../../dedupe/types
 import { CLI_CONSTANTS, COMMAND_MESSAGES, ConfigFileFormat, ExitCode } from '../constants';
 import type { ICommandResult, IInitHandler, IInitOptions } from '../interfaces';
 
-import {
-  getOptionalStringOption,
-  normalizeObjectOptions
-} from './command-option.helpers';
+import { getOptionalStringOption, normalizeObjectOptions } from './command-option.helpers';
 import {
   createSingleOptionsCommandExecutionRef,
   createWrappedSingleOptionsCommand

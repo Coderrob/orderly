@@ -37,10 +37,7 @@ function appendTelemetryMessage(
 export function createTelemetryCommandWrapper(
   commandName: string
 ): (originalMethodRef: Readonly<ICommandExecutionRef>) => CommandExecution {
-  return createCommandMiddlewareWrapper(
-    { value: commandName },
-    { invoke: runTelemetryCommand }
-  );
+  return createCommandMiddlewareWrapper({ value: commandName }, { invoke: runTelemetryCommand });
 }
 
 /**
@@ -71,8 +68,5 @@ async function runTelemetryCommand(
  * @returns A method decorator that appends duration metadata to the command result message.
  */
 export function WithCommandTelemetry(commandName: string): MethodDecorator {
-  return createCommandMiddlewareDecorator(
-    { value: commandName },
-    { invoke: runTelemetryCommand }
-  );
+  return createCommandMiddlewareDecorator({ value: commandName }, { invoke: runTelemetryCommand });
 }

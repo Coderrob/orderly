@@ -20,8 +20,8 @@ describe('command option helpers', () => {
   it('should normalize object options by merging partial normalizers', () => {
     const result = normalizeObjectOptions<{ readonly enabled?: boolean; readonly format?: string }>(
       { enabled: true, format: 'json' },
-      (value) => ({ enabled: getOptionalBooleanOption(value, 'enabled') }),
-      (value) => ({ format: getOptionalStringOption(value, 'format') })
+      value => ({ enabled: getOptionalBooleanOption(value, 'enabled') }),
+      value => ({ format: getOptionalStringOption(value, 'format') })
     );
 
     expect(result).toEqual({ enabled: true, format: 'json' });

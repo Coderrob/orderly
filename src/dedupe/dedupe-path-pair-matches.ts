@@ -1,7 +1,4 @@
-import {
-  type IStrategyExecution,
-  type IStrategyMatch
-} from './dedupe-analysis.helpers';
+import { type IStrategyExecution, type IStrategyMatch } from './dedupe-analysis.helpers';
 import {
   createDuplicateCandidateBuckets,
   type IDuplicateCandidateBucket
@@ -34,17 +31,16 @@ function appendMatchedPathPairs(
       const leftPath = bucket.paths[leftIndex];
       const rightPath = bucket.paths[rightIndex];
       const orderedPaths =
-        leftPath < rightPath ? { leftPath, rightPath } : { leftPath: rightPath, rightPath: leftPath };
+        leftPath < rightPath
+          ? { leftPath, rightPath }
+          : { leftPath: rightPath, rightPath: leftPath };
       const pairId = `${orderedPaths.leftPath}::${orderedPaths.rightPath}`;
       const existingMatch = nextMatchedPathPairs.get(pairId);
 
       nextMatchedPathPairs.set(pairId, {
         leftPath: orderedPaths.leftPath,
         rightPath: orderedPaths.rightPath,
-        matched: [
-          ...(existingMatch?.matched ?? []),
-          { strategy: bucket.strategy, key: bucket.key }
-        ]
+        matched: [...(existingMatch?.matched ?? []), { strategy: bucket.strategy, key: bucket.key }]
       });
     }
   }

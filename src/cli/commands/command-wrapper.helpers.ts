@@ -7,12 +7,8 @@ import {
 } from '../decorators/auto-config-discovery.decorator';
 import { createAuditCommandWrapper } from '../decorators/command-audit.decorator';
 import type { ICommandExecutionRef } from '../decorators/command-decorator.helpers';
-import {
-  createErrorHandledCommandWrapper
-} from '../decorators/command-error-handler.decorator';
-import {
-  createTelemetryCommandWrapper
-} from '../decorators/command-telemetry.decorator';
+import { createErrorHandledCommandWrapper } from '../decorators/command-error-handler.decorator';
+import { createTelemetryCommandWrapper } from '../decorators/command-telemetry.decorator';
 import type { ICommandResult } from '../interfaces';
 
 const DIRECTORY_ARGUMENT_INDEX = 0;
@@ -124,7 +120,9 @@ export function createWrappedAutoConfigCommand<TOptions extends IAutoConfigOptio
   options: Readonly<TOptions>,
   context?: Readonly<IAutoConfigContext<TOptions>>
 ) => Promise<ICommandResult> {
-  return createWrappedCommand<[string, Readonly<TOptions>, Readonly<IAutoConfigContext<TOptions>>?]>({
+  return createWrappedCommand<
+    [string, Readonly<TOptions>, Readonly<IAutoConfigContext<TOptions>>?]
+  >({
     auditCommandName: config.auditCommandName,
     commandName: config.commandName,
     errorPrefix: config.errorPrefix,

@@ -54,7 +54,7 @@ describe('command context helpers', () => {
       },
       configService: mockConfigService as never,
       directoryValidator: mockDirectoryValidator as never,
-      toConfigOverrides: (options) => ({
+      toConfigOverrides: options => ({
         dryRun: options.dryRun
       })
     });
@@ -99,7 +99,7 @@ describe('command context helpers', () => {
         configOptions: { dryRun: undefined, preset: 'fast' },
         targetDir: '/target'
       },
-      (options) => ({
+      options => ({
         confirmReplace: false,
         dryRun: options.dryRun,
         preset: options.preset
@@ -118,6 +118,8 @@ describe('command context helpers', () => {
   });
 
   it('should return undefined when normalizing a missing command context', () => {
-    expect(normalizeCommandContextOptions(undefined, (options: Readonly<{}>) => options)).toBeUndefined();
+    expect(
+      normalizeCommandContextOptions(undefined, (options: Readonly<{}>) => options)
+    ).toBeUndefined();
   });
 });

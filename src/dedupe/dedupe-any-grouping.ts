@@ -12,10 +12,9 @@ import {
   type IDuplicateCandidateBucket
 } from './dedupe-candidate-pairs';
 import { buildGroupsFromParents, unionParents } from './dedupe-grouping';
+import { hasGroupableInput } from './dedupe-grouping-input';
 import { createFileIndexesByPath } from './dedupe-pair-evaluation';
 import type { IDuplicateGroup } from './types';
-
-const MIN_DUPLICATE_GROUP_SIZE = 2;
 
 /**
  * Adds strategy matches for every pair inside one duplicate bucket.
@@ -86,13 +85,17 @@ export function groupAnyModeCandidates(
   files: readonly IScannedFile[],
   strategyExecutions: readonly IStrategyExecution[]
 ): IDuplicateGroup[] {
+  if (!hasGroupableInput(files, strategyExecutions)) {
+    return [];
+  }
+
   const fileIndexesByPath = createFileIndexesByPath(files);
   let parents = createInitialParents(files.length);
   let pairMatches: ReadonlyMap<string, readonly IStrategyMatch[]> = new Map();
 
   for (const bucket of createDuplicateCandidateBuckets(strategyExecutions)) {
     const indexes = createBucketIndexes(bucket, fileIndexesByPath);
-    if (indexes.length < MIN_DUPLICATE_GROUP_SIZE) {
+    if (!hasGroupableInput(indexes, strategyExecutions)) {
       continue;
     }
 
@@ -118,7 +121,10 @@ function isFileIndex(index: number | undefined): index is number {
  * @param parents - Existing parent pointers.
  * @returns Updated parent pointers.
  */
-function unionBucketIndexes(indexes: readonly number[], parents: readonly number[]): readonly number[] {
+function unionBucketIndexes(
+  indexes: readonly number[],
+  parents: readonly number[]
+): readonly number[] {
   let nextParents = parents;
 
   for (let index = 1; index < indexes.length; index++) {

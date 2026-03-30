@@ -10,6 +10,11 @@ describe('dedupe-any-grouping', () => {
     createScannedFile('/files/c.txt')
   ];
 
+  it('should return empty groups for too few files or no strategy executions', () => {
+    expect(groupAnyModeCandidates(files.slice(0, 1), [])).toEqual([]);
+    expect(groupAnyModeCandidates(files, [])).toEqual([]);
+  });
+
   it('should return empty groups when no duplicate buckets are present', () => {
     const result = groupAnyModeCandidates(files, [
       createStrategyExecution('name', [

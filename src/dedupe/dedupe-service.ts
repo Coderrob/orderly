@@ -10,12 +10,7 @@ import { groupCandidates } from './dedupe-group-resolution';
 import { unionParents } from './dedupe-grouping';
 import { executeStrategies } from './dedupe-strategy-execution';
 import { IDedupeService, IDedupeStrategy } from './interfaces';
-import {
-  DedupeAction,
-  DedupeMode,
-  IDedupeOutcome,
-  IDedupeResult
-} from './types';
+import { DedupeAction, DedupeMode, IDedupeOutcome, IDedupeResult } from './types';
 
 /**
  * Main dedupe orchestration service.

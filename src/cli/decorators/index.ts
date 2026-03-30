@@ -21,10 +21,7 @@ export {
 } from './auto-config-discovery.decorator.js';
 export { HandleCliActionErrors } from './cli-action-error-handler.decorator.js';
 export { WithCliAutoConfigDiscovery } from './cli-auto-config-discovery.decorator.js';
-export {
-  createAuditCommandWrapper,
-  WithCommandAudit
-} from './command-audit.decorator.js';
+export { createAuditCommandWrapper, WithCommandAudit } from './command-audit.decorator.js';
 export {
   createCommandMiddlewareDecorator,
   createCommandMiddlewareWrapper,

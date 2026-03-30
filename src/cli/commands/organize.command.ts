@@ -5,9 +5,7 @@ import { FileOrganizer } from '../../organizer/file-organizer';
 import type { IOrganizationResult } from '../../organizer/types';
 import { FileScanner } from '../../scanner/file-scanner';
 import { ExitCode, COMMAND_MESSAGES } from '../constants';
-import {
-  IAutoConfigContext
-} from '../decorators/auto-config-discovery.decorator';
+import { IAutoConfigContext } from '../decorators/auto-config-discovery.decorator';
 import type {
   ICleanerService,
   IOrganizeOptions,
@@ -19,18 +17,13 @@ import type {
 } from '../interfaces';
 import { OrganizeWorkflow } from '../services';
 
-import {
-  createCommandContextBase,
-  createScannerCommandContext
-} from './command-context.helpers';
+import { createCommandContextBase, createScannerCommandContext } from './command-context.helpers';
 import {
   getOptionalBooleanOption,
   getOptionalStringOption,
   normalizeObjectOptions
 } from './command-option.helpers';
-import {
-  createWrappedAutoConfigCommand
-} from './command-wrapper.helpers';
+import { createWrappedAutoConfigCommand } from './command-wrapper.helpers';
 
 interface IOrganizeCommandContext {
   readonly config: OrderlyConfig;
@@ -139,13 +132,15 @@ export class OrganizeHandler implements IOrganizeHandler {
     options: Readonly<IOrganizeOptions>,
     context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
   ): Readonly<IOrganizeCommandContext> {
-    const commandContext = createScannerCommandContext(createCommandContextBase({
-      directory,
-      options,
-      context,
-      configService: this.configService,
-      directoryValidator: this.directoryValidator
-    }));
+    const commandContext = createScannerCommandContext(
+      createCommandContextBase({
+        directory,
+        options,
+        context,
+        configService: this.configService,
+        directoryValidator: this.directoryValidator
+      })
+    );
     return {
       config: commandContext.config,
       logger: commandContext.logger,

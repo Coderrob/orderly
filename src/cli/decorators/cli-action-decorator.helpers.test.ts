@@ -78,16 +78,18 @@ describe('cli action decorator helpers', () => {
       writable: true
     } satisfies PropertyDescriptor;
     const createWrapperFactory = jest.fn((_value: undefined) => {
-      const wrapperFactory = jest.fn((originalMethodRef: { readonly invoke: CliActionExecution }) => {
-        const wrappedMethod: CliActionExecution = async function executeWrapped(
-          this: unknown
-        ): Promise<unknown> {
-          const result = await originalMethodRef.invoke.call(this);
-          return `${String(result)}:wrapped`;
-        };
+      const wrapperFactory = jest.fn(
+        (originalMethodRef: { readonly invoke: CliActionExecution }) => {
+          const wrappedMethod: CliActionExecution = async function executeWrapped(
+            this: unknown
+          ): Promise<unknown> {
+            const result = await originalMethodRef.invoke.call(this);
+            return `${String(result)}:wrapped`;
+          };
 
-        return wrappedMethod;
-      });
+          return wrappedMethod;
+        }
+      );
 
       return wrapperFactory;
     });

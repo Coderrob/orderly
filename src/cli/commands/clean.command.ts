@@ -1,8 +1,6 @@
 import { Logger } from '../../logger/logger';
 import { COMMAND_MESSAGES, ExitCode } from '../constants';
-import {
-  IAutoConfigContext
-} from '../decorators/auto-config-discovery.decorator';
+import { IAutoConfigContext } from '../decorators/auto-config-discovery.decorator';
 import type {
   ICleanCommandOptions,
   ICleanHandler,
@@ -18,9 +16,7 @@ import {
   getOptionalStringOption,
   normalizeObjectOptions
 } from './command-option.helpers';
-import {
-  createWrappedAutoConfigCommand
-} from './command-wrapper.helpers';
+import { createWrappedAutoConfigCommand } from './command-wrapper.helpers';
 
 enum CleanOptionKey {
   AUTO_CONFIG = 'autoConfig',

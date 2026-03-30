@@ -5,8 +5,6 @@ import type { IStrategyExecution } from './dedupe-analysis.helpers';
 import { groupAnyModeCandidates } from './dedupe-any-grouping';
 import { DedupeMode, type IDuplicateGroup } from './types';
 
-const MIN_DUPLICATE_GROUP_SIZE = 2;
-
 /**
  * Creates duplicate groups from strategy executions.
  * @param files - Files being analyzed for duplicates.
@@ -19,13 +17,9 @@ export function groupCandidates(
   strategyExecutions: readonly IStrategyExecution[],
   mode: Readonly<DedupeMode>
 ): IDuplicateGroup[] {
-  if (files.length < MIN_DUPLICATE_GROUP_SIZE || strategyExecutions.length === 0) {
-    return [];
-  }
-
   if (mode === DedupeMode.ANY) {
     return groupAnyModeCandidates(files, strategyExecutions);
   }
 
-  return groupAllModeCandidates(files, strategyExecutions, mode);
+  return groupAllModeCandidates(files, strategyExecutions);
 }

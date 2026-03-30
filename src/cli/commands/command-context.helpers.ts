@@ -162,9 +162,7 @@ export function logAutoDiscoveredConfig(
 export function normalizeCommandContextOptions<TInputOptions, TOutputOptions>(
   context: Readonly<ICommandContextOptions<TInputOptions>> | undefined,
   normalizeOptions: (options: Readonly<TInputOptions>) => Readonly<TOutputOptions>
-):
-  | Readonly<ICommandContextOptions<TOutputOptions>>
-  | undefined {
+): Readonly<ICommandContextOptions<TOutputOptions>> | undefined {
   if (!context) {
     return undefined;
   }

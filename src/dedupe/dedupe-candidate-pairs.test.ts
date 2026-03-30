@@ -1,8 +1,5 @@
 import type { IStrategyExecution } from './dedupe-analysis.helpers';
-import {
-  createCandidatePairs,
-  createDuplicateCandidateBuckets
-} from './dedupe-candidate-pairs';
+import { createCandidatePairs, createDuplicateCandidateBuckets } from './dedupe-candidate-pairs';
 
 describe('dedupe-candidate-pairs', () => {
   it('should return empty when no strategy bucket has duplicates', () => {

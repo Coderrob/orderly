@@ -75,7 +75,10 @@ export class OrganizeDedupeService {
       return null;
     }
 
-    const dedupeOutcome = await this.dedupeRuntime.applyConfiguredAction(dedupeConfig, dedupeResult);
+    const dedupeOutcome = await this.dedupeRuntime.applyConfiguredAction(
+      dedupeConfig,
+      dedupeResult
+    );
     return buildDedupeActionContext({
       action: dedupeConfig.action,
       dedupeOutcome,

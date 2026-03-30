@@ -1,9 +1,6 @@
 import { ExitCode } from '../constants';
 import { HandleCommandErrors } from './command-error-handler.decorator';
-import {
-  createTelemetryCommandWrapper,
-  WithCommandTelemetry
-} from './command-telemetry.decorator';
+import { createTelemetryCommandWrapper, WithCommandTelemetry } from './command-telemetry.decorator';
 
 jest.mock('../../utils/clock', () => ({
   Clock: {
