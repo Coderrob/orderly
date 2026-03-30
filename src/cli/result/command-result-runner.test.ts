@@ -5,19 +5,19 @@ import {
 } from './command-result-runner';
 
 describe('command-result-runner', () => {
-  const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+  let consoleLogSpy: jest.SpyInstance;
+  let originalExitCode: NodeJS.Process['exitCode'];
 
   beforeEach(() => {
+    originalExitCode = process.exitCode;
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
     jest.clearAllMocks();
     process.exitCode = 0;
   });
 
   afterEach(() => {
-    process.exitCode = 0;
-  });
-
-  afterAll(() => {
     consoleLogSpy.mockRestore();
+    process.exitCode = originalExitCode;
   });
 
   it('should run a non-directory command action', async () => {

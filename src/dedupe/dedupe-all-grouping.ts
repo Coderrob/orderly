@@ -20,6 +20,37 @@ interface IAllModeGroupState {
   readonly parents: readonly number[];
 }
 
+interface IAllModePairCollectionState {
+  readonly pairMatches: ReadonlyMap<string, readonly IStrategyMatch[]>;
+  readonly state: Readonly<IAllModeGroupState>;
+}
+
+/**
+ * Appends one accepted matched path pair to the current `ALL`-mode collection state.
+ * @param params - Pair collection parameters.
+ * @returns Updated collection state.
+ */
+function appendAcceptedAllModePair(
+  params: Readonly<{
+    matched: readonly IStrategyMatch[];
+    pairIndexes: Readonly<{ leftIndex: number; rightIndex: number }>;
+    pairMatches: ReadonlyMap<string, readonly IStrategyMatch[]>;
+    state: Readonly<IAllModeGroupState>;
+  }>
+): Readonly<IAllModePairCollectionState> {
+  const pairMatches = new Map(params.pairMatches);
+
+  pairMatches.set(
+    createPairId(params.pairIndexes.leftIndex, params.pairIndexes.rightIndex),
+    params.matched
+  );
+
+  return {
+    pairMatches,
+    state: appendAllModePair({ pairIndexes: params.pairIndexes, state: params.state })
+  };
+}
+
 /**
  * Adds one `ALL`-mode duplicate pair into the grouping state when it satisfies the mode.
  * @param params - Grouping append parameters.
@@ -41,6 +72,40 @@ function appendAllModePair(
 }
 
 /**
+ * Collects accepted matched path pairs for `ALL` mode.
+ * @param files - Files being analyzed for duplicates.
+ * @param strategyExecutions - Strategy outputs keyed by file path.
+ * @returns Pair collection state.
+ */
+function collectAcceptedAllModePairs(
+  files: readonly IScannedFile[],
+  strategyExecutions: readonly IStrategyExecution[]
+): Readonly<IAllModePairCollectionState> {
+  const fileIndexesByPath = createFileIndexesByPath(files);
+  let collectionState = createInitialAllModePairCollectionState(files.length);
+
+  for (const matchedPathPair of createMatchedPathPairMap(strategyExecutions).values()) {
+    const pairIndexes = resolveAcceptedAllModePair(
+      fileIndexesByPath,
+      matchedPathPair,
+      strategyExecutions
+    );
+    if (!pairIndexes) {
+      continue;
+    }
+
+    collectionState = appendAcceptedAllModePair({
+      matched: matchedPathPair.matched,
+      pairIndexes,
+      pairMatches: collectionState.pairMatches,
+      state: collectionState.state
+    });
+  }
+
+  return collectionState;
+}
+
+/**
  * Creates the initial grouping state for `ALL` mode.
  * @param fileCount - Number of scanned files.
  * @returns Initial grouping state.
@@ -48,6 +113,20 @@ function appendAllModePair(
 function createInitialAllModeGroupState(fileCount: number): Readonly<IAllModeGroupState> {
   return {
     parents: createInitialParents(fileCount)
+  };
+}
+
+/**
+ * Creates the initial pair collection state for `ALL` mode.
+ * @param fileCount - Number of scanned files.
+ * @returns Initial collection state.
+ */
+function createInitialAllModePairCollectionState(
+  fileCount: number
+): Readonly<IAllModePairCollectionState> {
+  return {
+    pairMatches: new Map<string, readonly IStrategyMatch[]>(),
+    state: createInitialAllModeGroupState(fileCount)
   };
 }
 
@@ -65,25 +144,8 @@ export function groupAllModeCandidates(
     return [];
   }
 
-  const fileIndexesByPath = createFileIndexesByPath(files);
-  const pairMatches = new Map<string, readonly IStrategyMatch[]>();
-  let state = createInitialAllModeGroupState(files.length);
-
-  for (const matchedPathPair of createMatchedPathPairMap(strategyExecutions).values()) {
-    const pairIndexes = resolveAcceptedAllModePair(
-      fileIndexesByPath,
-      matchedPathPair,
-      strategyExecutions
-    );
-    if (!pairIndexes) {
-      continue;
-    }
-
-    pairMatches.set(createPairId(pairIndexes.leftIndex, pairIndexes.rightIndex), matchedPathPair.matched);
-    state = appendAllModePair({ pairIndexes, state });
-  }
-
-  return buildGroupsFromParents(files, state.parents, pairMatches);
+  const collectionState = collectAcceptedAllModePairs(files, strategyExecutions);
+  return buildGroupsFromParents(files, collectionState.state.parents, collectionState.pairMatches);
 }
 
 /**

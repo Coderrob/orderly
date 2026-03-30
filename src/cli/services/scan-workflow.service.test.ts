@@ -1,7 +1,7 @@
 import { ScanWorkflow } from './scan-workflow.service';
 
 describe('ScanWorkflow', () => {
-  const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+  let mockConsoleLog: jest.SpyInstance;
   const scanner = {
     scan: jest.fn(),
     getCategorySummary: jest.fn()
@@ -10,11 +10,12 @@ describe('ScanWorkflow', () => {
   let workflow: ScanWorkflow;
 
   beforeEach(() => {
+    mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
     jest.clearAllMocks();
     workflow = new ScanWorkflow();
   });
 
-  afterAll(() => {
+  afterEach(() => {
     mockConsoleLog.mockRestore();
   });
 

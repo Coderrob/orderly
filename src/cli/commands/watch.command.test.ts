@@ -82,11 +82,37 @@ describe('WatchHandler', () => {
       completedCycles: 2,
       cycleLimit: 2,
       directory: '/tmp',
+      executeCycle: mockOrganizeHandler.execute,
+      hasReachedCycleLimit: (handler as any).hasReachedCycleLimit.bind(handler),
       intervalSeconds: 1,
       options: {}
     });
 
     expect(result).toBe(2);
     expect(mockOrganizeHandler.execute).not.toHaveBeenCalled();
+  });
+
+  it('should stop watch execution when the provided signal is aborted', async () => {
+    jest.useFakeTimers();
+    const abortController = new AbortController();
+
+    const resultPromise = handler.execute('/tmp', {
+      cycles: '0',
+      interval: '10',
+      signal: abortController.signal
+    });
+
+    await Promise.resolve();
+    expect(mockOrganizeHandler.execute).toHaveBeenCalledTimes(1);
+
+    abortController.abort();
+    await Promise.resolve();
+
+    const result = await resultPromise;
+
+    expect(result.success).toBe(false);
+    expect(result.exitCode).toBe(1);
+    expect(result.message).toContain('Watch failed: Watch cancelled');
+    expect(jest.getTimerCount()).toBe(0);
   });
 });
