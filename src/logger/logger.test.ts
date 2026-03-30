@@ -206,15 +206,28 @@ describe('Logger', () => {
       expect(logger.getLogs()).toHaveLength(0);
     });
   });
+
+  describe('retention', () => {
+    it('should keep only the most recent 1000 log entries', () => {
+      for (let index = 0; index < 1005; index += 1) {
+        logger.info(`message ${index}`);
+      }
+
+      const logs = logger.getLogs();
+
+      expect(logs).toHaveLength(1000);
+      expect(logs[0].message).toBe('message 5');
+      expect(logs[logs.length - 1].message).toBe('message 1004');
+    });
+  });
+
   describe('edge cases', () => {
     it('should handle details with nested objects', () => {
-      const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
       const nestedDetails = { user: { name: 'test', data: { id: 123 } } };
 
       logger.info('Test with nested', nestedDetails);
 
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('Test with nested'));
-      mockConsoleLog.mockRestore();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Test with nested'));
     });
 
     it('should handle empty string messages', () => {

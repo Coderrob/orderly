@@ -1,3 +1,9 @@
+import {
+  createWrappedMethodDecorator,
+  invokeMethod,
+  type IMethodExecutionRef
+} from './method-decorator.helpers';
+
 interface ICliAutoConfigOptions {
   readonly config?: string;
   readonly autoConfig?: boolean;
@@ -14,64 +20,21 @@ type CliAutoConfigMethod<TOptions extends ICliAutoConfigOptions> = (
   autoDiscoveredConfig?: string
 ) => unknown;
 
-interface ICliAutoConfigMethodRef<TOptions extends ICliAutoConfigOptions> {
-  readonly invoke: CliAutoConfigMethod<TOptions>;
-}
+type ICliAutoConfigMethodRef<TOptions extends ICliAutoConfigOptions> = IMethodExecutionRef<
+  CliAutoConfigMethod<TOptions>
+>;
 
 /**
- * Applies CLI auto-config behavior to the decorated descriptor.
- * @param _target - Decorated class prototype.
- * @param _propertyKey - Decorated method key.
- * @param descriptor - Original descriptor.
- * @returns Updated descriptor with auto-config behavior.
+ * Creates a CLI auto-config wrapper factory.
+ * @param _value - Unused configuration placeholder for shared wrapper helpers.
+ * @returns Method wrapper factory.
  */
-function applyCliAutoConfigDescriptor<TOptions extends ICliAutoConfigOptions>(
-  _target: object,
-  _propertyKey: string | symbol,
-  descriptor: Readonly<PropertyDescriptor>
-): PropertyDescriptor {
-  return createCliAutoConfigDescriptor<TOptions>(descriptor);
-}
-
-/**
- * Creates a wrapper descriptor for CLI auto-config behavior.
- * @param descriptor - Original method descriptor.
- * @returns Updated descriptor with auto-config behavior.
- */
-function createCliAutoConfigDescriptor<TOptions extends ICliAutoConfigOptions>(
-  descriptor: Readonly<PropertyDescriptor>
-): PropertyDescriptor {
-  const originalMethod: unknown = descriptor.value;
-  if (!isCliAutoConfigMethod<TOptions>(originalMethod)) return { ...descriptor };
-  return { ...descriptor, value: createCliAutoConfigWrapper({ invoke: originalMethod }) };
-}
-
-/**
- * Applies CLI auto-config behavior to the decorated descriptor.
- * @param _target - Decorated class prototype.
- * @param _propertyKey - Decorated method key.
- * @param descriptor - Original descriptor.
- * @returns Updated descriptor with auto-config behavior.
- */
-function createCliAutoConfigWrapper<TOptions extends ICliAutoConfigOptions>(
+function createCliAutoConfigWrapperFactory<TOptions extends ICliAutoConfigOptions>(
+  _value: undefined
+): (
   originalMethodRef: Readonly<ICliAutoConfigMethodRef<TOptions>>
-): CliAutoConfigMethod<TOptions> {
-  /**
-   * Executes command method with injected discovered config path.
-   * @param this - Invocation context.
-   * @param directory - Command directory argument.
-   * @param options - Command options.
-   * @returns Original method return value.
-   */
-  function executeWithCliAutoConfig(
-    this: unknown,
-    directory: string,
-    options: Readonly<TOptions>
-  ): unknown {
-    return executeWrappedCliAutoConfigMethod(originalMethodRef, this, directory, options);
-  }
-
-  return executeWithCliAutoConfig;
+) => CliAutoConfigMethod<TOptions> {
+  return wrapCliAutoConfigMethod;
 }
 
 /**
@@ -95,51 +58,6 @@ function discoverCliConfigOption<TOptions extends ICliAutoConfigOptions>(
         configOptions: { ...options, config: discoveredConfig }
       }
     : { configOptions: { ...options } };
-}
-
-/**
- * Executes wrapped CLI auto-config method with discovered config handling.
- * @param method - Decorated method to invoke.
- * @param context - Invocation context.
- * @param directory - Command directory argument.
- * @param options - Command options.
- * @returns Original method return value.
- */
-function executeWrappedCliAutoConfigMethod<TOptions extends ICliAutoConfigOptions>(
-  methodRef: Readonly<ICliAutoConfigMethodRef<TOptions>>,
-  context: unknown,
-  directory: string,
-  options: Readonly<TOptions>
-): unknown {
-  const discovery = resolveCliDiscovery(context, directory, options);
-  return invokeCliAutoConfigMethod(methodRef, context, {
-    autoDiscoveredConfig: discovery.autoDiscoveredConfig,
-    directory,
-    options: discovery.configOptions
-  });
-}
-
-/**
- * Invokes a CLI auto-config method with explicit context and arguments.
- * @param methodRef - Decorated method reference to invoke.
- * @param context - Invocation context.
- * @param args - Wrapped invocation arguments.
- * @returns Original method return value.
- */
-function invokeCliAutoConfigMethod<TOptions extends ICliAutoConfigOptions>(
-  methodRef: Readonly<ICliAutoConfigMethodRef<TOptions>>,
-  context: unknown,
-  args: Readonly<{
-    autoDiscoveredConfig?: string;
-    directory: string;
-    options: Readonly<TOptions>;
-  }>
-): unknown {
-  return Function.prototype.apply.call(methodRef.invoke, context, [
-    args.directory,
-    args.options,
-    args.autoDiscoveredConfig
-  ]);
 }
 
 /**
@@ -191,11 +109,63 @@ function resolveCliDiscovery<TOptions extends ICliAutoConfigOptions>(
 }
 
 /**
+ * Executes wrapped CLI auto-config method with discovered config handling.
+ * @param methodRef - Decorated method to invoke.
+ * @param context - Invocation context.
+ * @param directory - Command directory argument.
+ * @param options - Command options.
+ * @returns Original method return value.
+ */
+function runCliAutoConfigMethod<TOptions extends ICliAutoConfigOptions>(
+  methodRef: Readonly<ICliAutoConfigMethodRef<TOptions>>,
+  context: unknown,
+  directory: string,
+  options: Readonly<TOptions>
+): unknown {
+  const discovery = resolveCliDiscovery(context, directory, options);
+  return invokeMethod(methodRef, context, [
+    directory,
+    discovery.configOptions,
+    discovery.autoDiscoveredConfig
+  ]);
+}
+
+/**
  * Decorates CLI command handlers with target-directory config auto-discovery.
  * @returns A method decorator that injects any auto-discovered config path into the handler call.
  */
 export function WithCliAutoConfigDiscovery<
   TOptions extends ICliAutoConfigOptions
 >(): MethodDecorator {
-  return applyCliAutoConfigDescriptor<TOptions>;
+  return createWrappedMethodDecorator(
+    { value: undefined },
+    isCliAutoConfigMethod<TOptions>,
+    createCliAutoConfigWrapperFactory<TOptions>
+  );
+}
+
+/**
+ * Wraps a CLI auto-config method reference with discovery behavior.
+ * @param originalMethodRef - Original method reference.
+ * @returns Wrapped method execution.
+ */
+function wrapCliAutoConfigMethod<TOptions extends ICliAutoConfigOptions>(
+  originalMethodRef: Readonly<ICliAutoConfigMethodRef<TOptions>>
+): CliAutoConfigMethod<TOptions> {
+  /**
+   * Executes command method with injected discovered config path.
+   * @param this - Invocation context.
+   * @param directory - Command directory argument.
+   * @param options - Command options.
+   * @returns Original method return value.
+   */
+  function executeWithCliAutoConfig(
+    this: unknown,
+    directory: string,
+    options: Readonly<TOptions>
+  ): unknown {
+    return runCliAutoConfigMethod(originalMethodRef, this, directory, options);
+  }
+
+  return executeWithCliAutoConfig;
 }

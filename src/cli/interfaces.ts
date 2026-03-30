@@ -122,6 +122,8 @@ export interface IWatchCommandOptions extends IOrganizeOptions {
   interval?: string;
   /** Number of polling cycles before exiting; 0 means continuous */
   cycles?: string;
+  /** Optional abort signal for programmatic cancellation */
+  signal?: AbortSignal;
 }
 
 /**

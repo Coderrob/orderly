@@ -2,11 +2,33 @@ interface IErrorHandlerHost {
   handleError(error: unknown): void;
 }
 
-interface ICliActionMethodReference {
-  readonly method: CliActionMethod;
-}
+import {
+  createWrappedCliActionMethodDecorator,
+  invokeCliAction,
+  type CliActionExecution,
+  type ICliActionExecutionRef
+} from './cli-action-decorator.helpers';
 
-type CliActionMethod = (this: unknown, ...args: readonly unknown[]) => unknown;
+/**
+ * Creates a CLI action wrapper factory for error handling.
+ * @returns Action wrapper factory.
+ */
+function createCliActionErrorWrapperFactory(): (
+  originalMethodRef: Readonly<ICliActionExecutionRef>
+) => CliActionExecution {
+  /**
+   * Wraps the original CLI action method with shared error routing behavior.
+   * @param originalMethodRef - Original action method reference.
+   * @returns Wrapped action execution.
+   */
+  function wrapCliActionErrorMethod(
+    originalMethodRef: Readonly<ICliActionExecutionRef>
+  ): CliActionExecution {
+    return createWrappedCliAction(originalMethodRef);
+  }
+
+  return wrapCliActionErrorMethod;
+}
 
 /**
  * Creates a wrapped CLI action that routes thrown errors to `handleError`.
@@ -14,8 +36,8 @@ type CliActionMethod = (this: unknown, ...args: readonly unknown[]) => unknown;
  * @returns Wrapped action method.
  */
 function createWrappedCliAction(
-  methodReference: Readonly<ICliActionMethodReference>
-): CliActionMethod {
+  methodReference: Readonly<ICliActionExecutionRef>
+): CliActionExecution {
   /**
    * Executes a wrapped CLI action method.
    * @param this - Decorated method receiver.
@@ -24,46 +46,13 @@ function createWrappedCliAction(
    */
   async function wrappedCliAction(this: unknown, ...args: readonly unknown[]): Promise<unknown> {
     try {
-      return await Promise.resolve(methodReference.method.call(this, ...args));
+      return await invokeCliAction(methodReference, this, args);
     } catch (error) {
       return handleCliActionError(this, error);
     }
   }
 
   return wrappedCliAction;
-}
-
-/**
- * Applies shared CLI action error handling to a method descriptor.
- * @param _target - Decorated prototype.
- * @param _propertyKey - Decorated method name.
- * @param descriptor - Method descriptor to wrap.
- * @returns A descriptor with a wrapped action handler.
- */
-function decorateCliActionHandler(
-  _target: object,
-  _propertyKey: string | symbol,
-  descriptor: Readonly<PropertyDescriptor>
-): PropertyDescriptor {
-  const originalMethod = getCliActionMethod(descriptor);
-  if (!originalMethod) {
-    return { ...descriptor };
-  }
-
-  return {
-    ...descriptor,
-    value: createWrappedCliAction({ method: originalMethod })
-  };
-}
-
-/**
- * Returns a CLI action method from the descriptor when one is present.
- * @param descriptor - Method descriptor to inspect.
- * @returns The original CLI action method, or undefined when the descriptor is not callable.
- */
-function getCliActionMethod(descriptor: Readonly<PropertyDescriptor>): CliActionMethod | undefined {
-  const descriptorValue: unknown = descriptor.value;
-  return isCliActionMethod(descriptorValue) ? descriptorValue : undefined;
 }
 
 /**
@@ -86,7 +75,10 @@ function handleCliActionError(actionHost: unknown, error: unknown): Promise<neve
  * @returns A method decorator that wraps action handlers with shared error routing.
  */
 export function HandleCliActionErrors(): MethodDecorator {
-  return decorateCliActionHandler;
+  return createWrappedCliActionMethodDecorator(
+    { value: undefined },
+    createCliActionErrorWrapperFactory
+  );
 }
 
 /**
@@ -101,13 +93,4 @@ function hasHandleError(value: unknown): value is IErrorHandlerHost {
     'handleError' in value &&
     typeof value.handleError === 'function'
   );
-}
-
-/**
- * Returns whether a value is a callable CLI action method.
- * @param value - Value to inspect.
- * @returns True when the value matches the CLI action method signature.
- */
-function isCliActionMethod(value: unknown): value is CliActionMethod {
-  return typeof value === 'function';
 }

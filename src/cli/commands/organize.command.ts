@@ -1,19 +1,11 @@
 import type { OrderlyConfig } from '../../config/types';
 import { DedupeAction } from '../../dedupe';
-import { DedupeStrategyFactory } from '../../dedupe/dedupe-factory';
-import type { IDedupeConfig, IDedupeResult } from '../../dedupe/types';
 import { Logger } from '../../logger/logger';
 import { FileOrganizer } from '../../organizer/file-organizer';
 import type { IOrganizationResult } from '../../organizer/types';
 import { FileScanner } from '../../scanner/file-scanner';
-import type { IScannedFile } from '../../scanner/interfaces';
 import { ExitCode, COMMAND_MESSAGES } from '../constants';
-import {
-  IAutoConfigContext,
-  WithAutoConfigDiscovery
-} from '../decorators/auto-config-discovery.decorator';
-import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
-import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
+import { IAutoConfigContext } from '../decorators/auto-config-discovery.decorator';
 import type {
   ICleanerService,
   IOrganizeOptions,
@@ -23,31 +15,89 @@ import type {
   IDirectoryValidator,
   IManifestService
 } from '../interfaces';
+import { OrganizeWorkflow } from '../services';
 
+import { createCommandContextBase, createScannerCommandContext } from './command-context.helpers';
 import {
-  buildDedupeActionContext,
-  handleReplacedDuplicates,
-  handleSkippedDuplicates,
-  type IDedupeActionContext
-} from './organize.command.helpers';
+  getOptionalBooleanOption,
+  getOptionalStringOption,
+  normalizeObjectOptions
+} from './command-option.helpers';
+import { createWrappedAutoConfigCommand } from './command-wrapper.helpers';
+
+interface IOrganizeCommandContext {
+  readonly config: OrderlyConfig;
+  readonly logger: Logger;
+  readonly organizer: FileOrganizer;
+  readonly scanner: FileScanner;
+  readonly targetDir: string;
+}
+
+interface IOrganizeHandlerDependencies {
+  readonly cleaner?: Readonly<ICleanerService>;
+  readonly manifestService: Readonly<IManifestService>;
+  readonly workflow?: Readonly<OrganizeWorkflow>;
+}
+
+interface IOrganizeContextDependencies {
+  readonly configService: Readonly<IConfigService>;
+  readonly directoryValidator: Readonly<IDirectoryValidator>;
+}
+
+interface IOrganizeExecuteDependencies extends IOrganizeContextDependencies {
+  executeCore(
+    directory: string,
+    options: Readonly<IOrganizeOptions>,
+    context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
+  ): Promise<ICommandResult>;
+}
+
+enum OrganizeOptionKey {
+  AUTO_CONFIG = 'autoConfig',
+  CLEAN_EMPTY_DIRS = 'cleanEmptyDirs',
+  CONFIG = 'config',
+  CONFIRM_REPLACE = 'confirmReplace',
+  DEDUPE = 'dedupe',
+  DEDUPE_ACTION = 'dedupeAction',
+  DRY_RUN = 'dryRun',
+  LOG_LEVEL = 'logLevel',
+  MANIFEST = 'manifest',
+  OUTPUT = 'output',
+  QUARANTINE_DIR = 'quarantineDir'
+}
 
 /**
  * Handler for the organize command.
  */
 export class OrganizeHandler implements IOrganizeHandler {
+  public readonly execute: (
+    directory: string,
+    options: Readonly<IOrganizeOptions>,
+    context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
+  ) => Promise<ICommandResult>;
+
   /**
    * Creates a new OrganizeHandler instance
    * @param configService - Service for loading and managing configuration
    * @param directoryValidator - Service for validating directory paths
-   * @param manifestService - Service for generating and saving manifests
-   * @param cleaner - Optional empty-directory cleaner for post-organize cleanup.
+   * @param dependencies - Organize workflow dependencies.
    */
   constructor(
     private readonly configService: Readonly<IConfigService>,
     private readonly directoryValidator: Readonly<IDirectoryValidator>,
-    private readonly manifestService: Readonly<IManifestService>,
-    private readonly cleaner?: Readonly<ICleanerService>
-  ) {}
+    dependencies: Readonly<IOrganizeHandlerDependencies>
+  ) {
+    this.workflow =
+      dependencies.workflow ??
+      new OrganizeWorkflow(dependencies.manifestService, dependencies.cleaner);
+    this.execute = createOrganizeExecute({
+      configService: this.configService,
+      directoryValidator: this.directoryValidator,
+      executeCore: this.executeCore.bind(this)
+    });
+  }
+
+  private readonly workflow: Readonly<OrganizeWorkflow>;
 
   /**
    * Executes the organize command.
@@ -56,10 +106,7 @@ export class OrganizeHandler implements IOrganizeHandler {
    * @param context - Optional context injected by auto-config discovery.
    * @returns Promise resolving to command result
    */
-  @WithCommandTelemetry('organize')
-  @HandleCommandErrors(COMMAND_MESSAGES.ORGANIZATION_FAILED)
-  @WithAutoConfigDiscovery<IOrganizeOptions>()
-  async execute(
+  private async executeCore(
     directory: string,
     options: Readonly<IOrganizeOptions>,
     context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
@@ -69,14 +116,7 @@ export class OrganizeHandler implements IOrganizeHandler {
     if (dedupeSafetyResult) {
       return dedupeSafetyResult;
     }
-    const files = await this.scanFiles(commandContext);
-    const filesToOrganize = await this.getFilesToOrganize(
-      files,
-      commandContext.config,
-      commandContext.logger,
-      options
-    );
-    const result = this.runOrganization(filesToOrganize, commandContext, options);
+    const result = await this.workflow.run(commandContext, options);
     return this.buildSuccessResult(result);
   }
 
@@ -91,147 +131,44 @@ export class OrganizeHandler implements IOrganizeHandler {
     directory: string,
     options: Readonly<IOrganizeOptions>,
     context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
-  ): Readonly<{
-    config: OrderlyConfig;
-    logger: Logger;
-    organizer: FileOrganizer;
-    scanner: FileScanner;
-    targetDir: string;
-  }> {
-    const targetDir = context?.targetDir ?? this.directoryValidator.validate(directory);
-    const config = this.configService.loadWithOverrides(context?.configOptions ?? { ...options });
-    const logger = new Logger(config.logLevel);
-
-    this.logAutoDiscoveredConfig(logger, context?.autoDiscoveredConfig);
-    return {
-      config,
-      logger,
-      organizer: new FileOrganizer(config, logger, targetDir),
-      scanner: new FileScanner(config, logger),
-      targetDir
-    };
+  ): Readonly<IOrganizeCommandContext> {
+    return this.buildOrganizeCommandContext(
+      createScannerCommandContext(
+        createCommandContextBase({
+          directory,
+          options,
+          context,
+          configService: this.configService,
+          directoryValidator: this.directoryValidator
+        })
+      )
+    );
   }
 
   /**
-   * Logs the discovered config path when auto-config resolution finds one.
-   * @param logger - Logger instance.
-   * @param autoDiscoveredConfig - Auto-discovered config path.
+   * Builds the final organize command context from the shared base context.
+   * @param commandContext - Shared scanner command context.
+   * @returns Organize command context.
    */
-  private logAutoDiscoveredConfig(logger: Readonly<Logger>, autoDiscoveredConfig?: string): void {
-    if (autoDiscoveredConfig) {
-      logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
-    }
-  }
-
-  /**
-   * Scans files and logs the scan count.
-   * @param commandContext - Shared organize command context.
-   * @returns Scanned files.
-   */
-  private async scanFiles(
+  private buildOrganizeCommandContext(
     commandContext: Readonly<{
+      config: OrderlyConfig;
       logger: Logger;
       scanner: FileScanner;
       targetDir: string;
     }>
-  ): Promise<IScannedFile[]> {
-    const files = await commandContext.scanner.scan(commandContext.targetDir);
-    commandContext.logger.info(COMMAND_MESSAGES.FILES_FOUND.replace('{0}', String(files.length)));
-    return files;
-  }
-
-  /**
-   * Returns the files that should proceed to organization after dedupe processing.
-   * @param files - Scanned files.
-   * @param config - Configuration with dedupe settings.
-   * @param logger - Logger instance.
-   * @param options - Organize command options.
-   * @returns Files to organize.
-   */
-  private async getFilesToOrganize(
-    files: readonly IScannedFile[],
-    config: Readonly<OrderlyConfig>,
-    logger: Readonly<Logger>,
-    options: Readonly<IOrganizeOptions>
-  ): Promise<IScannedFile[]> {
-    return config.dedupe?.enabled
-      ? this.processDuplicates(files, config, logger, options)
-      : [...files];
-  }
-
-  /**
-   * Plans operations, executes them, and writes manifest output when requested.
-   * @param files - Files to organize.
-   * @param commandContext - Shared organize command context.
-   * @param options - Organize command options.
-   * @returns Organization result.
-   */
-  private runOrganization(
-    files: readonly IScannedFile[],
-    commandContext: Readonly<{
-      config: OrderlyConfig;
-      logger: Logger;
-      organizer: FileOrganizer;
-      targetDir: string;
-    }>,
-    options: Readonly<IOrganizeOptions>
-  ): IOrganizationResult {
-    const operations = commandContext.organizer.planOperations(files);
-    commandContext.logger.info(
-      COMMAND_MESSAGES.OPERATIONS_PLANNED.replace('{0}', String(operations.length))
-    );
-
-    const result = commandContext.organizer.executeOperations(operations);
-    this.saveManifestIfRequested(result, options, commandContext.logger, commandContext.targetDir);
-    this.cleanEmptyDirectoriesIfRequested(options, commandContext);
-    this.logResults(result, commandContext.logger);
-    return result;
-  }
-
-  /**
-   * Cleans empty directories after organization when requested.
-   * @param options - Organize command options.
-   * @param commandContext - Shared command context.
-   */
-  private cleanEmptyDirectoriesIfRequested(
-    options: Readonly<IOrganizeOptions>,
-    commandContext: Readonly<{
-      config: OrderlyConfig;
-      logger: Logger;
-      targetDir: string;
-    }>
-  ): void {
-    if (!options.cleanEmptyDirs || !this.cleaner) {
-      return;
-    }
-
-    const cleanResult = this.cleaner.clean(commandContext.targetDir, {
-      dryRun: commandContext.config.dryRun,
-      includeHidden: commandContext.config.includeHidden,
-      removeOrderlyDir: false
-    });
-    commandContext.logger.info(
-      `Post-organize cleanup removed ${cleanResult.removedDirectories} empty directories`
-    );
-  }
-
-  /**
-   * Saves manifests when the command requested them.
-   * @param result - Organization result.
-   * @param options - Organize command options.
-   * @param logger - Logger instance.
-   * @param targetDir - Directory where manifests are written.
-   */
-  private saveManifestIfRequested(
-    result: Readonly<IOrganizationResult>,
-    options: Readonly<IOrganizeOptions>,
-    logger: Readonly<Logger>,
-    targetDir: string
-  ): void {
-    if (options.manifest) {
-      this.manifestService.saveManifests(result, targetDir);
-      logger.info(COMMAND_MESSAGES.MANIFESTS_GENERATED);
-    }
+  ): Readonly<IOrganizeCommandContext> {
+    return {
+      config: commandContext.config,
+      logger: commandContext.logger,
+      organizer: new FileOrganizer(
+        commandContext.config,
+        commandContext.logger,
+        commandContext.targetDir
+      ),
+      scanner: commandContext.scanner,
+      targetDir: commandContext.targetDir
+    };
   }
 
   /**
@@ -245,156 +182,6 @@ export class OrganizeHandler implements IOrganizeHandler {
       exitCode: ExitCode.SUCCESS,
       message: COMMAND_MESSAGES.ORGANIZED_SUCCESS.replace('{0}', String(result.operations.length))
     };
-  }
-
-  /**
-   * Logs the organization results.
-   * @param result - Organization result to log
-   * @param logger - Logger instance
-   */
-  private logResults(result: Readonly<IOrganizationResult>, logger: Readonly<Logger>): void {
-    logger.info(
-      `Operations completed: ${result.successful} successful, ${result.failed} failed, ${result.skipped ?? 0} skipped`
-    );
-
-    if (result.errors.length === 0) return;
-
-    logger.warn(`${result.errors.length} errors occurred during organization`);
-    for (const [index, error] of result.errors.entries()) {
-      logger.warn(`  ${index + 1}. ${error.file}: ${error.error}`);
-    }
-  }
-
-  /**
-   * Processes duplicate files according to configuration.
-   * @param files - All scanned files
-   * @param config - Configuration with dedupe settings
-   * @param logger - Logger instance
-   * @param options - Organize command options.
-   * @returns Filtered files to organize
-   */
-  private async processDuplicates(
-    files: readonly IScannedFile[],
-    config: Readonly<OrderlyConfig>,
-    logger: Readonly<Logger>,
-    options: Readonly<IOrganizeOptions>
-  ): Promise<IScannedFile[]> {
-    const dedupeConfig = config.dedupe;
-    if (!dedupeConfig) return [...files];
-
-    const dedupeContext = await this.createDedupeActionContext(
-      files,
-      dedupeConfig,
-      { deleteDuplicates: !config.dryRun, quarantineDir: options.quarantineDir },
-      logger
-    );
-    if (!dedupeContext) return [...files];
-
-    this.logDedupeActionOutcome(dedupeContext.action, dedupeContext.dedupeOutcome, logger);
-    return this.resolveDedupeFilesForAction(dedupeContext);
-  }
-
-  /**
-   * Builds dedupe context used to resolve post-dedupe file selection.
-   * @param files - Scanned files.
-   * @param dedupeConfig - Active dedupe configuration.
-   * @param options - Dedupe execution options.
-   * @param logger - Logger instance.
-   * @returns Dedupe context when duplicates exist; otherwise null.
-   */
-  private async createDedupeActionContext(
-    files: readonly IScannedFile[],
-    dedupeConfig: Readonly<IDedupeConfig>,
-    options: Readonly<{ deleteDuplicates: boolean; quarantineDir?: string }>,
-    logger: Readonly<Logger>
-  ): Promise<Readonly<IDedupeActionContext> | null> {
-    const dedupeResult = await this.findDuplicateGroups(files, dedupeConfig, logger);
-    if (!dedupeResult) return null;
-    const dedupeOutcome = await this.getDedupeOutcome(dedupeConfig, dedupeResult);
-    return buildDedupeActionContext({
-      action: dedupeConfig.action,
-      dedupeOutcome,
-      dedupeResult,
-      files,
-      logger,
-      options
-    });
-  }
-
-  /**
-   * Applies the configured dedupe action and returns the outcome.
-   * @param dedupeConfig - Active dedupe configuration.
-   * @param dedupeResult - Detected duplicate groups.
-   * @returns Dedupe action outcome.
-   */
-  private getDedupeOutcome(
-    dedupeConfig: Readonly<IDedupeConfig>,
-    dedupeResult: Readonly<IDedupeResult>
-  ): Promise<{ replaced: readonly IScannedFile[]; skipped: readonly IScannedFile[] }> {
-    return DedupeStrategyFactory.createDedupeService(dedupeConfig).applyAction(
-      dedupeResult,
-      dedupeConfig.action
-    );
-  }
-
-  /**
-   * Finds duplicate groups and logs summary information.
-   * @param files - Scanned files.
-   * @param dedupeConfig - Active dedupe configuration.
-   * @param logger - Logger instance.
-   * @returns Dedupe result when groups are found; otherwise null.
-   */
-  private async findDuplicateGroups(
-    files: readonly IScannedFile[],
-    dedupeConfig: Readonly<IDedupeConfig>,
-    logger: Readonly<Logger>
-  ): Promise<IDedupeResult | null> {
-    logger.info('Running duplicate detection...');
-    const dedupeResult =
-      await DedupeStrategyFactory.createDedupeService(dedupeConfig).findDuplicates(files);
-    logger.info(
-      `Found ${dedupeResult.totalDuplicates} duplicate files in ${dedupeResult.groups.length} groups`
-    );
-    return dedupeResult.groups.length === 0 ? null : dedupeResult;
-  }
-
-  /**
-   * Resolves which file set continues to organization for a dedupe action.
-   * @param params - Dedupe action context.
-   * @returns Files to continue organizing.
-   */
-  private resolveDedupeFilesForAction(params: Readonly<IDedupeActionContext>): IScannedFile[] {
-    if (params.action === DedupeAction.SKIP) return this.resolveSkipDedupeFiles(params);
-    if (params.action === DedupeAction.REPLACE) return this.resolveReplaceDedupeFiles(params);
-    return [...params.files];
-  }
-
-  /**
-   * Resolves files for the SKIP dedupe action.
-   * @param params - Dedupe action context.
-   * @returns Files to continue organizing.
-   */
-  private resolveSkipDedupeFiles(params: Readonly<IDedupeActionContext>): IScannedFile[] {
-    return handleSkippedDuplicates(
-      params.filteredFiles,
-      params.dedupeGroupCount,
-      params.dedupeOutcome.skipped.length,
-      params.logger
-    );
-  }
-
-  /**
-   * Resolves files for the REPLACE dedupe action.
-   * @param params - Dedupe action context.
-   * @returns Files to continue organizing.
-   */
-  private resolveReplaceDedupeFiles(params: Readonly<IDedupeActionContext>): IScannedFile[] {
-    return handleReplacedDuplicates(
-      params.filteredFiles,
-      params.dedupeOutcome.replaced,
-      { deleteDuplicates: params.deleteDuplicates, quarantineDir: params.quarantineDir },
-      params.logger
-    );
   }
 
   /**
@@ -423,22 +210,90 @@ export class OrganizeHandler implements IOrganizeHandler {
         }
       : undefined;
   }
+}
 
-  /**
-   * Logs the dedupe action summary.
-   * @param action - Applied dedupe action.
-   * @param dedupeOutcome - Result of applying the dedupe action.
-   * @param logger - Logger instance.
-   */
-  private logDedupeActionOutcome(
-    action: Readonly<DedupeAction>,
-    dedupeOutcome: Readonly<{
-      replaced: readonly IScannedFile[];
-      skipped: readonly IScannedFile[];
-    }>,
-    logger: Readonly<Logger>
-  ): void {
-    const affectedFiles = dedupeOutcome.skipped.length + dedupeOutcome.replaced.length;
-    logger.info(`Dedupe action '${action}' applied: ${affectedFiles} files affected`);
-  }
+/**
+ * Creates normalized organize boolean options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized boolean options.
+ */
+function createOrganizeBooleanOptions(value: object): Readonly<IOrganizeOptions> {
+  const autoConfig = getOptionalBooleanOption(value, OrganizeOptionKey.AUTO_CONFIG);
+  const cleanEmptyDirs = getOptionalBooleanOption(value, OrganizeOptionKey.CLEAN_EMPTY_DIRS);
+  const confirmReplace = getOptionalBooleanOption(value, OrganizeOptionKey.CONFIRM_REPLACE);
+  const dedupe = getOptionalBooleanOption(value, OrganizeOptionKey.DEDUPE);
+  const dryRun = getOptionalBooleanOption(value, OrganizeOptionKey.DRY_RUN);
+  const manifest = getOptionalBooleanOption(value, OrganizeOptionKey.MANIFEST);
+  return {
+    ...(autoConfig === undefined ? {} : { autoConfig }),
+    ...(cleanEmptyDirs === undefined ? {} : { cleanEmptyDirs }),
+    ...(confirmReplace === undefined ? {} : { confirmReplace }),
+    ...(dedupe === undefined ? {} : { dedupe }),
+    ...(dryRun === undefined ? {} : { dryRun }),
+    ...(manifest === undefined ? {} : { manifest })
+  };
+}
+
+/**
+ * Creates the wrapped execute function for the organize handler.
+ * @param handler - Organize handler dependencies.
+ * @returns Wrapped execute function.
+ */
+function createOrganizeExecute(
+  handler: Readonly<IOrganizeExecuteDependencies>
+): (
+  directory: string,
+  options: Readonly<IOrganizeOptions>,
+  context?: Readonly<IAutoConfigContext<IOrganizeOptions>>
+) => Promise<ICommandResult> {
+  return createWrappedAutoConfigCommand<IOrganizeOptions>({
+    commandName: 'organize',
+    errorPrefix: COMMAND_MESSAGES.ORGANIZATION_FAILED,
+    executeCore: handler.executeCore.bind(handler),
+    normalizeDirectory: normalizeOrganizeDirectory,
+    normalizeOptions: normalizeOrganizeOptions,
+    service: handler
+  });
+}
+
+/**
+ * Creates normalized organize string options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized string options.
+ */
+function createOrganizeStringOptions(value: object): Readonly<IOrganizeOptions> {
+  const config = getOptionalStringOption(value, OrganizeOptionKey.CONFIG);
+  const dedupeAction = getOptionalStringOption(value, OrganizeOptionKey.DEDUPE_ACTION);
+  const logLevel = getOptionalStringOption(value, OrganizeOptionKey.LOG_LEVEL);
+  const output = getOptionalStringOption(value, OrganizeOptionKey.OUTPUT);
+  const quarantineDir = getOptionalStringOption(value, OrganizeOptionKey.QUARANTINE_DIR);
+  return {
+    ...(config ? { config } : {}),
+    ...(dedupeAction ? { dedupeAction } : {}),
+    ...(logLevel ? { logLevel } : {}),
+    ...(output ? { output } : {}),
+    ...(quarantineDir ? { quarantineDir } : {})
+  };
+}
+
+/**
+ * Normalizes an unknown directory argument to an organize directory string.
+ * @param value - Candidate directory value.
+ * @returns Directory string.
+ */
+function normalizeOrganizeDirectory(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * Normalizes an unknown value to organize command options.
+ * @param value - Candidate options value.
+ * @returns Organize command options.
+ */
+function normalizeOrganizeOptions(value: unknown): Readonly<IOrganizeOptions> {
+  return normalizeObjectOptions<IOrganizeOptions>(
+    value,
+    createOrganizeBooleanOptions,
+    createOrganizeStringOptions
+  );
 }

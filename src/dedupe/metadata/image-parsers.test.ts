@@ -61,6 +61,28 @@ describe('image-parsers', () => {
       expect(extractImageDimensions(jpeg)).toEqual({ width: 640, height: 480 });
     });
 
+    it('should extract JPEG dimensions when the buffer ends exactly after the SOF width bytes', () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x01, 0xe0, 0x02, 0x80]);
+
+      expect(extractImageDimensions(jpeg)).toEqual({ width: 640, height: 480 });
+    });
+
+    it('should extract JPEG dimensions when fill bytes appear before the SOF marker', () => {
+      const jpeg = Buffer.from([
+        0xff, 0xd8, 0xff, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x01, 0xe0, 0x02, 0x80
+      ]);
+
+      expect(extractImageDimensions(jpeg)).toEqual({ width: 640, height: 480 });
+    });
+
+    it('should extract JPEG dimensions when a stuffed byte appears before the SOF marker', () => {
+      const jpeg = Buffer.from([
+        0xff, 0xd8, 0xff, 0x00, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x01, 0xe0, 0x02, 0x80
+      ]);
+
+      expect(extractImageDimensions(jpeg)).toEqual({ width: 640, height: 480 });
+    });
+
     it('should return null for JPEG with invalid segment length', () => {
       const jpeg = createBrokenJpeg();
       expect(extractImageDimensions(jpeg)).toBeNull();
@@ -73,6 +95,20 @@ describe('image-parsers', () => {
 
     it('should return null when a JPEG contains no additional marker prefix', () => {
       const jpeg = Buffer.from([0xff, 0xd8, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09]);
+
+      expect(extractImageDimensions(jpeg)).toBeNull();
+    });
+
+    it('should return null when no marker prefix is found after SOI while scanning segments', () => {
+      const jpeg = Buffer.from([
+        0xff, 0xd8, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a
+      ]);
+
+      expect(extractImageDimensions(jpeg)).toBeNull();
+    });
+
+    it('should continue scanning after a non-SOF segment and return null when no SOF exists', () => {
+      const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x00, 0x00, 0xff, 0xd9]);
 
       expect(extractImageDimensions(jpeg)).toBeNull();
     });

@@ -6,6 +6,7 @@ import { IImageDimensions, IFileProperties, IFileAttributes } from '../types';
 
 import { extractImageDimensions } from './image-parsers';
 import { extractExifFromJpeg } from './jpeg-exif-parser';
+import { isJpeg } from './jpeg-structure';
 
 const HEADER_READ_UNIT_BYTES = 64;
 const KIBIBYTE_BYTES = 1024;
@@ -14,9 +15,6 @@ const JPEG_METADATA_CHUNK_BYTES = HEADER_READ_UNIT_BYTES * KIBIBYTE_BYTES;
 const MAX_JPEG_METADATA_BYTES = KIBIBYTE_BYTES * KIBIBYTE_BYTES;
 const WINDOWS_PLATFORM = 'win32';
 const OWNER_WRITE_PERMISSION_MASK = 0o200;
-const JPEG_SIGNATURE_LENGTH = 2;
-const JPEG_SIGNATURE_FIRST_BYTE = 0xff;
-const JPEG_SIGNATURE_SECOND_BYTE = 0xd8;
 const DEFAULT_MIME_TYPE = 'application/octet-stream';
 const POSIX_PATH_SEPARATOR = '/';
 
@@ -298,14 +296,11 @@ export class MetadataExtractor implements IMetadataExtractor {
 
   /**
    * Determines if the buffer starts with a JPEG header.
+   * Retained as a delegating wrapper so class-level tests can verify JPEG detection behavior.
    * @param data - Buffer prefix to inspect.
    * @returns True when the buffer begins with the JPEG SOI marker; otherwise false.
    */
   private isJpeg(data: Readonly<Buffer>): boolean {
-    return (
-      data.length >= JPEG_SIGNATURE_LENGTH &&
-      data[0] === JPEG_SIGNATURE_FIRST_BYTE &&
-      data[1] === JPEG_SIGNATURE_SECOND_BYTE
-    );
+    return isJpeg(data);
   }
 }

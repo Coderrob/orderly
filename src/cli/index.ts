@@ -1,20 +1,102 @@
-export * from './command-groups/index.js';
-export * from './commands/index.js';
-export * from './options/index.js';
-export * from './result/command-result-runner.js';
-export { createRootCommand } from './root-command.js';
+export { registerConfigCommandGroup, registerFilesCommandGroup } from './command-groups/index.js';
+export {
+  CleanHandler,
+  ConfigValidateHandler,
+  createCommandContextBase,
+  createDedupeConfigOverrides,
+  createMappedCommandContextBase,
+  createReportWrites,
+  DedupeHandler,
+  DedupePreset,
+  getDefaultReportPath,
+  getOriginalPath,
+  handleReplacedDuplicates,
+  handleSkippedDuplicates,
+  InitHandler,
+  logAutoDiscoveredConfig,
+  normalizeDedupeCommandOptions,
+  OrganizeHandler,
+  RevertHandler,
+  resolveAction,
+  resolveDedupeConfig,
+  resolvePreset,
+  resolveQuarantinePath,
+  resolveReportPaths,
+  resolveStrategyPreset,
+  ScanHandler,
+  shouldDeleteDuplicates,
+  toDeleteError,
+  validateReplaceSafety,
+  WatchHandler,
+  buildDedupeActionContext,
+  type IDedupeActionContext,
+  type IDedupeCommandContext,
+  type IDedupeCommandInput,
+  type IDeleteSafetyContext,
+  type IDedupeContextBuildParams,
+  type IFilePathSource,
+  type IReportPaths
+} from './commands/index.js';
+export {
+  createRootHandlers,
+  createRootServices,
+  createRootWorkflows,
+  type IRootHandlers,
+  type IRootServices,
+  type IRootWorkflows
+} from './composition-root.js';
+export {
+  CLI_CONSTANTS,
+  COMMAND_MESSAGES,
+  CONFIG_FILE_NAMES,
+  ConfigFileFormat,
+  ExitCode,
+  type ConfigFormat
+} from './constants.js';
+export {
+  createCliActionMethodDecorator,
+  createCommandMiddlewareDecorator,
+  createMethodDecorator,
+  createWrappedCliActionDescriptor,
+  createWrappedCliActionMethodDecorator,
+  createWrappedMethodDecorator,
+  createWrappedMethodDescriptor,
+  createCommandMethodDecorator,
+  createWrappedCommandMethodDecorator,
+  createWrappedDescriptor,
+  HandleCliActionErrors,
+  HandleCommandErrors,
+  invokeCliAction,
+  invokeMethod,
+  invokeCommand,
+  isCliActionExecution,
+  isCommandExecution,
+  isCommandResult,
+  WithAutoConfigDiscovery,
+  WithCliAutoConfigDiscovery,
+  WithCommandAudit,
+  WithCommandTelemetry,
+  type CommandMiddleware,
+  type CommandExecution,
+  type CliActionExecution,
+  type IAutoConfigContext,
+  type ICliActionExecutionRef,
+  type IMethodExecutionRef,
+  type ICommandExecutionRef,
+  type MethodExecution
+} from './decorators/index.js';
 export type {
   ICleanCommandOptions,
+  ICleanerService,
   ICleanHandler,
-  IConfigValidateHandler,
-  IConfigValidateOptions,
   ICommandContext,
   ICommandHandler,
   ICommandResult,
+  IConfigService,
+  IConfigValidateHandler,
+  IConfigValidateOptions,
   IDedupeCommandOptions,
   IDedupeHandler,
-  IConfigService,
-  ICleanerService,
   IDedupeReportService,
   IDirectoryValidator,
   IInitHandler,
@@ -29,4 +111,32 @@ export type {
   IWatchCommandOptions,
   IWatchHandler
 } from './interfaces.js';
-export * from './services/index.js';
+export {
+  addAutoConfigOption,
+  addConfigOption,
+  addDirectoryArgument,
+  addLogLevelOption
+} from './options/index.js';
+export { createRootCommand } from './root-command.js';
+export {
+  ConfigService,
+  DedupeRuntime,
+  DedupeWorkflow,
+  deleteFilePaths,
+  DirectoryValidator,
+  ManifestService,
+  OrganizeDedupeService,
+  OrganizeWorkflow,
+  quarantineFilePaths,
+  ScanWorkflow,
+  type IDedupeWorkflowContext,
+  type IDedupeWorkflowResult,
+  type IOrganizeWorkflow,
+  type IOrganizeWorkflowContext,
+  type IScanWorkflowContext
+} from './services/index.js';
+export {
+  createCommandAction,
+  createDirectoryCommandAction,
+  runCommandResult
+} from './result/index.js';

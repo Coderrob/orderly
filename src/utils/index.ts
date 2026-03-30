@@ -1,10 +1,13 @@
-export { ConfigParser } from './config-parser.js';
-export type { IConfigParser } from './config-parser.js';
+export { Clock, type IClock } from './clock.js';
+export {
+  ConfigParser,
+  type ConfigParseResult,
+  type ConfigStringifyResult,
+  type IConfigParser
+} from './config-parser.js';
 export { ConsoleOutputWriter } from './console-output.writer.js';
-export { FileCategorizer } from './file-categorizer.js';
-export type { IFileCategorizer } from './file-categorizer.js';
-export { FileSystemUtils } from './file-system-utils.js';
-export type { IFileSystemUtils } from './file-system-utils.js';
+export { FileCategorizer, type IFileCategorizer } from './file-categorizer.js';
+export { FileSystemUtils, type IFileSystemUtils } from './file-system-utils.js';
 export {
   isArray,
   isBoolean,
@@ -15,6 +18,12 @@ export {
   isPrimitive,
   isString
 } from './guards.js';
-export { formatJson, parseJsonFile, safeJsonParse, writeJsonFile } from './json.parser.js';
-export { NamingUtils } from './naming.js';
 export type { INamingUtils } from './interfaces.js';
+export {
+  formatJson,
+  parseJsonFile,
+  safeJsonParse,
+  writeJsonFile,
+  type IJsonWriteResult
+} from './json.parser.js';
+export { NamingUtils } from './naming.js';

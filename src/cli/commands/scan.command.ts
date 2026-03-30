@@ -1,13 +1,6 @@
-import { Logger } from '../../logger/logger';
 import { FileScanner } from '../../scanner/file-scanner';
-import type { IScannedFile } from '../../scanner/interfaces';
-import { CLI_CONSTANTS, ExitCode, COMMAND_MESSAGES } from '../constants';
-import {
-  IAutoConfigContext,
-  WithAutoConfigDiscovery
-} from '../decorators/auto-config-discovery.decorator';
-import { HandleCommandErrors } from '../decorators/command-error-handler.decorator';
-import { WithCommandTelemetry } from '../decorators/command-telemetry.decorator';
+import { ExitCode, COMMAND_MESSAGES } from '../constants';
+import { IAutoConfigContext } from '../decorators/auto-config-discovery.decorator';
 import type {
   IConfigService,
   IDirectoryValidator,
@@ -15,25 +8,63 @@ import type {
   IScanHandler,
   IScanOptions
 } from '../interfaces';
+import { ScanWorkflow } from '../services';
 
-const FORMAT_CSV = 'csv';
-const FORMAT_JSON = 'json';
-const FORMAT_TABLE = 'table';
-const JSON_INDENT_SPACES = 2;
+import { createCommandContextBase, createScannerCommandContext } from './command-context.helpers';
+import {
+  getOptionalBooleanOption,
+  getOptionalStringOption,
+  normalizeObjectOptions
+} from './command-option.helpers';
+import { createWrappedAutoConfigCommand } from './command-wrapper.helpers';
+
+enum ScanOptionKey {
+  AUTO_CONFIG = 'autoConfig',
+  CONFIG = 'config',
+  FORMAT = 'format',
+  LOG_LEVEL = 'logLevel'
+}
+
+interface IScanContextDependencies {
+  readonly configService: Readonly<IConfigService>;
+  readonly directoryValidator: Readonly<IDirectoryValidator>;
+}
+
+interface IScanExecuteDependencies extends IScanContextDependencies {
+  executeCore(
+    directory: string,
+    options: Readonly<IScanOptions>,
+    context?: Readonly<IAutoConfigContext<IScanOptions>>
+  ): Promise<ICommandResult>;
+}
 
 /**
  * Handler for the scan command.
  */
 export class ScanHandler implements IScanHandler {
+  public readonly execute: (
+    directory: string,
+    options: Readonly<IScanOptions>,
+    context?: Readonly<IAutoConfigContext<IScanOptions>>
+  ) => Promise<ICommandResult>;
+
   /**
    * Creates a new ScanHandler instance
    * @param configService - Service for loading and managing configuration
    * @param directoryValidator - Service for validating directory paths
+   * @param workflow - Optional scan workflow override.
    */
   constructor(
     private readonly configService: Readonly<IConfigService>,
-    private readonly directoryValidator: Readonly<IDirectoryValidator>
-  ) {}
+    private readonly directoryValidator: Readonly<IDirectoryValidator>,
+    private readonly workflow: Readonly<ScanWorkflow> = new ScanWorkflow()
+  ) {
+    this.execute = createScanExecute({
+      configService: this.configService,
+      directoryValidator: this.directoryValidator,
+      executeCore: this.executeCore.bind(this)
+    });
+  }
 
   /**
    * Executes the scan command.
@@ -42,17 +73,13 @@ export class ScanHandler implements IScanHandler {
    * @param context - Optional context injected by auto-config discovery.
    * @returns Promise resolving to command result
    */
-  @WithCommandTelemetry('scan')
-  @HandleCommandErrors(COMMAND_MESSAGES.SCAN_FAILED)
-  @WithAutoConfigDiscovery<IScanOptions>()
-  async execute(
+  private async executeCore(
     directory: string,
     options: Readonly<IScanOptions>,
     context?: Readonly<IAutoConfigContext<IScanOptions>>
   ): Promise<ICommandResult> {
     const commandContext = this.createCommandContext(directory, options, context);
-    const files = await commandContext.scanner.scan(commandContext.targetDir);
-    this.displayResults(files, commandContext.scanner, options.format);
+    const files = await this.workflow.run(commandContext, options.format);
 
     return {
       success: true,
@@ -76,189 +103,87 @@ export class ScanHandler implements IScanHandler {
     options: Readonly<IScanOptions>,
     context?: Readonly<IAutoConfigContext<IScanOptions>>
   ): Readonly<{ scanner: FileScanner; targetDir: string }> {
-    const targetDir = context?.targetDir ?? this.directoryValidator.validate(directory);
-    const config = this.configService.loadWithOverrides(context?.configOptions ?? { ...options });
-    const logger = new Logger(config.logLevel);
-
-    this.logAutoDiscoveredConfig(logger, context?.autoDiscoveredConfig);
-    return { scanner: new FileScanner(config, logger), targetDir };
-  }
-
-  /**
-   * Logs the discovered config path when auto-config resolution finds one.
-   * @param logger - Logger instance.
-   * @param autoDiscoveredConfig - Auto-discovered config path.
-   */
-  private logAutoDiscoveredConfig(logger: Readonly<Logger>, autoDiscoveredConfig?: string): void {
-    if (autoDiscoveredConfig) {
-      logger.info(`${COMMAND_MESSAGES.CONFIG_AUTO_DISCOVERED}${autoDiscoveredConfig}`);
-    }
-  }
-
-  /**
-   * Displays scan results to the console.
-   * @param files - Scanned files.
-   * @param scanner - File scanner instance.
-   * @param format - Requested output format.
-   */
-  private displayResults(
-    files: readonly IScannedFile[],
-    scanner: Readonly<FileScanner>,
-    format?: string
-  ): void {
-    if (format === FORMAT_JSON || format === FORMAT_CSV) {
-      console.log(this.formatResults(files, scanner, format));
-      return;
-    }
-
-    console.log('\nOrderly - File Scan Results\n');
-    console.log(`Found ${files.length} files\n`);
-    console.log('File categories:');
-    for (const [category, count] of scanner.getCategorySummary(files)) {
-      console.log(`  ${category}: ${count}`);
-    }
-
-    for (const line of this.createSampleLines(files)) {
-      console.log(line);
-    }
-  }
-
-  /**
-   * Formats scan results for console output.
-   * @param files - Scanned files.
-   * @param scanner - File scanner instance.
-   * @param format - Requested output format.
-   * @returns Formatted output string.
-   */
-  private formatResults(
-    files: readonly IScannedFile[],
-    scanner: Readonly<FileScanner>,
-    format?: string
-  ): string {
-    switch (format) {
-      case FORMAT_JSON:
-        return JSON.stringify(this.toJsonPayload(files, scanner), null, JSON_INDENT_SPACES);
-      case FORMAT_CSV:
-        return this.toCsv(files);
-      case FORMAT_TABLE:
-      default:
-        return this.toTable(files, scanner);
-    }
-  }
-
-  /**
-   * Builds the JSON payload for scan output.
-   * @param files - Scanned files.
-   * @param scanner - File scanner instance.
-   * @returns Serializable scan payload.
-   */
-  private toJsonPayload(
-    files: readonly IScannedFile[],
-    scanner: Readonly<FileScanner>
-  ): Readonly<{
-    files: readonly IScannedFile[];
-    summary: readonly Readonly<{ category: string; count: number }>[];
-  }> {
-    return {
-      files,
-      summary: [...scanner.getCategorySummary(files)].map(toSummaryEntry)
-    };
-  }
-
-  /**
-   * Builds CSV output for scan results.
-   * @param files - Scanned files.
-   * @returns CSV output.
-   */
-  private toCsv(files: readonly IScannedFile[]): string {
-    const rows = files.map(toCsvRow);
-    return ['filename,extension,category,size', ...rows].join('\n');
-  }
-
-  /**
-   * Builds table output for scan results.
-   * @param files - Scanned files.
-   * @param scanner - File scanner instance.
-   * @returns Table output.
-   */
-  private toTable(files: readonly IScannedFile[], scanner: Readonly<FileScanner>): string {
-    const headerLines = [
-      '\nOrderly - File Scan Results\n',
-      `Found ${files.length} files\n`,
-      'File categories:'
-    ];
-    const summaryLines = [...scanner.getCategorySummary(files)].map(toSummaryLine);
-    return [...headerLines, ...summaryLines, ...this.createSampleLines(files)].join('\n');
-  }
-
-  /**
-   * Builds sample lines for table output.
-   * @param files - Scanned files.
-   * @returns Sample file lines.
-   */
-  private createSampleLines(files: readonly IScannedFile[]): readonly string[] {
-    if (files.length === 0) {
-      return [];
-    }
-
-    const fileLines = files.slice(0, CLI_CONSTANTS.MAX_DISPLAY_FILES).map(createSampleLine);
-    const remainingLine =
-      files.length > CLI_CONSTANTS.MAX_DISPLAY_FILES
-        ? [`  ... and ${files.length - CLI_CONSTANTS.MAX_DISPLAY_FILES} more files`]
-        : [];
-    return ['\nSample files:', ...fileLines, ...remainingLine];
+    const commandContext = createScannerCommandContext(
+      createCommandContextBase({
+        directory,
+        options,
+        context,
+        configService: this.configService,
+        directoryValidator: this.directoryValidator
+      })
+    );
+    return { scanner: commandContext.scanner, targetDir: commandContext.targetDir };
   }
 }
 
 /**
- * Creates a sample output line for one scanned file.
- * @param file - Scanned file.
- * @param index - Zero-based sample index.
- * @returns Sample line.
+ * Creates normalized scan boolean options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized boolean options.
  */
-function createSampleLine(file: Readonly<IScannedFile>, index: number): string {
-  return `  ${index + 1}. ${file.filename} (${file.category || 'uncategorized'})`;
+function createScanBooleanOptions(value: object): Readonly<IScanOptions> {
+  const autoConfig = getOptionalBooleanOption(value, ScanOptionKey.AUTO_CONFIG);
+  return {
+    ...(autoConfig === undefined ? {} : { autoConfig })
+  };
 }
 
 /**
- * Escapes one CSV field when it contains special characters.
- * @param value - Raw field value.
- * @returns CSV-safe field value.
+ * Creates the wrapped execute function for the scan handler.
+ * @param handler - Scan handler instance.
+ * @returns Wrapped execute function.
  */
-function escapeCsvField(value: string): string {
-  return /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
+function createScanExecute(
+  handler: Readonly<IScanExecuteDependencies>
+): (
+  directory: string,
+  options: Readonly<IScanOptions>,
+  context?: Readonly<IAutoConfigContext<IScanOptions>>
+) => Promise<ICommandResult> {
+  return createWrappedAutoConfigCommand<IScanOptions>({
+    commandName: 'scan',
+    errorPrefix: COMMAND_MESSAGES.SCAN_FAILED,
+    executeCore: handler.executeCore.bind(handler),
+    normalizeDirectory: normalizeScanDirectory,
+    normalizeOptions: normalizeScanOptions,
+    service: handler
+  });
 }
 
 /**
- * Creates a CSV row for one scanned file.
- * @param file - Scanned file.
- * @returns CSV row.
+ * Creates normalized scan string options from an unknown object.
+ * @param value - Candidate options object.
+ * @returns Normalized string options.
  */
-function toCsvRow(file: Readonly<IScannedFile>): string {
-  return [
-    escapeCsvField(file.filename),
-    escapeCsvField(file.extension),
-    escapeCsvField(file.category ?? 'uncategorized'),
-    escapeCsvField(String(file.size))
-  ].join(',');
+function createScanStringOptions(value: object): Readonly<IScanOptions> {
+  const config = getOptionalStringOption(value, ScanOptionKey.CONFIG);
+  const format = getOptionalStringOption(value, ScanOptionKey.FORMAT);
+  const logLevel = getOptionalStringOption(value, ScanOptionKey.LOG_LEVEL);
+  return {
+    ...(config ? { config } : {}),
+    ...(format ? { format } : {}),
+    ...(logLevel ? { logLevel } : {})
+  };
 }
 
 /**
- * Creates a summary payload entry.
- * @param entry - Category/count tuple.
- * @returns Summary entry object.
+ * Normalizes an unknown directory argument to a scan directory string.
+ * @param value - Candidate directory value.
+ * @returns Directory string.
  */
-function toSummaryEntry(
-  entry: readonly [string, number]
-): Readonly<{ category: string; count: number }> {
-  return { category: entry[0], count: entry[1] };
+function normalizeScanDirectory(value: unknown): string {
+  return typeof value === 'string' ? value : '';
 }
 
 /**
- * Creates a formatted summary line.
- * @param entry - Category/count tuple.
- * @returns Summary line.
+ * Normalizes an unknown value to scan command options.
+ * @param value - Candidate options value.
+ * @returns Scan command options.
  */
-function toSummaryLine(entry: readonly [string, number]): string {
-  return `  ${entry[0]}: ${entry[1]}`;
+function normalizeScanOptions(value: unknown): Readonly<IScanOptions> {
+  return normalizeObjectOptions<IScanOptions>(
+    value,
+    createScanBooleanOptions,
+    createScanStringOptions
+  );
 }

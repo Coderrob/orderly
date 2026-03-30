@@ -14,6 +14,7 @@ const TIMESTAMP_PRECISION = 3;
 const JSON_INDENT_SPACES = 2;
 const WARN_LEVEL_PRIORITY = 2;
 const ERROR_LEVEL_PRIORITY = 3;
+const MAX_STORED_LOG_ENTRIES = 1000;
 
 const logStore = new WeakMap<Logger, readonly Readonly<ILogEntry>[]>();
 
@@ -208,7 +209,8 @@ export class Logger implements ILogger {
    * @param entry - Entry to append to the in-memory store
    */
   private storeLog(entry: Readonly<ILogEntry>): void {
-    logStore.set(this, [...this.getStoredLogs(), entry]);
+    const nextLogs = [...this.getStoredLogs(), entry];
+    logStore.set(this, nextLogs.slice(-MAX_STORED_LOG_ENTRIES));
   }
 
   /**

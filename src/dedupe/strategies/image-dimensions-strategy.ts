@@ -1,10 +1,21 @@
-import * as path from 'node:path';
-
 import { IScannedFile } from '../../scanner/interfaces';
 import { IDedupeStrategy, IMetadataExtractor } from '../interfaces';
 import { MetadataExtractor } from '../metadata';
 
+import { hasSupportedExtension, serializeKeyParts } from './strategy-helpers';
+
 const IMAGE_DIMENSIONS_PRIORITY = 20;
+const IMAGE_DIMENSION_EXTENSIONS: readonly string[] = [
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.gif',
+  '.bmp',
+  '.webp',
+  '.svg',
+  '.tiff',
+  '.tif'
+];
 
 /**
  * Strategy that detects duplicates based on image dimensions.
@@ -13,18 +24,6 @@ const IMAGE_DIMENSIONS_PRIORITY = 20;
 export class ImageDimensionsStrategy implements IDedupeStrategy {
   readonly name = 'image-dimensions';
   readonly priority = IMAGE_DIMENSIONS_PRIORITY; // Higher priority than basic strategies
-
-  private readonly imageExtensions = new Set([
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.gif',
-    '.bmp',
-    '.webp',
-    '.svg',
-    '.tiff',
-    '.tif'
-  ]);
 
   /**
    * Creates a new ImageDimensionsStrategy instance with optional metadata extractor
@@ -41,8 +40,7 @@ export class ImageDimensionsStrategy implements IDedupeStrategy {
    * @returns True if file is an image format, false otherwise
    */
   canProcess(file: Readonly<IScannedFile>): boolean {
-    const ext = path.extname(file.filename).toLowerCase();
-    return this.imageExtensions.has(ext);
+    return hasSupportedExtension(file, IMAGE_DIMENSION_EXTENSIONS);
   }
 
   /**
@@ -59,7 +57,10 @@ export class ImageDimensionsStrategy implements IDedupeStrategy {
         return null;
       }
 
-      return `width:${dimensions.width}|height:${dimensions.height}`;
+      return serializeKeyParts([
+        { name: 'width', value: dimensions.width },
+        { name: 'height', value: dimensions.height }
+      ]);
     } catch {
       return null;
     }

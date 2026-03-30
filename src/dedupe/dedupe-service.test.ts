@@ -2,6 +2,7 @@ import { IScannedFile } from '../scanner/interfaces';
 
 import { Sha256Hasher } from './hashers';
 import type { IDedupeStrategy } from './interfaces';
+import { findPairMatches, isDuplicatePair } from './dedupe-pair-evaluation';
 import { NameStrategy, Sha256Strategy, SizeStrategy } from './strategies';
 import { DedupeAction, DedupeMode } from './types';
 import { DedupeService } from './dedupe-service';
@@ -175,6 +176,38 @@ describe('DedupeService', () => {
       expect(result.groups[0].strategy).toBe('name');
     });
 
+    it('should preserve transitive ALL matches when each edge satisfies its applicable strategies', async () => {
+      const nameStrategy = {
+        name: 'name',
+        priority: 1,
+        canProcess: jest
+          .fn()
+          .mockImplementation(
+            (file: IScannedFile) =>
+              file.originalPath === '/path/file2.txt' || file.originalPath === '/path/file3.txt'
+          ),
+        getKey: jest.fn().mockResolvedValue('shared-name')
+      } satisfies IDedupeStrategy;
+      const sizeStrategy = {
+        name: 'size',
+        priority: 2,
+        canProcess: jest
+          .fn()
+          .mockImplementation(
+            (file: IScannedFile) =>
+              file.originalPath === '/path/file1.txt' || file.originalPath === '/path/file2.txt'
+          ),
+        getKey: jest.fn().mockResolvedValue('shared-size')
+      } satisfies IDedupeStrategy;
+
+      const allModeService = new DedupeService([nameStrategy, sizeStrategy], DedupeMode.ALL);
+      const result = await allModeService.findDuplicates(mockFiles);
+
+      expect(result.groups).toHaveLength(1);
+      expect(result.groups[0].files).toEqual(mockFiles);
+      expect(result.groups[0].strategies).toEqual(expect.arrayContaining(['name', 'size']));
+    });
+
     it('should sort strategies used alphabetically', async () => {
       const sha256Strategy = strategies[2] as Sha256Strategy;
       jest
@@ -274,11 +307,11 @@ describe('DedupeService', () => {
 
   describe('private methods', () => {
     it('should treat ANY mode as non-duplicate when no strategies matched', () => {
-      expect(service['isDuplicatePair']([], 2)).toBe(false);
+      expect(isDuplicatePair([], 2, DedupeMode.ANY)).toBe(false);
     });
 
     it('should skip pair matches when either file is missing a strategy key', () => {
-      const result = service['findPairMatches']('/left', '/right', [
+      const result = findPairMatches('/left', '/right', [
         {
           strategy: 'name',
           keysByPath: new Map([['/left', 'same']])

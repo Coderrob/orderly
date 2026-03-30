@@ -45,7 +45,7 @@ export function appendIndexToRoot(
     return [...groupedRoots, { root, indexes: [index] }];
   }
 
-  return updateGroupedRootIndexes(groupedRoots, root, index);
+  return updateGroupedRoots(groupedRoots, createGroupedRootAppender(root, index));
 }
 
 /**
@@ -183,13 +183,33 @@ function countDuplicateFiles(groups: readonly IDuplicateGroup[]): number {
 function createCandidateKeyMap(
   candidates: readonly IDedupeCandidate[]
 ): ReadonlyMap<string, string> {
-  let entries: readonly (readonly [string, string])[] = [];
+  return new Map(candidates.map(toCandidatePathKeyEntry));
+}
 
-  for (const candidate of candidates) {
-    entries = [...entries, toCandidatePathKeyEntry(candidate)];
+/**
+ * Creates a grouped-root updater that appends one index to a matching root.
+ * @param root - Duplicate-set root to update.
+ * @param index - File index to append.
+ * @returns Group update function.
+ */
+function createGroupedRootAppender(
+  root: number,
+  index: number
+): (
+  group: Readonly<{ indexes: readonly number[]; root: number }>
+) => Readonly<{ indexes: readonly number[]; root: number }> {
+  /**
+   * Updates one grouped-root entry when it matches the target root.
+   * @param group - Grouped-root entry.
+   * @returns Updated grouped-root entry.
+   */
+  function appendGroupedRootIndex(
+    group: Readonly<{ indexes: readonly number[]; root: number }>
+  ): Readonly<{ indexes: readonly number[]; root: number }> {
+    return group.root === root ? { ...group, indexes: [...group.indexes, index] } : group;
   }
 
-  return new Map(entries);
+  return appendGroupedRootIndex;
 }
 
 /**
@@ -207,6 +227,26 @@ export function createGroupIndexPairs(indexes: readonly number[]): readonly IInd
   }
 
   return pairs;
+}
+
+/**
+ * Creates a file selector for indexed file lookups.
+ * @param files - All scanned files.
+ * @returns Indexed file selector.
+ */
+function createIndexedFileSelector(
+  files: readonly IScannedFile[]
+): (index: number) => IScannedFile {
+  /**
+   * Selects one scanned file by index.
+   * @param index - File index.
+   * @returns Matching scanned file.
+   */
+  function selectIndexedFile(index: number): IScannedFile {
+    return files[index];
+  }
+
+  return selectIndexedFile;
 }
 
 /**
@@ -263,13 +303,30 @@ export function createPairMatchMap(
     rightIndex: number;
   }>[]
 ): ReadonlyMap<string, readonly IStrategyMatch[]> {
-  let entries: readonly (readonly [string, readonly IStrategyMatch[]])[] = [];
+  return new Map(pairEvaluations.map(toPairMatchEntry));
+}
 
-  for (const evaluation of pairEvaluations) {
-    entries = [...entries, toPairMatchEntry(evaluation)];
+/**
+ * Creates a parent-pointer replacement function.
+ * @param targetIndex - Parent index to replace.
+ * @param nextParent - Replacement parent value.
+ * @returns Parent replacement function.
+ */
+function createParentReplacer(
+  targetIndex: number,
+  nextParent: number
+): (parent: number, index: number) => number {
+  /**
+   * Replaces one parent value when the index matches the target.
+   * @param parent - Current parent value.
+   * @param index - Current parent index.
+   * @returns Updated parent value.
+   */
+  function replaceParentAtIndex(parent: number, index: number): number {
+    return index === targetIndex ? nextParent : parent;
   }
 
-  return new Map(entries);
+  return replaceParentAtIndex;
 }
 
 /**
@@ -287,6 +344,26 @@ function createSortedStrategyNames(
   }
 
   return sortedNames;
+}
+
+/**
+ * Creates a support predicate for one dedupe strategy.
+ * @param strategy - Strategy to evaluate.
+ * @returns Supported-file predicate.
+ */
+function createSupportedFilePredicate(
+  strategy: Readonly<IDedupeStrategy>
+): (file: Readonly<IScannedFile>) => boolean {
+  /**
+   * Returns whether one file is supported by the strategy.
+   * @param file - Scanned file.
+   * @returns True when the strategy can process the file.
+   */
+  function isSupportedFile(file: Readonly<IScannedFile>): boolean {
+    return strategy.canProcess(file);
+  }
+
+  return isSupportedFile;
 }
 
 /**
@@ -346,12 +423,7 @@ export function getGroupFiles(
   files: readonly IScannedFile[],
   indexes: readonly number[]
 ): readonly IScannedFile[] {
-  if (indexes.length === 0) {
-    return [];
-  }
-
-  const [firstIndex, ...remainingIndexes] = indexes;
-  return [files[firstIndex], ...getGroupFiles(files, remainingIndexes)];
+  return indexes.map(createIndexedFileSelector(files));
 }
 
 /**
@@ -360,11 +432,7 @@ export function getGroupFiles(
  * @returns Secondary duplicate files.
  */
 export function getSecondaryFiles(groups: readonly IDuplicateGroup[]): readonly IScannedFile[] {
-  if (groups.length === 0) {
-    return [];
-  }
-
-  return [...groups[0].files.slice(DUPLICATE_OFFSET), ...getSecondaryFiles(groups.slice(1))];
+  return groups.flatMap(toSecondaryFiles);
 }
 
 /**
@@ -399,15 +467,7 @@ export function getSupportedFiles(
   strategy: Readonly<IDedupeStrategy>,
   files: readonly IScannedFile[]
 ): readonly IScannedFile[] {
-  if (files.length === 0) {
-    return [];
-  }
-
-  const [firstFile, ...remainingFiles] = files;
-  const supportedRemainingFiles = getSupportedFiles(strategy, remainingFiles);
-  return strategy.canProcess(firstFile)
-    ? [firstFile, ...supportedRemainingFiles]
-    : supportedRemainingFiles;
+  return files.filter(createSupportedFilePredicate(strategy));
 }
 
 /**
@@ -464,13 +524,7 @@ export function replaceParent(
   targetIndex: number,
   nextParent: number
 ): readonly number[] {
-  let nextParents: readonly number[] = [];
-
-  for (const [index, parent] of parents.entries()) {
-    nextParents = [...nextParents, index === targetIndex ? nextParent : parent];
-  }
-
-  return nextParents;
+  return parents.map(createParentReplacer(targetIndex, nextParent));
 }
 
 /**
@@ -498,6 +552,15 @@ function toPairMatchEntry(
 }
 
 /**
+ * Returns all non-primary files in one duplicate group.
+ * @param group - Duplicate group.
+ * @returns Secondary duplicate files for the group.
+ */
+function toSecondaryFiles(group: Readonly<IDuplicateGroup>): readonly IScannedFile[] {
+  return group.files.slice(DUPLICATE_OFFSET);
+}
+
+/**
  * Returns the strategy name from a strategy execution.
  * @param execution - Strategy execution metadata.
  * @returns Strategy name.
@@ -507,25 +570,16 @@ function toStrategyName(execution: Readonly<IStrategyExecution>): string {
 }
 
 /**
- * Updates the grouped-root collection with one additional index.
+ * Applies an immutable update across grouped-root entries.
  * @param groupedRoots - Existing grouped roots.
- * @param root - Duplicate-set root.
- * @param index - File index to append.
+ * @param updateGroup - Group update function.
  * @returns Updated grouped roots.
  */
-function updateGroupedRootIndexes(
+function updateGroupedRoots(
   groupedRoots: readonly Readonly<{ indexes: readonly number[]; root: number }>[],
-  root: number,
-  index: number
+  updateGroup: (
+    group: Readonly<{ indexes: readonly number[]; root: number }>
+  ) => Readonly<{ indexes: readonly number[]; root: number }>
 ): readonly Readonly<{ indexes: readonly number[]; root: number }>[] {
-  let updatedRoots: readonly Readonly<{ indexes: readonly number[]; root: number }>[] = [];
-
-  for (const group of groupedRoots) {
-    updatedRoots = [
-      ...updatedRoots,
-      group.root === root ? { ...group, indexes: [...group.indexes, index] } : group
-    ];
-  }
-
-  return updatedRoots;
+  return groupedRoots.map(updateGroup);
 }
